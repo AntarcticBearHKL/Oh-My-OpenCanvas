@@ -156,7 +156,7 @@ export function CanvasNodeSplitDialog({ dataUrl, open, onClose, onConfirm }: { d
                     <p className="mt-2 text-xs leading-5 opacity-55">{t("canvas.editors.splitHint")}</p>
                 </div>
                 <div className="grid gap-6 md:grid-cols-[minmax(260px,1fr)_280px]">
-                    <div className="rounded-xl border p-4">
+                    <div className="min-w-0 rounded-xl border p-4">
                         <div
                             ref={viewport.viewportRef}
                             {...viewport.panHandlers}
@@ -192,7 +192,7 @@ export function CanvasNodeSplitDialog({ dataUrl, open, onClose, onConfirm }: { d
                             <span className="font-semibold">{image ? `${image.width} x ${image.height} px` : t("canvas.editors.loading")}</span>
                         </div>
                     </div>
-                    <div className="space-y-5 py-2">
+                    <div className="min-w-0 space-y-5 py-2">
                         <NumberField label={t("canvas.editors.rows")} value={rows} onChange={(value) => update("rows", value)} />
                         <NumberField label={t("canvas.editors.columns")} value={columns} onChange={(value) => update("columns", value)} />
                         <div className="grid grid-cols-2 gap-2">

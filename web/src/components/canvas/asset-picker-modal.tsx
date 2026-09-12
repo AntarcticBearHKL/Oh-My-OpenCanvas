@@ -86,7 +86,7 @@ function MyAssetsTab({ onInsert }: { onInsert: (payload: InsertAssetPayload) => 
         <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
                 <Input
-                    className="w-56"
+                    className="w-full sm:w-56"
                     size="small"
                     prefix={<Search className="size-3.5 text-stone-400" />}
                     placeholder={t("canvas.assetPicker.search")}
@@ -115,7 +115,7 @@ function MyAssetsTab({ onInsert }: { onInsert: (payload: InsertAssetPayload) => 
             </div>
 
             {visible.length ? (
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                     {visible.map((asset) => (
                         <PickerCard key={asset.id} title={asset.title} kind={asset.kind} cover={asset.coverUrl || (asset.kind === "image" ? asset.data.dataUrl : "")} onClick={() => handleInsert(asset)} />
                     ))}

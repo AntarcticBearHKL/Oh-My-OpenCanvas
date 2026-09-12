@@ -36,7 +36,7 @@ export function PromptSelectDialog({ open, onOpenChange, onSelect }: { open: boo
     return (
         <Modal title={t("prompts.library")} open={open} onCancel={() => onOpenChange(false)} footer={null} width={880} centered>
             <div className="grid h-[62dvh] min-h-0 gap-5 sm:grid-cols-[200px_minmax(0,1fr)]" data-canvas-no-zoom onWheelCapture={(event) => event.stopPropagation()}>
-                <aside className="thin-scrollbar min-h-0 overflow-y-auto border-r border-stone-200 pr-4 dark:border-stone-800">
+                <aside className="thin-scrollbar min-h-0 overflow-y-auto border-b border-stone-200 pb-3 sm:border-b-0 sm:border-r sm:pb-0 sm:pr-4 dark:border-stone-800">
                     <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-stone-400 dark:text-stone-500">{t("prompts.category")}</div>
                     <div className="flex flex-wrap gap-1.5">
                         {promptCategories.map((category) => (

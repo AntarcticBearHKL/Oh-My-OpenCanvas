@@ -54,7 +54,7 @@ export function CanvasNodeUpscaleDialog({ dataUrl, open, onClose, onConfirm }: {
                     <h2 className="text-xl font-semibold">{t("canvas.editors.upscaleTitle")}</h2>
                 </div>
                 <div className="grid gap-6 md:grid-cols-[minmax(260px,1fr)_360px]">
-                    <div className="rounded-xl border p-4">
+                    <div className="min-w-0 rounded-xl border p-4">
                         <div className="grid min-h-[280px] place-items-center rounded-lg bg-black/5">
                             <img src={dataUrl} alt="" className="max-h-[320px] max-w-full rounded-lg object-contain shadow-xl" draggable={false} />
                         </div>
@@ -63,7 +63,7 @@ export function CanvasNodeUpscaleDialog({ dataUrl, open, onClose, onConfirm }: {
                             <span className="font-semibold">{image ? `${image.width} x ${image.height} px` : t("canvas.editors.loading")}</span>
                         </div>
                     </div>
-                    <div className="space-y-6 py-2">
+                    <div className="min-w-0 space-y-6 py-2">
                         <div className="space-y-2">
                             <div className="font-medium opacity-75">{t("canvas.editors.targetPixels")}</div>
                             <Segmented

@@ -262,7 +262,7 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
                       )
                     : null}
 
-                <div className="flex min-h-[360px] flex-col gap-5">
+                <div className="flex min-h-[360px] min-w-0 flex-col gap-5">
                     <div>
                         <h2 className="text-xl font-semibold">{t("canvas.editors.maskTitle")}</h2>
                         <div className="mt-2 text-sm opacity-60">{image ? `${image.width} x ${image.height}px` : t("canvas.editors.loading")}</div>
@@ -321,11 +321,11 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
                         {error ? <div className="text-xs font-medium text-[#ef4444]">{error}</div> : null}
                     </div>
 
-                    <div className="mt-auto flex items-center justify-between gap-2">
+                    <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
                         <Button icon={<RotateCcw className="size-4" />} onClick={resetMask}>
                             {t("canvas.editors.reset")}
                         </Button>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <Button icon={<ImagePlus className="size-4" />} onClick={() => submit(false)}>
                                 {t("canvas.editors.maskExport")}
                             </Button>

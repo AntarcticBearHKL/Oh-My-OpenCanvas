@@ -102,7 +102,7 @@ export function CanvasNodeCropDialog({ dataUrl, open, onClose, onConfirm }: { da
                     </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-1">
+                <div className="flex flex-wrap items-center justify-center gap-1">
                     <Tooltip title={t("canvas.editors.zoomOut")}>
                         <Button type="text" icon={<ZoomOut className="size-4" />} disabled={!viewport.canZoomOut} aria-label={t("canvas.editors.zoomOut")} onClick={viewport.zoomOut} />
                     </Tooltip>
@@ -112,7 +112,7 @@ export function CanvasNodeCropDialog({ dataUrl, open, onClose, onConfirm }: { da
                     <Tooltip title={t("canvas.editors.zoomIn")}>
                         <Button type="text" icon={<ZoomIn className="size-4" />} disabled={!viewport.canZoomIn} aria-label={t("canvas.editors.zoomIn")} onClick={viewport.zoomIn} />
                     </Tooltip>
-                    <span className="ml-2 text-xs opacity-55">{t("canvas.editors.cropHint")}</span>
+                    <span className="w-full text-center text-xs opacity-55 sm:ml-2 sm:w-auto sm:text-left">{t("canvas.editors.cropHint")}</span>
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-3 py-2">
@@ -125,6 +125,7 @@ export function CanvasNodeCropDialog({ dataUrl, open, onClose, onConfirm }: { da
                     </div>
                     <Segmented
                         size="small"
+                        className="max-w-full overflow-x-auto"
                         options={[
                             { label: t("canvas.editors.free"), value: "free" },
                             { label: t("canvas.editors.fixed"), value: "fixed" },

@@ -35,7 +35,7 @@ export function CanvasNodeAngleDialog({ dataUrl, open, onClose, onConfirm }: { d
                     <p className="mt-1 text-sm opacity-60">{t("canvas.editors.angleDescription")}</p>
                 </div>
                 <div className="grid gap-6 md:grid-cols-[minmax(260px,1fr)_360px]">
-                    <div className="flex min-h-[300px] flex-col justify-between rounded-xl border p-4">
+                    <div className="flex min-h-[300px] min-w-0 flex-col justify-between rounded-xl border p-4">
                         <div className="grid flex-1 place-items-center">
                             <div className="relative">
                                 <img src={dataUrl} alt="" className="size-48 rounded-2xl object-cover shadow-2xl" draggable={false} style={{ transform: previewTransform(params) }} />
@@ -46,7 +46,7 @@ export function CanvasNodeAngleDialog({ dataUrl, open, onClose, onConfirm }: { d
                             {t("canvas.editors.reset")}
                         </Button>
                     </div>
-                    <div className="space-y-6 py-2">
+                    <div className="min-w-0 space-y-6 py-2">
                         <AngleSlider label={t("canvas.editors.horizontal")} value={params.horizontalAngle} min={-60} max={60} step={1} suffix="deg" onChange={(value) => update("horizontalAngle", value)} />
                         <AngleSlider label={t("canvas.editors.pitch")} value={params.pitchAngle} min={-45} max={45} step={1} suffix="deg" onChange={(value) => update("pitchAngle", value)} />
                         <AngleSlider label={t("canvas.editors.distance")} value={params.cameraDistance} min={1} max={10} step={0.1} onChange={(value) => update("cameraDistance", value)} />

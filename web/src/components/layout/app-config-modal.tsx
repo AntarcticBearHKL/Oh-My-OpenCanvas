@@ -1,7 +1,7 @@
 import { App, Button, Form, Input, Modal, Progress, Select, Tabs } from "antd";
 import type { TFunction } from "i18next";
-import { Cloud, Download, Pencil, Plus, RefreshCw, Trash2, Upload, Wifi } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Cloud, Pencil, Plus, RefreshCw, Trash2, Wifi } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
@@ -9,12 +9,13 @@ import { ChannelEditorDrawer } from "@/components/layout/channel-editor-drawer";
 import { ConfigLocalProxy } from "@/components/layout/config-local-proxy";
 import { ConfigPromptSources } from "@/components/layout/config-prompt-sources";
 import { ConfigLocalStorage } from "@/components/layout/config-local-storage";
-import type { AppLocale } from "@/i18n";
-import { exportAppConfig, importAppConfig } from "@/services/config-file";
+import { VersionReleaseModal } from "@/components/layout/version-release-modal";
+import { changeAppLocale, type AppLocale } from "@/i18n";
 import { syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent } from "@/services/app-sync";
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
 import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
 import { createModelChannel, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, type AiConfig, type ApiCallFormat, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import { useThemeStore } from "@/stores/use-theme-store";
 
 type ModelGroup = {
     capability: ModelCapability;
@@ -50,7 +51,6 @@ function createWebdavDomainProgress(): Record<AppSyncDomainKey, WebdavDomainProg
 export function AppConfigPanel({ showDoneButton = false, initialTab = "channels" }: { showDoneButton?: boolean; initialTab?: ConfigTabKey }) {
     const { message } = App.useApp();
     const { i18n, t } = useTranslation();
-    const configInputRef = useRef<HTMLInputElement>(null);
     const [activeTab, setActiveTab] = useState<ConfigTabKey>(initialTab);
     const [editingChannelId, setEditingChannelId] = useState("");
     const [testingWebdav, setTestingWebdav] = useState(false);
@@ -67,6 +67,8 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
     const webdavReady = Boolean(webdav.url.trim());
     const editingChannel = config.channels.find((channel) => channel.id === editingChannelId) || null;
     const locale = i18n.resolvedLanguage as AppLocale;
+    const theme = useThemeStore((state) => state.theme);
+    const setTheme = useThemeStore((state) => state.setTheme);
     useEffect(() => setActiveTab(initialTab), [initialTab]);
 
     const saveConfig = (nextConfig: AiConfig) => {
@@ -81,17 +83,6 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
         clearPromptContinue();
     };
 
-    const loadConfigFile = async (file: File) => {
-        try {
-            await importAppConfig(file);
-            message.success(t("config.imported"));
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : t("config.importFailed"));
-        } finally {
-            if (configInputRef.current) configInputRef.current.value = "";
-        }
-    };
-
     const updateChannels = (channels: ModelChannel[]) => saveConfig(withChannels(config, channels));
 
     const addChannel = () => {
@@ -101,10 +92,6 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
     };
 
     const deleteChannel = (id: string) => {
-        if (config.channels.length <= 1) {
-            message.warning(t("config.channels.keepOne"));
-            return;
-        }
         updateChannels(config.channels.filter((channel) => channel.id !== id));
     };
 
@@ -164,18 +151,6 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
 
     return (
         <>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3 dark:border-stone-800">
-                <div className="text-xs text-stone-500">{t("config.fileSecurity")}</div>
-                <div className="flex gap-2">
-                    <Button icon={<Upload className="size-4" />} onClick={() => configInputRef.current?.click()}>
-                        {t("config.import")}
-                    </Button>
-                    <Button icon={<Download className="size-4" />} onClick={exportAppConfig}>
-                        {t("config.export")}
-                    </Button>
-                    <input ref={configInputRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => event.target.files?.[0] && void loadConfigFile(event.target.files[0])} />
-                </div>
-            </div>
             <Tabs
                 activeKey={activeTab}
                 onChange={(key) => setActiveTab(key as ConfigTabKey)}
@@ -185,14 +160,13 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                         label: t("config.tabs.channels"),
                         children: (
                             <div>
-                                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                                    <div className="text-xs text-stone-500">{t("config.channels.description")}</div>
+                                <div className="mb-4 flex justify-end">
                                     <Button type="primary" icon={<Plus className="size-4" />} onClick={addChannel}>
                                         {t("config.channels.add")}
                                     </Button>
                                 </div>
                                 <div className="space-y-2">
-                                    {config.channels.map((channel) => (
+                                    {config.channels.length ? config.channels.map((channel) => (
                                         <div key={channel.id} className="flex items-center justify-between gap-3 rounded-lg border border-stone-200 px-4 py-3 dark:border-stone-800">
                                             <div className="min-w-0">
                                                 <div className="truncate text-sm font-semibold">{channel.name || t("config.channels.unnamed")}</div>
@@ -207,7 +181,9 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                                 <Button size="small" danger icon={<Trash2 className="size-3.5" />} onClick={() => deleteChannel(channel.id)} />
                                             </div>
                                         </div>
-                                    ))}
+                                    )) : (
+                                        <div className="rounded-lg border border-dashed border-stone-300 px-4 py-8 text-center text-sm text-stone-500 dark:border-stone-700">{t("config.channels.empty")}</div>
+                                    )}
                                 </div>
                             </div>
                         ),
@@ -222,6 +198,29 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                         label: t("config.tabs.preferences"),
                         children: (
                             <Form layout="vertical" requiredMark={false}>
+                                <div className="mb-2 text-sm font-semibold">{t("config.preferences.interface")}</div>
+                                <div className="mb-4 grid gap-4 md:grid-cols-4">
+                                    <Form.Item label={t("config.preferences.language")} extra={t("config.preferences.languageDescription")} className="mb-0">
+                                        <Select
+                                            value={locale}
+                                            onChange={(value) => void changeAppLocale(value)}
+                                            options={[
+                                                { value: "zh-CN", label: t("locale.zhCN") },
+                                                { value: "en-US", label: t("locale.enUS") },
+                                            ]}
+                                        />
+                                    </Form.Item>
+                                    <Form.Item label={t("config.preferences.theme")} className="mb-0">
+                                        <Select
+                                            value={theme}
+                                            onChange={setTheme}
+                                            options={[
+                                                { value: "light", label: t("canvas.light") },
+                                                { value: "dark", label: t("canvas.dark") },
+                                            ]}
+                                        />
+                                    </Form.Item>
+                                </div>
                                 <div className="mb-2 text-sm font-semibold">{t("config.preferences.defaultModels")}</div>
                                 <div className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                                     {modelGroups.map((group) => (
@@ -263,9 +262,29 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                 <Form.Item label={t("config.preferences.audioInstructions")} className="mb-4">
                                     <Input.TextArea rows={2} value={config.audioInstructions} placeholder={t("config.preferences.audioInstructionsPlaceholder")} onChange={(event) => updateConfig("audioInstructions", event.target.value)} />
                                 </Form.Item>
-                                <Form.Item label={t("config.preferences.systemPrompt")} className="mb-0">
+                                <Form.Item label={t("config.preferences.systemPrompt")} className="mb-4">
                                     <Input.TextArea rows={4} value={config.systemPrompt} placeholder={t("config.preferences.systemPromptPlaceholder")} onChange={(event) => updateConfig("systemPrompt", event.target.value)} />
                                 </Form.Item>
+                                <div className="mb-2 text-sm font-semibold">{t("config.preferences.shortcuts")}</div>
+                                <div className="mb-6 space-y-2 border-t border-stone-200 pt-4 text-sm dark:border-stone-800">
+                                    <Shortcut keys={["Ctrl / Space", t("canvas.shortcut.drag")]} value={t("canvas.shortcut.toggleTool")} />
+                                    <Shortcut keys={[t("canvas.shortcut.wheel")]} value={t("canvas.shortcut.zoom")} />
+                                    <Shortcut keys={[t("canvas.shortcut.zoomSlider")]} value={t("canvas.shortcut.preciseZoom")} />
+                                    <Shortcut keys={[t("canvas.shortcut.drag")]} value={t("canvas.shortcut.boxSelect")} />
+                                    <Shortcut keys={["Shift / Cmd", t("canvas.shortcut.click")]} value={t("canvas.shortcut.addSelection")} />
+                                    <Shortcut keys={["Ctrl / Cmd", "A"]} value={t("canvas.shortcut.selectAll")} />
+                                    <Shortcut keys={["Ctrl / Cmd", "C / V"]} value={t("canvas.shortcut.copyPaste")} />
+                                    <Shortcut keys={["Ctrl / Cmd", "G"]} value={t("canvas.shortcut.group")} />
+                                    <Shortcut keys={["Ctrl / Cmd", "Shift", "G"]} value={t("canvas.shortcut.ungroup")} />
+                                    <Shortcut keys={["Ctrl / Cmd", "Z"]} value={t("canvas.undo")} />
+                                    <Shortcut keys={["Ctrl / Cmd", "Shift", "Z"]} value={t("canvas.redo")} />
+                                    <Shortcut keys={["Ctrl / Cmd", "Y"]} value={t("canvas.redo")} />
+                                    <Shortcut keys={["Delete / Backspace"]} value={t("canvas.shortcut.delete")} />
+                                    <Shortcut keys={["Esc"]} value={t("canvas.shortcut.escape")} />
+                                    <Shortcut keys={[t("canvas.shortcut.dropMedia")]} value={t("canvas.shortcut.upload")} />
+                                </div>
+                                <div className="mb-2 text-sm font-semibold">{t("config.preferences.version")}</div>
+                                <VersionReleaseModal />
                             </Form>
                         ),
                     },
@@ -472,4 +491,25 @@ function formatBytes(bytes: number) {
     if (bytes < 1024) return `${bytes}B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
     return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+}
+
+function Shortcut({ keys, value }: { keys: string[]; value: string }) {
+    return (
+        <div className="grid grid-cols-[minmax(0,1fr)_120px] items-center gap-6 rounded-lg px-1 py-1.5">
+            <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                {keys.map((key, index) => (
+                    <span key={`${key}-${index}`} className="flex items-center gap-1.5">
+                        {index ? <span className="text-xs opacity-35">+</span> : null}
+                        <kbd
+                            className="min-w-9 rounded-md border px-2.5 py-1.5 text-center text-xs font-medium leading-none shadow-[inset_0_-1px_0_rgba(0,0,0,.08),0_1px_2px_rgba(0,0,0,.06)]"
+                            style={{ borderColor: "rgba(120,113,108,.28)", background: "linear-gradient(#fff, rgba(245,245,244,.92))", color: "rgb(68,64,60)" }}
+                        >
+                            {key}
+                        </kbd>
+                    </span>
+                ))}
+            </span>
+            <span className="text-right text-sm opacity-55">{value}</span>
+        </div>
+    );
 }
