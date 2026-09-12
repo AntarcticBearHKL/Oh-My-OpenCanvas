@@ -9,6 +9,7 @@
 + [调整] 渠道配置默认留空，不再预置默认渠道与模型；允许删除全部渠道并显示空状态提示。
 + [调整] 设置标题简化为「配置」，移除配置的导入/导出功能，并整理设置弹窗布局。
 + [调整] 全局字体改为圆体：英文 Baloo 2、简体中文资源圆体（Resource Han Rounded SC，含 Regular 与 Bold 两个字重）。
++ [调整] 渠道固定为 OpenRouter：设置中仅填写 OpenRouter API Key，Base URL 固定为 `https://openrouter.ai/api/v1` 不可修改；生图改用 OpenRouter 专用 `/images` 接口（图片以 `b64_json` 返回并按 `media_type` 还原，图生图通过 `input_references` 提交参考图），移除 Gemini 协议及相关分支，模型列表从 OpenRouter 拉取并按输出模态自动归类能力。
 
 ## v0.18.0 - 2026-09-07
 
