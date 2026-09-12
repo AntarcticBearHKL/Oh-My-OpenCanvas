@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import type { ServerResponse } from "node:http";
 
-import type { AgentAttachment } from "../agent/types.js";
 import { logger } from "../utils/logger.js";
 import { buildCanvasToolRequest, fitAttachmentNodeSize } from "./operations.js";
 import type { ToolName } from "./schemas.js";
@@ -10,6 +9,7 @@ import type { CanvasSnapshot } from "./types.js";
 
 type PendingRequest = { clientId: string; resolve: (value: unknown) => void; reject: (error: Error) => void };
 type TurnAttachment = { clientId: string; id: string; name: string; type: string; size: number; width: number; height: number; dataUrl: string };
+type TurnAttachmentInput = { id?: string; name?: string; type?: string; size?: number; width?: number; height?: number; dataUrl?: string };
 type ReplayEvent = { type: string; payload: Record<string, unknown> };
 export type CodexState = { busy: boolean; threadId: string; turnId: string };
 export type McpStartupState = "starting" | "ready" | "failed" | "cancelled";
@@ -28,10 +28,6 @@ export const AGENT_PROTOCOL_VERSION = 6;
 const SITE_TOOLS = new Set<ToolName>([
     "site_navigate",
     "canvas_list_projects",
-    "workbench_image_get_config",
-    "workbench_image_generate",
-    "workbench_video_get_config",
-    "workbench_video_generate",
     "prompts_search",
     "assets_list",
     "assets_add",
@@ -336,7 +332,7 @@ export class CanvasSession {
     }
 
     /** 保存当前 turn 可用的图片附件并返回安全引用。 */
-    setTurnAttachments(clientId: string, attachments: AgentAttachment[]) {
+    setTurnAttachments(clientId: string, attachments: TurnAttachmentInput[]) {
         this.turnAttachments.clear();
         return attachments.flatMap((item, index) => {
             if (!item.dataUrl?.startsWith("data:image/")) return [];
