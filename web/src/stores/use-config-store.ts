@@ -5,7 +5,7 @@ import { nanoid } from "nanoid";
 
 import i18n from "@/i18n";
 
-export type ApiCallFormat = "openai" | "gemini";
+export type ApiCallFormat = "openai";
 export type ModelCapability = "image" | "video" | "text" | "audio";
 export type ReasoningEffort = "auto" | "low" | "medium" | "high" | "xhigh";
 
@@ -72,17 +72,16 @@ export type ChannelCredentialsImportResult = {
 
 export const CONFIG_STORE_KEY = "infinite-canvas:ai_config_store";
 const CHANNEL_MODEL_SEPARATOR = "::";
-const OPENAI_BASE_URL = "https://api.openai.com";
-const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
+export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 export const LOCAL_PROXY_PACKAGE = "@basketikun/canvas-proxy";
 export const DEFAULT_LOCAL_PROXY_URL = "http://127.0.0.1:23210";
 
 export const defaultConfig: AiConfig = {
     channelMode: "local",
-    baseUrl: OPENAI_BASE_URL,
+    baseUrl: OPENROUTER_BASE_URL,
     apiKey: "",
     apiFormat: "openai",
-    channels: [],
+    channels: [{ id: "openrouter", name: "OpenRouter", baseUrl: OPENROUTER_BASE_URL, apiKey: "", apiFormat: "openai", models: [] }],
     model: "",
     imageModel: "",
     videoModel: "",
@@ -239,7 +238,7 @@ export const useConfigStore = create<ConfigStore>()(
                     config: {
                         ...config,
                         channelMode: "local",
-                        apiFormat: normalizeApiFormat(config.apiFormat),
+                        apiFormat: "openai",
                         channels,
                         models,
                         imageModel: normalizeModelOptionValue(config.imageModel || config.model, channels),
@@ -287,13 +286,12 @@ export function normalizeChannelModels(models: Array<string | ChannelModel> | un
 }
 
 export function createModelChannel(channel?: Partial<ModelChannel>): ModelChannel {
-    const apiFormat = normalizeApiFormat(channel?.apiFormat);
     return {
         id: channel?.id?.trim() || nanoid(),
         name: channel?.name?.trim() || i18n.t("config.channels.newName"),
-        baseUrl: channel?.baseUrl?.trim() || defaultBaseUrlForApiFormat(apiFormat),
+        baseUrl: defaultBaseUrlForApiFormat(),
         apiKey: channel?.apiKey || "",
-        apiFormat,
+        apiFormat: "openai",
         models: normalizeChannelModels(channel?.models),
     };
 }
@@ -306,27 +304,20 @@ export function upsertChannelCredentials(
     if (!rawBaseUrl) return { status: "missing-base-url", config };
     if (!isHttpBaseUrl(rawBaseUrl)) return { status: "invalid-base-url", config };
 
-    const baseUrl = normalizeImportedBaseUrl(rawBaseUrl);
     const apiKey = input.apiKey?.trim() || "";
-    const matchingIndex = config.channels.findIndex((channel) => normalizedBaseUrlKey(channel.baseUrl) === normalizedBaseUrlKey(baseUrl));
+    const matchingIndex = config.channels.findIndex((channel) => normalizedBaseUrlKey(channel.baseUrl) === normalizedBaseUrlKey(OPENROUTER_BASE_URL));
 
     if (matchingIndex >= 0) {
         const existing = config.channels[matchingIndex];
-        if (existing.baseUrl === baseUrl && (!apiKey || existing.apiKey === apiKey)) {
+        if (existing.baseUrl === OPENROUTER_BASE_URL && (!apiKey || existing.apiKey === apiKey)) {
             return { status: "updated", channelName: existing.name, config };
         }
-        const updated = { ...existing, baseUrl, ...(apiKey ? { apiKey } : {}) };
+        const updated: ModelChannel = { ...existing, baseUrl: OPENROUTER_BASE_URL, apiFormat: "openai", ...(apiKey ? { apiKey } : {}) };
         const channels = config.channels.map((channel, index) => (index === matchingIndex ? updated : channel));
         return { status: "updated", channelName: existing.name, config: { ...config, channels } };
     }
 
-    const channel = createModelChannel({
-        name: importedChannelName(baseUrl),
-        baseUrl,
-        apiKey,
-        apiFormat: "openai",
-        models: [],
-    });
+    const channel = createModelChannel({ name: "OpenRouter", apiKey, models: [] });
     return { status: "created", channelName: channel.name, config: { ...config, channels: [...config.channels, channel] } };
 }
 
@@ -355,11 +346,6 @@ function normalizeImportedBaseUrl(baseUrl: string) {
 
 function stripTrailingApiVersion(baseUrl: string) {
     return baseUrl.replace(/\/v1$/i, "");
-}
-
-function importedChannelName(baseUrl: string) {
-    const hostname = new URL(baseUrl).hostname;
-    return hostname.replace(/^(?:www|api)\./i, "") || i18n.t("config.channels.newName");
 }
 
 export function encodeChannelModel(channelId: string, model: string) {
@@ -431,16 +417,11 @@ function normalizeChannels(config: AiConfig) {
             models: normalizeChannelModels(channel.models),
         }),
     );
-    return channels;
+    return channels.length ? channels : [createModelChannel({ id: "openrouter", name: "OpenRouter", models: [] })];
 }
 
-export function defaultBaseUrlForApiFormat(apiFormat: ApiCallFormat) {
-    if (apiFormat === "gemini") return GEMINI_BASE_URL;
-    return OPENAI_BASE_URL;
-}
-
-function normalizeApiFormat(apiFormat: unknown): ApiCallFormat {
-    return apiFormat === "gemini" ? apiFormat : "openai";
+export function defaultBaseUrlForApiFormat() {
+    return OPENROUTER_BASE_URL;
 }
 
 function uniqueModelOptions(models: string[]) {

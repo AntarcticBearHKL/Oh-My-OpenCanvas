@@ -3,15 +3,15 @@ import { RefreshCw, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { fetchChannelModels } from "@/services/api/image";
-import type { ModelChannel } from "@/stores/use-config-store";
+import { fetchChannelModels, type ChannelModelOption } from "@/services/api/image";
+import { guessCapability, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
 
 // Channel model selector: fetch upstream models or add them manually, then include checked models in the channel list.
-export function ModelSelectModal({ open, channel, selectedNames, onConfirm, onClose }: { open: boolean; channel: ModelChannel | null; selectedNames: string[]; onConfirm: (names: string[]) => void; onClose: () => void }) {
+export function ModelSelectModal({ open, channel, selectedNames, onConfirm, onClose }: { open: boolean; channel: ModelChannel | null; selectedNames: string[]; onConfirm: (models: Array<{ name: string; capability: ModelCapability }>) => void; onClose: () => void }) {
     const { message } = App.useApp();
     const { t } = useTranslation();
     const [existing, setExisting] = useState<string[]>([]);
-    const [fetched, setFetched] = useState<string[]>([]);
+    const [fetched, setFetched] = useState<ChannelModelOption[]>([]);
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [activeTab, setActiveTab] = useState("new");
     const [search, setSearch] = useState("");
@@ -28,7 +28,9 @@ export function ModelSelectModal({ open, channel, selectedNames, onConfirm, onCl
         setManual("");
     }, [open, selectedNames]);
 
-    const currentList = activeTab === "new" ? fetched : existing;
+    const fetchedNames = useMemo(() => fetched.map((model) => model.id), [fetched]);
+    const capabilityOf = (name: string) => fetched.find((model) => model.id === name)?.capability || guessCapability(name);
+    const currentList = activeTab === "new" ? fetchedNames : existing;
     const visibleList = useMemo(() => {
         const keyword = search.trim().toLowerCase();
         return keyword ? currentList.filter((name) => name.toLowerCase().includes(keyword)) : currentList;
@@ -53,7 +55,7 @@ export function ModelSelectModal({ open, channel, selectedNames, onConfirm, onCl
     const addManual = () => {
         const name = manual.trim();
         if (!name) return;
-        if (!fetched.includes(name) && !existing.includes(name)) setFetched((current) => [name, ...current]);
+        if (!fetched.some((model) => model.id === name) && !existing.includes(name)) setFetched((current) => [{ id: name, capability: guessCapability(name) }, ...current]);
         setSelected((current) => new Set(current).add(name));
         setManual("");
         setActiveTab("new");
@@ -79,8 +81,8 @@ export function ModelSelectModal({ open, channel, selectedNames, onConfirm, onCl
     };
 
     const confirm = () => {
-        const ordered = [...existing, ...fetched].filter((name, index, list) => list.indexOf(name) === index).filter((name) => selected.has(name));
-        onConfirm(ordered);
+        const ordered = [...existing, ...fetchedNames].filter((name, index, list) => list.indexOf(name) === index).filter((name) => selected.has(name));
+        onConfirm(ordered.map((name) => ({ name, capability: capabilityOf(name) })));
         onClose();
     };
 
@@ -92,7 +94,7 @@ export function ModelSelectModal({ open, channel, selectedNames, onConfirm, onCl
             onCancel={onClose}
             title={
                 <span>
-                    {t("config.modelSelect.title")} <span className="ml-2 text-xs font-normal text-stone-500">{t("config.modelSelect.selected", { selected: selected.size, total: new Set([...existing, ...fetched]).size })}</span>
+                    {t("config.modelSelect.title")} <span className="ml-2 text-xs font-normal text-stone-500">{t("config.modelSelect.selected", { selected: selected.size, total: new Set([...existing, ...fetchedNames]).size })}</span>
                 </span>
             }
             styles={{ body: { maxHeight: "62vh", overflowY: "auto" } }}
