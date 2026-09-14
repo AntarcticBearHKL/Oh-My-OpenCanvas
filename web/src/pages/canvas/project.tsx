@@ -9,7 +9,8 @@ import { requestEdit, requestGeneration, requestImageQuestion } from "@/services
 import { requestAudioGeneration, storeGeneratedAudio } from "@/services/api/audio";
 import { createVideoGenerationTask, isVideoTaskFailed, storeGeneratedVideo, waitForVideoGenerationTask } from "@/services/api/video";
 import { defaultConfig, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
-import { uploadImage } from "@/services/image-storage";
+import { resolveImageUrl, uploadImage } from "@/services/image-storage";
+import { removeImageBackground } from "@/services/background-removal";
 import { uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { nanoid } from "nanoid";
 import { getDataUrlByteSize } from "@/lib/image-utils";
@@ -1399,6 +1400,39 @@ function InfiniteCanvasPage() {
         setCropNodeId(null);
     }, []);
 
+    const removeNodeBackground = useCallback(async (node: CanvasNodeData) => {
+        if (node.type !== CanvasNodeType.Image) return;
+        const source = await resolveImageUrl(node.metadata?.storageKey, node.metadata?.content || "");
+        if (!source) return;
+        const key = `remove-bg-${node.id}`;
+        message.loading({ content: t("canvas.imageTools.removeBackgroundRunning"), key, duration: 0 });
+        try {
+            const blob = await removeImageBackground(source, (progressKey, current, total) => {
+                if (progressKey.startsWith("fetch") && total > 0) message.loading({ content: t("canvas.imageTools.removeBackgroundProgress", { percent: Math.round((current / total) * 100) }), key, duration: 0 });
+            });
+            const image = await uploadImage(blob);
+            const childId = nanoid();
+            const width = Math.min(node.width, Math.max(220, image.width));
+            setNodes((prev) => [
+                ...prev,
+                {
+                    id: childId,
+                    type: CanvasNodeType.Image,
+                    title: t("canvas.imageTools.removeBackgroundResult"),
+                    position: { x: node.position.x + node.width + 96, y: node.position.y },
+                    width,
+                    height: width * (image.height / image.width),
+                    metadata: { ...imageMetadata(image), prompt: node.metadata?.prompt },
+                },
+            ]);
+            setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: childId }]);
+            setSelectedNodeIds(new Set([childId]));
+            message.success({ content: t("canvas.imageTools.removeBackgroundDone"), key });
+        } catch {
+            message.error({ content: t("canvas.imageTools.removeBackgroundFailed"), key });
+        }
+    }, [message, t]);
+
     const splitImageNode = useCallback(
         async (node: CanvasNodeData, params: CanvasImageSplitParams) => {
             if (!node.metadata?.content) return;
@@ -1800,6 +1834,7 @@ function InfiniteCanvasPage() {
                     onSaveAsset={(node) => void saveNodeAsset(node)}
                     onMaskEdit={(node) => setMaskEditNodeId(node.id)}
                     onCrop={(node) => setCropNodeId(node.id)}
+                    onRemoveBackground={(node) => void removeNodeBackground(node)}
                     onSplit={(node) => setSplitNodeId(node.id)}
                     onUpscale={(node) => setUpscaleNodeId(node.id)}
                     onSuperResolve={(node) => setSuperResolveNodeId(node.id)}

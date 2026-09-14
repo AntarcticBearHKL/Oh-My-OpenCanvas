@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { Brush, Camera, Copy, FileText, Grid2x2, Lock, LockOpen, Maximize2, Scissors, Sparkles, Upload, ZoomIn } from "lucide-react";
+import { Brush, Camera, Copy, Eraser, FileText, Grid2x2, Lock, LockOpen, Maximize2, Scissors, Sparkles, Upload, ZoomIn } from "lucide-react";
 
 import type { CanvasNodeData } from "@/types/canvas";
 import i18n from "@/i18n";
 
-export type ImageNodeActionToolId = "copyPrompt" | "reversePrompt" | "replace" | "resize" | "maskEdit" | "crop" | "split" | "upscale" | "superResolve" | "angle" | "view" | "duplicate";
+export type ImageNodeActionToolId = "copyPrompt" | "reversePrompt" | "replace" | "resize" | "maskEdit" | "crop" | "removeBackground" | "split" | "upscale" | "superResolve" | "angle" | "view" | "duplicate";
 export type ImageQuickToolId = "info" | "delete" | "saveAsset" | "download" | ImageNodeActionToolId;
 
 type ImageToolHandlers = {
@@ -12,6 +12,7 @@ type ImageToolHandlers = {
     onToggleFreeResize: (node: CanvasNodeData) => void;
     onMaskEdit: (node: CanvasNodeData) => void;
     onCrop: (node: CanvasNodeData) => void;
+    onRemoveBackground: (node: CanvasNodeData) => void;
     onSplit: (node: CanvasNodeData) => void;
     onUpscale: (node: CanvasNodeData) => void;
     onSuperResolve: (node: CanvasNodeData) => void;
@@ -37,7 +38,7 @@ type ImageQuickToolsConfig = {
     showLabels: boolean;
 };
 
-export const IMAGE_QUICK_TOOLS_STORAGE_KEY = "canvas-image-quick-tools-v8";
+export const IMAGE_QUICK_TOOLS_STORAGE_KEY = "canvas-image-quick-tools-v9";
 
 const defaultBaseToolIds: ImageQuickToolId[] = ["info", "delete", "saveAsset", "download"];
 
@@ -90,6 +91,14 @@ const imageToolDefinitions: ImageToolDefinition[] = [
         title: () => i18n.t("canvas.imageTools.cropTitle"),
         icon: () => <Scissors className="size-4" />,
         run: (node, handlers) => handlers.onCrop(node),
+    },
+    {
+        id: "removeBackground",
+        defaultVisible: true,
+        label: () => i18n.t("canvas.imageTools.removeBackground"),
+        title: () => i18n.t("canvas.imageTools.removeBackgroundTitle"),
+        icon: () => <Eraser className="size-4" />,
+        run: (node, handlers) => handlers.onRemoveBackground(node),
     },
     {
         id: "split",
