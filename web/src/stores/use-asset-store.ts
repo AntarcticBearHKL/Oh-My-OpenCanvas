@@ -2,11 +2,13 @@ import { create } from "zustand";
 import { persist, type PersistStorage, type StorageValue } from "zustand/middleware";
 
 import { nanoid } from "nanoid";
+import i18n from "@/i18n";
 import { localForageStorage } from "@/lib/localforage-storage";
 import { cleanupUnusedImages, resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { cleanupUnusedMedia, resolveMediaUrl } from "@/services/file-storage";
 
 export type AssetKind = "text" | "image" | "video";
+export type AssetGroup = { id: string; name: string; createdAt: string };
 export type TextAsset = AssetBase<"text"> & { data: { content: string } };
 export type ImageAsset = AssetBase<"image"> & { data: { dataUrl: string; storageKey?: string; width: number; height: number; bytes: number; mimeType: string } };
 export type VideoAsset = AssetBase<"video"> & { data: { url: string; storageKey?: string; width: number; height: number; bytes: number; mimeType: string } };
@@ -20,6 +22,7 @@ type AssetBase<T extends AssetKind> = {
     tags: string[];
     source?: string;
     note?: string;
+    groupId?: string;
     createdAt: string;
     updatedAt: string;
     metadata?: Record<string, unknown>;
@@ -28,11 +31,16 @@ type AssetBase<T extends AssetKind> = {
 type AssetStore = {
     hydrated: boolean;
     assets: Asset[];
+    groups: AssetGroup[];
     addAsset: (asset: Omit<Asset, "id" | "createdAt" | "updatedAt">) => string;
     updateAsset: (id: string, patch: Partial<Omit<Asset, "id" | "createdAt">>) => void;
     removeAsset: (id: string) => void;
     replaceAssets: (assets: Asset[]) => void;
     cleanupImages: (extra?: unknown) => void;
+    createAssetGroup: (name?: string) => string;
+    renameAssetGroup: (id: string, name: string) => void;
+    deleteAssetGroup: (id: string) => void;
+    setAssetGroup: (assetId: string, groupId: string | null) => void;
 };
 
 const ASSET_STORE_KEY = "infinite-canvas:asset_store";
@@ -68,6 +76,7 @@ export const useAssetStore = create<AssetStore>()(
         (set, get) => ({
             hydrated: false,
             assets: [],
+            groups: [],
             addAsset: (asset) => {
                 const now = new Date().toISOString();
                 const id = nanoid();
@@ -85,6 +94,25 @@ export const useAssetStore = create<AssetStore>()(
                     return { assets };
                 }),
             replaceAssets: (assets) => set({ assets }),
+            createAssetGroup: (name) => {
+                const id = nanoid();
+                const group: AssetGroup = { id, name: name?.trim() || i18n.t("canvas.sidePanel.group.defaultName", { count: get().groups.length + 1 }), createdAt: new Date().toISOString() };
+                set((state) => ({ groups: [...state.groups, group] }));
+                return id;
+            },
+            renameAssetGroup: (id, name) =>
+                set((state) => ({
+                    groups: state.groups.map((group) => (group.id === id ? { ...group, name: name.trim() || group.name } : group)),
+                })),
+            deleteAssetGroup: (id) =>
+                set((state) => ({
+                    groups: state.groups.filter((group) => group.id !== id),
+                    assets: state.assets.map((asset) => (asset.groupId === id ? { ...asset, groupId: undefined, updatedAt: new Date().toISOString() } : asset)),
+                })),
+            setAssetGroup: (assetId, groupId) =>
+                set((state) => ({
+                    assets: state.assets.map((asset) => (asset.id === assetId ? { ...asset, groupId: groupId || undefined, updatedAt: new Date().toISOString() } : asset)),
+                })),
             cleanupImages: (extra) => {
                 window.setTimeout(async () => {
                     const { useCanvasStore } = await import("@/stores/canvas/use-canvas-store");
@@ -96,7 +124,11 @@ export const useAssetStore = create<AssetStore>()(
         {
             name: ASSET_STORE_KEY,
             storage: assetStorage,
-            partialize: (state) => ({ assets: state.assets }) as StorageValue<AssetStore>["state"],
+            partialize: (state) => ({ assets: state.assets, groups: state.groups }) as StorageValue<AssetStore>["state"],
+            merge: (persisted, current) => {
+                const saved = persisted as Partial<AssetStore> | undefined;
+                return { ...current, ...saved, groups: saved?.groups ?? [] };
+            },
             onRehydrateStorage: () => () => {
                 useAssetStore.setState({ hydrated: true });
             },

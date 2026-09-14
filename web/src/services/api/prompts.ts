@@ -13,26 +13,19 @@ export type Prompt = RawPrompt & {
 
 export const ALL_PROMPTS_OPTION = "all";
 
-export type PromptListResponse = {
-    items: Prompt[];
-    tags: string[];
-    categories: string[];
-    total: number;
-};
-
-export type PromptSourceStatus = {
+type PromptSourceStatus = {
     sourceId: string;
     count: number;
     lastSuccessAt: string;
     lastError: string;
 };
 
-export type PromptSourceRefreshResult = PromptSourceStatus & {
+type PromptSourceRefreshResult = PromptSourceStatus & {
     sourceName: string;
     success: boolean;
 };
 
-export type PromptSourceRefreshSummary = {
+type PromptSourceRefreshSummary = {
     results: PromptSourceRefreshResult[];
     total: number;
     successCount: number;

@@ -1,25 +1,25 @@
 import axios, { type AxiosRequestConfig } from "axios";
 
 import i18n from "@/i18n";
-import { buildApiUrl, withLocalProxy, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
+import { buildApiUrl, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
 
 type RequestOptions = { signal?: AbortSignal };
 
-export type PluginHttpOptions = {
+type PluginHttpOptions = {
     headers?: Record<string, string>;
     params?: Record<string, unknown>;
     responseType?: "json" | "blob" | "text" | "arraybuffer";
 };
 
-export type PluginHttp = {
+type PluginHttp = {
     url: (path: string) => string;
     post: (path: string, body?: unknown, options?: PluginHttpOptions) => Promise<unknown>;
     get: (path: string, options?: PluginHttpOptions) => Promise<unknown>;
 };
 
-export type PluginPollOptions = { intervalMs?: number; timeoutMs?: number };
+type PluginPollOptions = { intervalMs?: number; timeoutMs?: number };
 
-export type RunPluginArgs = {
+type RunPluginArgs = {
     capability: ModelCapability;
     script: string;
     config: AiConfig;
@@ -40,7 +40,7 @@ function pluginHeaders(extra?: Record<string, string>, hasJsonBody = false): Rec
 }
 
 function pluginUrl(config: AiConfig, path: string) {
-    if (/^https?:/i.test(path)) return withLocalProxy(path);
+    if (/^https?:/i.test(path)) return path;
     return buildApiUrl(config.baseUrl, path.startsWith("/") ? path : `/${path}`);
 }
 
@@ -163,7 +163,7 @@ export async function runModelPlugin<T = unknown>(args: RunPluginArgs): Promise<
     }
 }
 
-export type PluginVariable = { name: string; type: string; desc: string; capabilities?: ModelCapability[] };
+type PluginVariable = { name: string; type: string; desc: string; capabilities?: ModelCapability[] };
 
 /** Documentation surface shown in the script editor. */
 export function getPluginVariables(): PluginVariable[] {
@@ -221,7 +221,7 @@ export function getPluginAuthoringPrompt(capability: ModelCapability, modelName:
     return lines.join("\n");
 }
 
-export type PluginTemplate = { label: string; script: string };
+type PluginTemplate = { label: string; script: string };
 
 export function getPluginTemplates(): Record<ModelCapability, PluginTemplate[]> {
     return {

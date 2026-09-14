@@ -51,7 +51,7 @@ type SyncDomainResult<T> = {
     uploadedBytes: number;
 };
 
-export type AppSyncResult = {
+type AppSyncResult = {
     syncedAt: string;
     mergedRemote: boolean;
     projects: number;
@@ -73,7 +73,7 @@ export type AppSyncProgressEvent = {
     status?: "active" | "success" | "exception";
 };
 
-export type AppSyncProgress = (event: AppSyncProgressEvent) => void;
+type AppSyncProgress = (event: AppSyncProgressEvent) => void;
 
 const FILE_CONCURRENCY = 3;
 const imageLogStore = localforage.createInstance({ name: "infinite-canvas", storeName: "image_generation_logs" });

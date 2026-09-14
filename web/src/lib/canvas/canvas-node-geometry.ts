@@ -12,6 +12,12 @@ export function nodeBounds(nodes: CanvasNodeData[]) {
     );
 }
 
+export function nodeCenterInside(node: CanvasNodeData, rect: CanvasNodeData) {
+    const centerX = node.position.x + node.width / 2;
+    const centerY = node.position.y + node.height / 2;
+    return centerX >= rect.position.x && centerX <= rect.position.x + rect.width && centerY >= rect.position.y && centerY <= rect.position.y + rect.height;
+}
+
 export function findGroupDropTarget(movedIds: Set<string>, nodes: CanvasNodeData[]) {
     if (nodes.some((node) => movedIds.has(node.id) && node.type === CanvasNodeType.Group)) return null;
     const movingNodes = nodes.filter((node) => movedIds.has(node.id) && node.type !== CanvasNodeType.Group);
@@ -24,6 +30,17 @@ export function findGroupDropTarget(movedIds: Set<string>, nodes: CanvasNodeData
                 const centerY = node.position.y + node.height / 2;
                 return centerX >= group.position.x && centerX <= group.position.x + group.width && centerY >= group.position.y && centerY <= group.position.y + group.height;
             });
+        }) || null
+    );
+}
+
+export function findBoardDropTarget(movedIds: Set<string>, nodes: CanvasNodeData[]) {
+    const movingImages = nodes.filter((node) => movedIds.has(node.id) && node.type === CanvasNodeType.Image);
+    if (!movingImages.length) return null;
+    return (
+        [...nodes].reverse().find((board) => {
+            if (board.type !== CanvasNodeType.SmartCanvas || movedIds.has(board.id)) return false;
+            return movingImages.some((node) => nodeCenterInside(node, board));
         }) || null
     );
 }
@@ -45,8 +62,8 @@ export function snapNodesIntoGroup(movedIds: Set<string>, nodes: CanvasNodeData[
     });
 }
 
-export const GROUP_WRAP_PADDING = 24;
-export const GROUP_WRAP_TOP_PADDING = 52;
+const GROUP_WRAP_PADDING = 24;
+const GROUP_WRAP_TOP_PADDING = 52;
 
 function selectedGroupIds(selectedIds: Set<string>, nodes: CanvasNodeData[]) {
     return new Set(nodes.filter((node) => selectedIds.has(node.id) && node.type === CanvasNodeType.Group).map((node) => node.id));

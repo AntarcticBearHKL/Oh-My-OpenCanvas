@@ -18,10 +18,6 @@ const videoModeOptions = [
     { value: "reference", labelKey: "reference" },
 ];
 
-export const videoResolutionOptions = resolutionOptions.map((item) => ({ value: item.value, label: item.label }));
-export const videoSizeOptions = videoRatioOptions.map((item) => ({ value: item.value, get label() { return item.value === "auto" ? i18n.t("settingsPanels.common.auto") : item.value; } }));
-export const videoSecondsRange = { min: VIDEO_SECONDS_MIN, max: VIDEO_SECONDS_MAX };
-
 type VideoSettingsPanelProps = {
     config: AiConfig;
     onConfigChange: (key: "vquality" | "size" | "videoSeconds" | "videoGenerateAudio" | "videoWatermark" | "videoMode", value: string) => void;
@@ -123,19 +119,8 @@ export function videoModeLabel(value: string) {
     return i18n.t(`settingsPanels.video.modes.${normalizeVideoModeValue(value)}`);
 }
 
-export function normalizeVideoModeValue(value: string | undefined) {
+function normalizeVideoModeValue(value: string | undefined) {
     return value === "reference" ? "reference" : "frames";
-}
-
-export function normalizeVideoSizeValue(value: string, resolution = "720") {
-    if (value === "auto") return "auto";
-    if (/^\d+x\d+$/.test(value || "")) return value;
-    const ratio = inferVideoRatio(value);
-    return ratio === "auto" ? "auto" : computeVideoSize(resolution, ratio);
-}
-
-export function normalizeVideoResolutionValue(value: string) {
-    return parseVideoResolution(value);
 }
 
 function updateDimension(key: "width" | "height", value: number | null, dimensions: { width: number; height: number }, onConfigChange: VideoSettingsPanelProps["onConfigChange"]) {

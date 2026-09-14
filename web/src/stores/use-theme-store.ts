@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type ThemeName = "light" | "dark";
+type ThemeName = "light" | "dark";
 
 type ThemeStore = {
     theme: ThemeName;
@@ -11,7 +11,7 @@ type ThemeStore = {
 export const useThemeStore = create<ThemeStore>()(
     persist(
         (set) => ({
-            theme: "dark",
+            theme: "light",
             setTheme: (theme) => set({ theme }),
         }),
         { name: "infinite-canvas:theme_store" },

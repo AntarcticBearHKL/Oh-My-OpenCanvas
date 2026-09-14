@@ -28,16 +28,6 @@ type ResponseInputMessage =
     | { type: "function_call"; call_id: string; name: string; arguments: string; thoughtSignature?: string }
     | { role: "tool"; tool_call_id: string; content: string };
 
-type ResponseFunctionTool = {
-    type: "function";
-    function: {
-        name: string;
-        description?: string;
-        parameters: Record<string, unknown>;
-        strict?: boolean;
-    };
-};
-
 type ToolResponseResult = {
     content: string;
     toolCalls: ResponseToolCall[];
@@ -49,13 +39,6 @@ type ResponseInputItem =
     | { role: "system" | "user" | "assistant"; content: string | ResponseInputContent[] }
     | { type: "function_call"; call_id: string; name: string; arguments: string }
     | { type: "function_call_output"; call_id: string; output: string };
-type ResponseApiToolDefinition = {
-    type: "function";
-    name: string;
-    description?: string;
-    parameters: Record<string, unknown>;
-    strict?: boolean;
-};
 type ResponseApiOutputItem =
     | { type?: "message"; content?: Array<{ type?: string; text?: string }> }
     | { type?: "function_call"; id?: string; call_id?: string; name?: string; arguments?: string };
@@ -321,16 +304,6 @@ function toResponseContent(content: ResponseMessageContent): string | ResponseIn
     return content.map((item) => (item.type === "text" ? { type: "input_text" as const, text: item.text } : { type: "input_image" as const, image_url: item.image_url.url }));
 }
 
-function toResponseTool(tool: ResponseFunctionTool): ResponseApiToolDefinition {
-    return {
-        type: "function",
-        name: tool.function.name,
-        description: tool.function.description,
-        parameters: tool.function.parameters,
-        strict: tool.function.strict,
-    };
-}
-
 function parseToolResponse(payload: ResponseApiPayload): ToolResponseResult {
     const output = payload.output || [];
     const content =
@@ -570,20 +543,6 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
         return answer;
     } catch (error) {
         throw new Error(readAxiosError(error, apiText("requestFailed")));
-    }
-}
-
-export async function fetchImageModels(channel: Pick<ModelChannel, "baseUrl" | "apiKey">) {
-    try {
-        const response = await axios.get<{ data?: Array<{ id?: string }>; error?: { message?: string } }>(buildApiUrl(channel.baseUrl, "/images/models"), {
-            headers: { Authorization: `Bearer ${channel.apiKey}` },
-        });
-        return (response.data.data || [])
-            .map((model) => model.id)
-            .filter((id): id is string => Boolean(id))
-            .sort((a, b) => a.localeCompare(b));
-    } catch (error) {
-        throw new Error(readAxiosError(error, apiText("modelReadFailed")));
     }
 }
 

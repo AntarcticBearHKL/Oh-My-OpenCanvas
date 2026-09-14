@@ -1,4 +1,4 @@
-import { App, Button, Form, Input, Modal, Progress, Select, Tabs } from "antd";
+import { App, Button, Form, Input, Modal, Progress, Select, Switch, Tabs } from "antd";
 import type { TFunction } from "i18next";
 import { Cloud, Pencil, Plus, RefreshCw, Trash2, Wifi } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
 import { ChannelEditorDrawer } from "@/components/layout/channel-editor-drawer";
-import { ConfigLocalProxy } from "@/components/layout/config-local-proxy";
 import { ConfigPromptSources } from "@/components/layout/config-prompt-sources";
 import { ConfigLocalStorage } from "@/components/layout/config-local-storage";
 import { VersionReleaseModal } from "@/components/layout/version-release-modal";
@@ -48,7 +47,7 @@ function createWebdavDomainProgress(): Record<AppSyncDomainKey, WebdavDomainProg
     );
 }
 
-export function AppConfigPanel({ showDoneButton = false, initialTab = "channels" }: { showDoneButton?: boolean; initialTab?: ConfigTabKey }) {
+export function AppConfigPanel({ initialTab = "channels" }: { initialTab?: ConfigTabKey }) {
     const { message } = App.useApp();
     const { i18n, t } = useTranslation();
     const [activeTab, setActiveTab] = useState<ConfigTabKey>(initialTab);
@@ -61,9 +60,6 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
     const webdav = useConfigStore((state) => state.webdav);
     const updateConfig = useConfigStore((state) => state.updateConfig);
     const updateWebdavConfig = useConfigStore((state) => state.updateWebdavConfig);
-    const shouldPromptContinue = useConfigStore((state) => state.shouldPromptContinue);
-    const setConfigDialogOpen = useConfigStore((state) => state.setConfigDialogOpen);
-    const clearPromptContinue = useConfigStore((state) => state.clearPromptContinue);
     const webdavReady = Boolean(webdav.url.trim());
     const editingChannel = config.channels.find((channel) => channel.id === editingChannelId) || null;
     const locale = i18n.resolvedLanguage as AppLocale;
@@ -73,14 +69,6 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
 
     const saveConfig = (nextConfig: AiConfig) => {
         (Object.keys(nextConfig) as Array<keyof AiConfig>).forEach((key) => updateConfig(key, nextConfig[key]));
-    };
-
-    const finishConfig = () => {
-        const ready = config.channels.some((channel) => channel.baseUrl.trim() && channel.apiKey.trim() && channel.models.length);
-        setConfigDialogOpen(false);
-        if (!ready) return;
-        message.success(t(shouldPromptContinue ? "config.savedContinue" : "config.saved"));
-        clearPromptContinue();
     };
 
     const updateChannels = (channels: ModelChannel[]) => saveConfig(withChannels(config, channels));
@@ -189,18 +177,12 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                         ),
                     },
                     {
-                        key: "local-proxy",
-                        label: t("config.tabs.localProxy"),
-                        children: <ConfigLocalProxy />,
-                    },
-                    {
-                        key: "preferences",
-                        label: t("config.tabs.preferences"),
+                        key: "appearance",
+                        label: t("config.tabs.appearance"),
                         children: (
                             <Form layout="vertical" requiredMark={false}>
-                                <div className="mb-2 text-sm font-semibold">{t("config.preferences.interface")}</div>
-                                <div className="mb-4 grid gap-4 md:grid-cols-4">
-                                    <Form.Item label={t("config.preferences.language")} extra={t("config.preferences.languageDescription")} className="mb-0">
+                                <div className="grid gap-4 md:grid-cols-4">
+                                    <Form.Item label={t("config.preferences.language")} className="mb-0">
                                         <Select
                                             value={locale}
                                             onChange={(value) => void changeAppLocale(value)}
@@ -215,21 +197,49 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                             value={theme}
                                             onChange={setTheme}
                                             options={[
-                                                { value: "light", label: t("canvas.light") },
-                                                { value: "dark", label: t("canvas.dark") },
+                                                { value: "light", label: t("canvas.toolbar.light") },
+                                                { value: "dark", label: t("canvas.toolbar.dark") },
                                             ]}
                                         />
                                     </Form.Item>
+                                    <Form.Item label={t("config.preferences.canvasBackground")} className="mb-0">
+                                        <Select
+                                            value={config.canvasBackgroundMode}
+                                            onChange={(value) => updateConfig("canvasBackgroundMode", value)}
+                                            options={[
+                                                { value: "dots", label: t("canvas.toolbar.dots") },
+                                                { value: "lines", label: t("canvas.toolbar.lines") },
+                                                { value: "blank", label: t("canvas.toolbar.blank") },
+                                            ]}
+                                        />
+                                    </Form.Item>
+                                    <Form.Item label={t("canvas.toolbar.imageInfo")} className="mb-0">
+                                        <Switch size="small" checked={config.showImageInfo} onChange={(checked) => updateConfig("showImageInfo", checked)} />
+                                    </Form.Item>
                                 </div>
-                                <div className="mb-2 text-sm font-semibold">{t("config.preferences.defaultModels")}</div>
-                                <div className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                            </Form>
+                        ),
+                    },
+                    {
+                        key: "models",
+                        label: t("config.tabs.models"),
+                        children: (
+                            <Form layout="vertical" requiredMark={false}>
+                                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                                     {modelGroups.map((group) => (
                                         <Form.Item key={group.modelKey} label={t(group.labelKey)} className="mb-0">
                                             <ModelPicker config={config} value={config[group.modelKey]} onChange={(model) => updateConfig(group.modelKey, model)} capability={group.capability} fullWidth />
                                         </Form.Item>
                                     ))}
                                 </div>
-                                <div className="mb-2 text-sm font-semibold">{t("config.preferences.generation")}</div>
+                            </Form>
+                        ),
+                    },
+                    {
+                        key: "generation",
+                        label: t("config.tabs.generation"),
+                        children: (
+                            <Form layout="vertical" requiredMark={false}>
                                 <div className="grid gap-4 md:grid-cols-4">
                                     <Form.Item label={t("config.preferences.canvasImageCount")} extra={t("config.preferences.canvasImageCountDescription")} className="mb-4">
                                         <Input
@@ -265,26 +275,6 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                                 <Form.Item label={t("config.preferences.systemPrompt")} className="mb-4">
                                     <Input.TextArea rows={4} value={config.systemPrompt} placeholder={t("config.preferences.systemPromptPlaceholder")} onChange={(event) => updateConfig("systemPrompt", event.target.value)} />
                                 </Form.Item>
-                                <div className="mb-2 text-sm font-semibold">{t("config.preferences.shortcuts")}</div>
-                                <div className="mb-6 space-y-2 border-t border-stone-200 pt-4 text-sm dark:border-stone-800">
-                                    <Shortcut keys={["Ctrl / Space", t("canvas.shortcut.drag")]} value={t("canvas.shortcut.toggleTool")} />
-                                    <Shortcut keys={[t("canvas.shortcut.wheel")]} value={t("canvas.shortcut.zoom")} />
-                                    <Shortcut keys={[t("canvas.shortcut.zoomSlider")]} value={t("canvas.shortcut.preciseZoom")} />
-                                    <Shortcut keys={[t("canvas.shortcut.drag")]} value={t("canvas.shortcut.boxSelect")} />
-                                    <Shortcut keys={["Shift / Cmd", t("canvas.shortcut.click")]} value={t("canvas.shortcut.addSelection")} />
-                                    <Shortcut keys={["Ctrl / Cmd", "A"]} value={t("canvas.shortcut.selectAll")} />
-                                    <Shortcut keys={["Ctrl / Cmd", "C / V"]} value={t("canvas.shortcut.copyPaste")} />
-                                    <Shortcut keys={["Ctrl / Cmd", "G"]} value={t("canvas.shortcut.group")} />
-                                    <Shortcut keys={["Ctrl / Cmd", "Shift", "G"]} value={t("canvas.shortcut.ungroup")} />
-                                    <Shortcut keys={["Ctrl / Cmd", "Z"]} value={t("canvas.undo")} />
-                                    <Shortcut keys={["Ctrl / Cmd", "Shift", "Z"]} value={t("canvas.redo")} />
-                                    <Shortcut keys={["Ctrl / Cmd", "Y"]} value={t("canvas.redo")} />
-                                    <Shortcut keys={["Delete / Backspace"]} value={t("canvas.shortcut.delete")} />
-                                    <Shortcut keys={["Esc"]} value={t("canvas.shortcut.escape")} />
-                                    <Shortcut keys={[t("canvas.shortcut.dropMedia")]} value={t("canvas.shortcut.upload")} />
-                                </div>
-                                <div className="mb-2 text-sm font-semibold">{t("config.preferences.version")}</div>
-                                <VersionReleaseModal />
                             </Form>
                         ),
                     },
@@ -342,15 +332,36 @@ export function AppConfigPanel({ showDoneButton = false, initialTab = "channels"
                         label: t("config.tabs.localStorage"),
                         children: <ConfigLocalStorage active={activeTab === "local-storage"} />,
                     },
+                    {
+                        key: "about",
+                        label: t("config.tabs.about"),
+                        children: (
+                            <Form layout="vertical" requiredMark={false}>
+                                <div className="mb-2 text-sm font-semibold">{t("config.preferences.shortcuts")}</div>
+                                <div className="mb-6 space-y-2 border-t border-stone-200 pt-4 text-sm dark:border-stone-800">
+                                    <Shortcut keys={["Ctrl / Space", t("canvas.shortcut.drag")]} value={t("canvas.shortcut.toggleTool")} />
+                                    <Shortcut keys={[t("canvas.shortcut.wheel")]} value={t("canvas.shortcut.zoom")} />
+                                    <Shortcut keys={[t("canvas.shortcut.zoomSlider")]} value={t("canvas.shortcut.preciseZoom")} />
+                                    <Shortcut keys={[t("canvas.shortcut.drag")]} value={t("canvas.shortcut.boxSelect")} />
+                                    <Shortcut keys={["Shift / Cmd", t("canvas.shortcut.click")]} value={t("canvas.shortcut.addSelection")} />
+                                    <Shortcut keys={["Ctrl / Cmd", "A"]} value={t("canvas.shortcut.selectAll")} />
+                                    <Shortcut keys={["Ctrl / Cmd", "C / V"]} value={t("canvas.shortcut.copyPaste")} />
+                                    <Shortcut keys={["Ctrl / Cmd", "G"]} value={t("canvas.shortcut.group")} />
+                                    <Shortcut keys={["Ctrl / Cmd", "Shift", "G"]} value={t("canvas.shortcut.ungroup")} />
+                                    <Shortcut keys={["Ctrl / Cmd", "Z"]} value={t("canvas.undo")} />
+                                    <Shortcut keys={["Ctrl / Cmd", "Shift", "Z"]} value={t("canvas.redo")} />
+                                    <Shortcut keys={["Ctrl / Cmd", "Y"]} value={t("canvas.redo")} />
+                                    <Shortcut keys={["Delete / Backspace"]} value={t("canvas.shortcut.delete")} />
+                                    <Shortcut keys={["Esc"]} value={t("canvas.shortcut.escape")} />
+                                    <Shortcut keys={[t("canvas.shortcut.dropMedia")]} value={t("canvas.shortcut.upload")} />
+                                </div>
+                                <div className="mb-2 text-sm font-semibold">{t("config.preferences.version")}</div>
+                                <VersionReleaseModal />
+                            </Form>
+                        ),
+                    },
                 ]}
             />
-            {showDoneButton ? (
-                <div className="mt-4 flex justify-end">
-                    <Button type="primary" onClick={finishConfig}>
-                        {t("common.done")}
-                    </Button>
-                </div>
-            ) : null}
             <ChannelEditorDrawer open={Boolean(editingChannel)} channel={editingChannel} onSave={saveChannel} onClose={() => setEditingChannelId("")} />
         </>
     );
@@ -363,12 +374,7 @@ export function AppConfigModal() {
     const setConfigDialogOpen = useConfigStore((state) => state.setConfigDialogOpen);
     return (
         <Modal
-            title={
-                <div>
-                    <div className="text-lg font-semibold">{t("config.title")}</div>
-                    <div className="mt-1 text-xs font-normal text-stone-500">{t("config.modalDescription")}</div>
-                </div>
-            }
+            title={<div className="text-lg font-semibold">{t("config.title")}</div>}
             open={isConfigOpen}
             width={980}
             centered
@@ -376,7 +382,7 @@ export function AppConfigModal() {
             styles={{ body: { maxHeight: "72vh", overflowY: "auto", paddingRight: 12 } }}
             footer={null}
         >
-            <AppConfigPanel showDoneButton initialTab={configTab} />
+            <AppConfigPanel initialTab={configTab} />
         </Modal>
     );
 }
@@ -406,7 +412,7 @@ function pickDefaultModel(config: AiConfig, capability: ModelCapability, current
 }
 
 function normalizeImageCount(value: string) {
-    return String(Math.max(1, Math.min(15, Math.floor(Math.abs(Number(value)) || 3))));
+    return String(Math.max(1, Math.min(15, Math.floor(Math.abs(Number(value)) || 1))));
 }
 
 function formatWebdavTime(value: string, locale: AppLocale) {

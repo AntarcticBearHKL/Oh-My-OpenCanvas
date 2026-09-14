@@ -16,6 +16,7 @@ export enum CanvasNodeType {
     Video = "video",
     Audio = "audio",
     Group = "group",
+    SmartCanvas = "smart-canvas",
 }
 
 // Node types are open strings: built-ins use CanvasNodeType and plugins use "<pluginId>:<name>".
@@ -84,6 +85,9 @@ export type CanvasNodeMetadata = {
     videoTaskId?: string;
     videoTaskProvider?: "openai" | "plugin";
     groupId?: string;
+    boardRatio?: string; // Smart Canvas board aspect ratio, e.g. "16:9"; defaults to "16:9".
+    boardResolution?: "1k" | "2k" | "4k"; // Smart Canvas composite resolution tier; defaults to "2k".
+    boardId?: string; // Set on an IMAGE node to mark it as placed on that Smart Canvas board.
     interactive?: boolean; // Plugin node interaction/move state; see CanvasNodeDefinition.interactionToggle.
 };
 
@@ -103,7 +107,7 @@ export type CanvasConnection = {
     toNodeId: string;
 };
 
-export type CanvasAssistantReference = {
+type CanvasAssistantReference = {
     id: string;
     type: CanvasNodeTypeId;
     title: string;

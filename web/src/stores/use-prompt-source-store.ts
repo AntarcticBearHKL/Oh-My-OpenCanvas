@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 
 import { DEFAULT_PROMPT_SOURCES, createPromptSource, type PromptSource } from "@/services/api/prompt-source-presets";
 
-export type PromptSourceSchedule = {
+type PromptSourceSchedule = {
     intervalMinutes: number;
     lastFetchedAt: string;
 };

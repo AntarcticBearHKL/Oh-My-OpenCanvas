@@ -85,7 +85,6 @@ function TextSettingsPortal({ buttonRect, panelRef, placement, theme, config, co
         ...(topPlacement ? { bottom: window.innerHeight - buttonRect.top + gap } : { top: buttonRect.bottom + gap }),
         background: theme.toolbar.panel,
         borderRadius: 18,
-        boxShadow: "0 18px 54px rgba(28, 25, 23, 0.16)",
         padding: 18,
         color: theme.node.text,
     } as const;

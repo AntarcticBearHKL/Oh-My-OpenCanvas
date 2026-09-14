@@ -1,5 +1,5 @@
 import i18n from "@/i18n";
-import { withLocalProxy, type WebdavSyncConfig } from "@/stores/use-config-store";
+import type { WebdavSyncConfig } from "@/stores/use-config-store";
 
 export const WEBDAV_MANIFEST_FILE_NAME = "manifest.json";
 const WEBDAV_REQUEST_TIMEOUT_MS = 120000;
@@ -13,10 +13,6 @@ export async function testWebdavConnection(config: WebdavSyncConfig) {
     await throwWebdavError(response, webdavText("testFailed"));
 }
 
-export async function downloadWebdavSyncFile(config: WebdavSyncConfig) {
-    return downloadWebdavFile(config, WEBDAV_MANIFEST_FILE_NAME);
-}
-
 export async function downloadWebdavFile(config: WebdavSyncConfig, path: string) {
     await ensureWebdavDirectory(config);
     const response = await webdavFetch(config, path, { method: "GET" });
@@ -24,10 +20,6 @@ export async function downloadWebdavFile(config: WebdavSyncConfig, path: string)
     if (!response.ok) await throwWebdavError(response, webdavText("downloadFailed"));
     const file = await withTimeout(response.blob(), webdavText("downloadTimeout"));
     return file.size ? file : null;
-}
-
-export async function uploadWebdavSyncFile(config: WebdavSyncConfig, file: Blob) {
-    return uploadWebdavFile(config, WEBDAV_MANIFEST_FILE_NAME, file, "application/json");
 }
 
 export async function uploadWebdavFile(config: WebdavSyncConfig, path: string, file: Blob, contentType = "application/octet-stream") {
@@ -78,7 +70,7 @@ async function webdavFetch(config: WebdavSyncConfig, path: string, init: Request
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), WEBDAV_REQUEST_TIMEOUT_MS);
     try {
-        const url = withLocalProxy(buildWebdavUrl(config, path));
+        const url = buildWebdavUrl(config, path);
         return await fetch(url, { ...init, headers, signal: controller.signal });
     } catch (error) {
         if (error instanceof Error && error.name === "AbortError") throw new Error(webdavText("requestTimeout"));

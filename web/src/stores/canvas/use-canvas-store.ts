@@ -4,7 +4,6 @@ import { persist, type PersistStorage, type StorageValue } from "zustand/middlew
 import { nanoid } from "nanoid";
 import i18n from "@/i18n";
 import { localForageStorage } from "@/lib/localforage-storage";
-import type { CanvasBackgroundMode } from "@/lib/canvas-theme";
 import type { CanvasAssistantSession, CanvasConnection, CanvasNodeData, ViewportTransform } from "@/types/canvas";
 
 export type CanvasProject = {
@@ -12,13 +11,18 @@ export type CanvasProject = {
     title: string;
     createdAt: string;
     updatedAt: string;
+    groupId?: string | null;
     nodes: CanvasNodeData[];
     connections: CanvasConnection[];
     chatSessions: CanvasAssistantSession[];
     activeChatId: string | null;
-    backgroundMode: CanvasBackgroundMode;
-    showImageInfo: boolean;
     viewport: ViewportTransform;
+};
+
+type CanvasGroup = {
+    id: string;
+    name: string;
+    createdAt: string;
 };
 
 export type CanvasDeletedProject = {
@@ -29,19 +33,24 @@ export type CanvasDeletedProject = {
 type CanvasStore = {
     hydrated: boolean;
     projects: CanvasProject[];
+    groups: CanvasGroup[];
     deletedProjects: CanvasDeletedProject[];
-    createProject: (title?: string) => string;
+    createProject: (title?: string, groupId?: string | null) => string;
     importProject: (project: Partial<CanvasProject>) => string;
     openProject: (id: string) => CanvasProject | null;
     renameProject: (id: string, title: string) => void;
     deleteProjects: (ids: string[]) => void;
     replaceProjects: (projects: CanvasProject[], deletedProjects?: CanvasDeletedProject[]) => void;
-    updateProject: (id: string, patch: Partial<Pick<CanvasProject, "nodes" | "connections" | "chatSessions" | "activeChatId" | "backgroundMode" | "showImageInfo" | "viewport">>) => void;
+    updateProject: (id: string, patch: Partial<Pick<CanvasProject, "nodes" | "connections" | "chatSessions" | "activeChatId" | "viewport" | "groupId">>) => void;
+    createGroup: (name?: string) => string;
+    renameGroup: (id: string, name: string) => void;
+    deleteGroup: (id: string) => void;
+    setProjectGroup: (projectId: string, groupId: string | null) => void;
 };
 
 const initialViewport: ViewportTransform = { x: 0, y: 0, k: 1 };
 const CANVAS_STORE_KEY = "infinite-canvas:canvas_store";
-type PersistedCanvasState = Pick<CanvasStore, "projects" | "deletedProjects">;
+type PersistedCanvasState = Pick<CanvasStore, "projects" | "groups" | "deletedProjects">;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let queuedPersistState: PersistedCanvasState | null = null;
 
@@ -55,7 +64,7 @@ const canvasStorage: PersistStorage<CanvasStore> = {
     },
     setItem: (name, value) => {
         const nextState = value.state as PersistedCanvasState;
-        if (queuedPersistState && queuedPersistState.projects === nextState.projects && queuedPersistState.deletedProjects === nextState.deletedProjects) return;
+        if (queuedPersistState && queuedPersistState.projects === nextState.projects && queuedPersistState.groups === nextState.groups && queuedPersistState.deletedProjects === nextState.deletedProjects) return;
         queuedPersistState = nextState;
         if (saveTimer) clearTimeout(saveTimer);
         saveTimer = setTimeout(() => {
@@ -71,8 +80,9 @@ export const useCanvasStore = create<CanvasStore>()(
         (set, get) => ({
             hydrated: false,
             projects: [],
+            groups: [],
             deletedProjects: [],
-            createProject: (title = i18n.t("canvas.project.untitled")) => {
+            createProject: (title = i18n.t("canvas.project.untitled"), groupId = get().groups[0]?.id ?? null) => {
                 const now = new Date().toISOString();
                 const id = nanoid();
                 const project: CanvasProject = {
@@ -80,12 +90,11 @@ export const useCanvasStore = create<CanvasStore>()(
                     title,
                     createdAt: now,
                     updatedAt: now,
+                    groupId,
                     nodes: [],
                     connections: [],
                     chatSessions: [],
                     activeChatId: null,
-                    backgroundMode: "lines",
-                    showImageInfo: false,
                     viewport: initialViewport,
                 };
                 set((state) => ({ projects: [project, ...state.projects] }));
@@ -93,17 +102,17 @@ export const useCanvasStore = create<CanvasStore>()(
             },
             importProject: (source) => {
                 const now = new Date().toISOString();
+                const groupId = source.groupId && get().groups.some((group) => group.id === source.groupId) ? source.groupId : get().groups[0]?.id ?? null;
                 const project: CanvasProject = {
                     id: nanoid(),
                     title: source.title || i18n.t("canvas.project.imported"),
                     createdAt: source.createdAt || now,
                     updatedAt: now,
+                    groupId,
                     nodes: source.nodes || [],
                     connections: source.connections || [],
                     chatSessions: source.chatSessions || [],
                     activeChatId: source.activeChatId || null,
-                    backgroundMode: source.backgroundMode || "lines",
-                    showImageInfo: source.showImageInfo || false,
                     viewport: source.viewport || initialViewport,
                 };
                 set((state) => ({ projects: [project, ...state.projects] }));
@@ -129,6 +138,31 @@ export const useCanvasStore = create<CanvasStore>()(
                 set((state) => ({
                     projects: state.projects.map((project) => (project.id === id ? { ...project, ...patch, updatedAt: new Date().toISOString() } : project)),
                 })),
+            createGroup: (name) => {
+                const id = nanoid();
+                const group: CanvasGroup = { id, name: name?.trim() || i18n.t("canvas.group.defaultName", { count: get().groups.length + 1 }), createdAt: new Date().toISOString() };
+                set((state) => ({ groups: [...state.groups, group] }));
+                return id;
+            },
+            renameGroup: (id, name) =>
+                set((state) => ({
+                    groups: state.groups.map((group) => (group.id === id ? { ...group, name: name.trim() || group.name } : group)),
+                })),
+            deleteGroup: (id) =>
+                set((state) => {
+                    const now = new Date().toISOString();
+                    const removed = state.projects.filter((project) => project.groupId === id);
+                    const removedIds = new Set(removed.map((project) => project.id));
+                    return {
+                        groups: state.groups.filter((group) => group.id !== id),
+                        projects: state.projects.filter((project) => !removedIds.has(project.id)),
+                        deletedProjects: [...state.deletedProjects.filter((item) => !removedIds.has(item.id)), ...removed.map((project) => ({ id: project.id, deletedAt: now }))],
+                    };
+                }),
+            setProjectGroup: (projectId, groupId) =>
+                set((state) => ({
+                    projects: state.projects.map((project) => (project.id === projectId ? { ...project, groupId, updatedAt: new Date().toISOString() } : project)),
+                })),
         }),
         {
             name: CANVAS_STORE_KEY,
@@ -136,10 +170,25 @@ export const useCanvasStore = create<CanvasStore>()(
             partialize: (state) =>
                 ({
                     projects: state.projects,
+                    groups: state.groups,
                     deletedProjects: state.deletedProjects,
                 }) as StorageValue<CanvasStore>["state"],
+            merge: (persisted, current) => {
+                const saved = persisted as Partial<CanvasStore> | undefined;
+                return { ...current, ...saved, groups: saved?.groups ?? [] };
+            },
             onRehydrateStorage: () => () => {
                 useCanvasStore.setState({ hydrated: true });
+                const { projects, groups } = useCanvasStore.getState();
+                const hasGroup = (project: CanvasProject) => Boolean(project.groupId && groups.some((group) => group.id === project.groupId));
+                if (!projects.some((project) => !hasGroup(project))) return;
+                if (groups.length) {
+                    const groupId = groups[0].id;
+                    useCanvasStore.setState({ projects: projects.map((project) => (hasGroup(project) ? project : { ...project, groupId })) });
+                    return;
+                }
+                const group: CanvasGroup = { id: nanoid(), name: i18n.t("canvas.group.defaultName", { count: 1 }), createdAt: new Date().toISOString() };
+                useCanvasStore.setState({ groups: [group], projects: projects.map((project) => ({ ...project, groupId: group.id })) });
             },
         },
     ),

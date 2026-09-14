@@ -20,7 +20,7 @@ type CanvasTheme = (typeof canvasThemes)[keyof typeof canvasThemes];
 type PluginHostParams = {
     effectiveConfig: AiConfig;
     isAiConfigReady: (config: AiConfig, model: string) => boolean;
-    openConfigDialog: (open: boolean) => void;
+    openConfigDialog: () => void;
     theme: CanvasTheme;
     nodesRef: MutableRefObject<CanvasNodeData[]>;
     connectionsRef: MutableRefObject<CanvasConnection[]>;
@@ -45,7 +45,7 @@ export function usePluginHost(params: PluginHostParams) {
         // Open the configuration dialog and throw when AI is not configured, allowing the plugin to handle the error.
         const ensureReady = (config: AiConfig) => {
             if (!isAiConfigReady(config, config.model)) {
-                openConfigDialog(true);
+                openConfigDialog();
                 throw new Error(t("canvas.plugins.aiConfigRequired"));
             }
         };
