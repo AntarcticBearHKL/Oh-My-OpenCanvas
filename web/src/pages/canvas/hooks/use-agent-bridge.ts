@@ -4,7 +4,7 @@ import i18n from "@/i18n";
 import { useAgentStore } from "@/stores/use-agent-store";
 import { applyCanvasAgentOps, type CanvasAgentOp, type CanvasAgentSnapshot } from "@/lib/canvas/canvas-agent-ops";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
-import type { CanvasConnection, CanvasNodeData, ContextMenuState, ViewportTransform } from "@/types/canvas";
+import type { CanvasConnection, CanvasNodeData, ViewportTransform } from "@/types/canvas";
 
 type GenerateNodeRef = MutableRefObject<((nodeId: string, mode: CanvasNodeGenerationMode, prompt: string) => Promise<void>) | null>;
 
@@ -25,7 +25,6 @@ type AgentBridgeParams = {
     setSelectedNodeIds: Dispatch<SetStateAction<Set<string>>>;
     setSelectedConnectionId: Dispatch<SetStateAction<string | null>>;
     setViewport: Dispatch<SetStateAction<ViewportTransform>>;
-    setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
 };
 
 /**
@@ -33,7 +32,7 @@ type AgentBridgeParams = {
  * to the Agent store. All members except applyAgentOps are internal.
  */
 export function useAgentBridge(params: AgentBridgeParams) {
-    const { projectId, title, nodes, connections, selectedNodeIds, viewport, nodesRef, connectionsRef, selectedNodeIdsRef, viewportRef, generateNodeRef, setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setViewport, setContextMenu } =
+    const { projectId, title, nodes, connections, selectedNodeIds, viewport, nodesRef, connectionsRef, selectedNodeIdsRef, viewportRef, generateNodeRef, setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setViewport } =
         params;
     const setAgentCanvasContext = useAgentStore((state) => state.setCanvasContext);
     const [agentUndoSnapshot, setAgentUndoSnapshot] = useState<CanvasAgentSnapshot | null>(null);
@@ -59,7 +58,6 @@ export function useAgentBridge(params: AgentBridgeParams) {
             setSelectedNodeIds(new Set(next.selectedNodeIds));
             setSelectedConnectionId(null);
             setViewport(next.viewport);
-            setContextMenu(null);
             if (generationOps.length) {
                 queueMicrotask(() =>
                     generationOps.forEach((op) => {
@@ -84,7 +82,6 @@ export function useAgentBridge(params: AgentBridgeParams) {
         setSelectedNodeIds(new Set(agentUndoSnapshot.selectedNodeIds));
         setSelectedConnectionId(null);
         setViewport(agentUndoSnapshot.viewport);
-        setContextMenu(null);
         setAgentUndoSnapshot(null);
         return { ...agentUndoSnapshot, projectId, title: projectTitle };
     }, [agentUndoSnapshot, projectTitle, projectId]);

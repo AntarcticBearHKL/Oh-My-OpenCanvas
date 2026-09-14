@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 
-import type { CanvasAssistantSession, CanvasConnection, CanvasNodeData, ContextMenuState } from "@/types/canvas";
+import type { CanvasAssistantSession, CanvasConnection, CanvasNodeData } from "@/types/canvas";
 
 type CanvasHistoryEntry = {
     nodes: CanvasNodeData[];
@@ -23,7 +23,6 @@ type CanvasHistoryParams = {
     setActiveChatId: Dispatch<SetStateAction<string | null>>;
     setSelectedNodeIds: Dispatch<SetStateAction<Set<string>>>;
     setSelectedConnectionId: Dispatch<SetStateAction<string | null>>;
-    setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
 };
 
 /**
@@ -31,7 +30,7 @@ type CanvasHistoryParams = {
  * Pure extraction of the former component-scoped implementations; every input is injected through params.
  */
 export function useCanvasHistory(params: CanvasHistoryParams) {
-    const { nodes, connections, chatSessions, activeChatId, projectLoaded, nodesRef, connectionsRef, setNodes, setConnections, setChatSessions, setActiveChatId, setSelectedNodeIds, setSelectedConnectionId, setContextMenu } = params;
+    const { nodes, connections, chatSessions, activeChatId, projectLoaded, nodesRef, connectionsRef, setNodes, setConnections, setChatSessions, setActiveChatId, setSelectedNodeIds, setSelectedConnectionId } = params;
 
     const historyRef = useRef<{ past: CanvasHistoryEntry[]; future: CanvasHistoryEntry[] }>({ past: [], future: [] });
     const lastHistoryRef = useRef<CanvasHistoryEntry | null>(null);
@@ -103,7 +102,6 @@ export function useCanvasHistory(params: CanvasHistoryParams) {
         setActiveChatId(entry.activeChatId);
         setSelectedNodeIds(new Set());
         setSelectedConnectionId(null);
-        setContextMenu(null);
         setTimeout(() => {
             lastHistoryRef.current = entry;
             applyingHistoryRef.current = false;

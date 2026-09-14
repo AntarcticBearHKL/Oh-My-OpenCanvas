@@ -22,6 +22,14 @@
 - 生成：`canvas_create_config_node`、`canvas_create_image_prompt_flow`、`canvas_create_generation_flow`、`canvas_generate_text`、`canvas_generate_image`、`canvas_generate_video`、`canvas_generate_audio`、`canvas_run_generation`、`generation_get_status`
 - 站点：`site_navigate`、`canvas_list_projects`、`prompts_search`、`assets_list`、`assets_add`
 
+## 智能画布
+
+- 智能画布是一个 `smart-canvas` 类型的画板节点，用 `canvas_create_node` 创建。
+- 通过 metadata 配置画板：`boardRatio`（如 `"16:9"`）、`boardResolution`（`"1k"`、`"2k"`、`"4k"`）、`boardBackground`（CSS 颜色或 `"transparent"`）。
+- 用 `canvas_apply_ops` 的 `place_on_board` 把图片放到画板上：`nodeId` 为图片节点，`boardId` 为画板节点；省略 `boardId` 表示把图片移出画板。
+- 用 `canvas_apply_ops` 的 `arrange_board`（`id` 为画板节点）把画板上的图片按网格自动排版。
+- 合成、预览和导出画板图片是界面操作，MCP 不支持。
+
 ## 风格
 
 - 页面文案和画布节点内容默认使用中文。

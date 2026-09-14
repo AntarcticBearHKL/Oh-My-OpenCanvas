@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 
 import { getNodeSpec, isRegisteredNodeType } from "@/lib/canvas/node-registry";
+import { arrangeBoardImages } from "@/lib/canvas/smart-canvas";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type CanvasNodeMetadata, type CanvasNodeTypeId, type ViewportTransform } from "@/types/canvas";
 
 export type CanvasAgentOp =
@@ -11,7 +12,9 @@ export type CanvasAgentOp =
     | { type: "connect_nodes"; id?: string; fromNodeId: string; toNodeId: string }
     | { type: "set_viewport"; viewport: ViewportTransform }
     | { type: "select_nodes"; ids: string[] }
-    | { type: "run_generation"; nodeId: string; mode?: "text" | "image" | "video" | "audio"; prompt?: string };
+    | { type: "run_generation"; nodeId: string; mode?: "text" | "image" | "video" | "audio"; prompt?: string }
+    | { type: "arrange_board"; id: string }
+    | { type: "place_on_board"; nodeId: string; boardId?: string };
 
 export type CanvasAgentSnapshot = {
     projectId: string;
@@ -67,6 +70,29 @@ export function applyCanvasAgentOps(snapshot: CanvasAgentSnapshot, ops?: CanvasA
         }
         if (op.type === "set_viewport" && op.viewport) viewport = op.viewport;
         if (op.type === "select_nodes") selectedNodeIds = (op.ids || []).filter((id) => nodes.some((node) => node.id === id));
+        if (op.type === "arrange_board") {
+            const board = nodes.find((node) => node.id === op.id);
+            if (!board || board.type !== CanvasNodeType.SmartCanvas) return;
+            const images = nodes.filter((node) => node.type === CanvasNodeType.Image && node.metadata?.boardId === board.id);
+            if (!images.length) return;
+            const layout = new Map(arrangeBoardImages(board, images).map((item) => [item.id, item]));
+            nodes = nodes.map((node) => {
+                const item = layout.get(node.id);
+                return item ? { ...node, position: item.position, width: item.width, height: item.height } : node;
+            });
+        }
+        if (op.type === "place_on_board") {
+            const node = nodes.find((item) => item.id === op.nodeId);
+            if (!node || node.type !== CanvasNodeType.Image) return;
+            if (op.boardId && !nodes.some((item) => item.id === op.boardId && item.type === CanvasNodeType.SmartCanvas)) return;
+            nodes = nodes.map((item) => {
+                if (item.id !== op.nodeId) return item;
+                const metadata = { ...item.metadata };
+                if (op.boardId) metadata.boardId = op.boardId;
+                else delete metadata.boardId;
+                return { ...item, metadata };
+            });
+        }
     });
 
     return { ...snapshot, nodes, connections, selectedNodeIds, viewport };

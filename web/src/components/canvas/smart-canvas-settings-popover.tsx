@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Settings2 } from "lucide-react";
-import { Button, Segmented, Select } from "antd";
+import { Button, ColorPicker, Segmented, Select } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { ImageSettingsTheme } from "@/components/image-settings-panel";
@@ -13,11 +13,13 @@ import type { SmartCanvasResolution } from "@/lib/canvas/smart-canvas";
 type SmartCanvasSettingsPatch = {
     boardRatio?: string;
     boardResolution?: SmartCanvasResolution;
+    boardBackground?: string;
 };
 
 type SmartCanvasSettingsPopoverProps = {
     ratio: string;
     resolution: SmartCanvasResolution;
+    background: string;
     onChange: (patch: SmartCanvasSettingsPatch) => void;
 };
 
@@ -28,7 +30,7 @@ const resolutionOptions: { label: string; value: SmartCanvasResolution }[] = [
     { label: "4K", value: "4k" },
 ];
 
-export function SmartCanvasSettingsPopover({ ratio, resolution, onChange }: SmartCanvasSettingsPopoverProps) {
+export function SmartCanvasSettingsPopover({ ratio, resolution, background, onChange }: SmartCanvasSettingsPopoverProps) {
     const { t } = useTranslation();
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const buttonRef = useRef<HTMLSpanElement>(null);
@@ -67,7 +69,7 @@ export function SmartCanvasSettingsPopover({ ratio, resolution, onChange }: Smar
                     </span>
                 </Button>
             </span>
-            {open && buttonRect ? <SmartCanvasSettingsPortal buttonRect={buttonRect} panelRef={panelRef} theme={theme} ratio={ratio} resolution={resolution} onChange={onChange} /> : null}
+            {open && buttonRect ? <SmartCanvasSettingsPortal buttonRect={buttonRect} panelRef={panelRef} theme={theme} ratio={ratio} resolution={resolution} background={background} onChange={onChange} /> : null}
         </>
     );
 }
@@ -78,6 +80,7 @@ function SmartCanvasSettingsPortal({
     theme,
     ratio,
     resolution,
+    background,
     onChange,
 }: {
     buttonRect: DOMRect;
@@ -85,6 +88,7 @@ function SmartCanvasSettingsPortal({
     theme: (typeof canvasThemes)[keyof typeof canvasThemes];
     ratio: string;
     resolution: SmartCanvasResolution;
+    background: string;
     onChange: (patch: SmartCanvasSettingsPatch) => void;
 }) {
     const { t } = useTranslation();
@@ -92,6 +96,11 @@ function SmartCanvasSettingsPortal({
     const gap = 8;
     const margin = 12;
     const left = buttonRect.left;
+    const backgroundOptions = [
+        { label: t("canvas.smartCanvas.bgTransparent"), value: "transparent" },
+        { label: t("canvas.smartCanvas.bgWhite"), value: "#ffffff" },
+        { label: t("canvas.smartCanvas.bgBlack"), value: "#000000" },
+    ];
     const style = {
         position: "fixed",
         zIndex: 1200,
@@ -129,6 +138,23 @@ function SmartCanvasSettingsPortal({
                                 if (next) onChange({ boardResolution: next });
                             }}
                         />
+                    </div>
+                    <div className="space-y-2.5">
+                        <div className="text-xs font-medium" style={{ color: theme.node.muted }}>
+                            {t("canvas.smartCanvas.background")}
+                        </div>
+                        <Segmented block value={backgroundOptions.some((option) => option.value === background) ? background : undefined} options={backgroundOptions} onChange={(value) => onChange({ boardBackground: value })} />
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs" style={{ color: theme.node.muted }}>
+                                {t("canvas.smartCanvas.bgCustom")}
+                            </span>
+                            <ColorPicker
+                                getPopupContainer={() => panelRef.current || document.body}
+                                value={background === "transparent" ? "#ffffff" : background}
+                                disabledAlpha
+                                onChangeComplete={(color) => onChange({ boardBackground: color.toHexString() })}
+                            />
+                        </div>
                     </div>
                 </div>
             </ImageSettingsTheme>

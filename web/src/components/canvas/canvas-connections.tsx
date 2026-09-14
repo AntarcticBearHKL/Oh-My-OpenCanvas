@@ -1,5 +1,3 @@
-import type { MouseEvent as ReactMouseEvent } from "react";
-
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { CanvasConnection, CanvasNodeData, ConnectionHandle, Position } from "@/types/canvas";
@@ -10,14 +8,12 @@ export function ConnectionPath({
     to,
     active,
     onSelect,
-    onContextMenu,
 }: {
     connection: CanvasConnection;
     from: CanvasNodeData;
     to: CanvasNodeData;
     active: boolean;
     onSelect: () => void;
-    onContextMenu?: (event: ReactMouseEvent<SVGPathElement>) => void;
 }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const startX = from.position.x + from.width;
@@ -40,11 +36,6 @@ export function ConnectionPath({
                 onClick={(event) => {
                     event.stopPropagation();
                     onSelect();
-                }}
-                onContextMenu={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    onContextMenu?.(event);
                 }}
             />
             <path

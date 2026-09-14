@@ -1,12 +1,14 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
-import { Compass, Eraser, Focus, Group, Hand, HelpCircle, Image as ImageIcon, MousePointer2, Music2, Puzzle, Redo2, Trash2, Type, Undo2, Upload, Video, ZoomIn } from "lucide-react";
+import { Compass, Eraser, Focus, Hand, HelpCircle, Image as ImageIcon, LayoutDashboard, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
 
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
 import { getNodePluginId, listNodeDefinitions, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useTranslation } from "react-i18next";
+
+const SHOW_MEDIA_TOOLS = false;
 
 export function CanvasToolbar({
     selectedCount,
@@ -16,10 +18,10 @@ export function CanvasToolbar({
     scale,
     isMiniMapOpen,
     onAddImage,
+    onAddImageGeneration,
     onAddVideo,
     onAddAudio,
-    onAddText,
-    onAddGroup,
+    onAddSmartCanvas,
     onAddExtensionNode,
     onUndo,
     onRedo,
@@ -37,10 +39,10 @@ export function CanvasToolbar({
     scale: number;
     isMiniMapOpen: boolean;
     onAddImage: () => void;
+    onAddImageGeneration: () => void;
     onAddVideo: () => void;
     onAddAudio: () => void;
-    onAddText: () => void;
-    onAddGroup: () => void;
+    onAddSmartCanvas: () => void;
     onAddExtensionNode: (type: string) => void;
     onUndo: () => void;
     onRedo: () => void;
@@ -106,20 +108,24 @@ export function CanvasToolbar({
                     <Redo2 className="size-4.5" />
                 </ToolbarButton>
                 <Divider theme={theme} />
-                <ToolbarButton id="tool-text" label={t("canvas.toolbar.text")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddText}>
-                    <Type className="size-4.5" />
-                </ToolbarButton>
                 <ToolbarButton id="tool-image" label={t("canvas.toolbar.image")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddImage}>
                     <ImageIcon className="size-4.5" />
                 </ToolbarButton>
-                <ToolbarButton id="tool-video" label={t("canvas.toolbar.video")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddVideo}>
-                    <Video className="size-4.5" />
+                <ToolbarButton id="tool-image-generation" label={t("canvas.nodeTypes.imageGeneration")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddImageGeneration}>
+                    <Sparkles className="size-4.5" />
                 </ToolbarButton>
-                <ToolbarButton id="tool-audio" label={t("canvas.toolbar.audio")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddAudio}>
-                    <Music2 className="size-4.5" />
-                </ToolbarButton>
-                <ToolbarButton id="tool-group" label={t("canvas.toolbar.group")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddGroup}>
-                    <Group className="size-4.5" />
+                {SHOW_MEDIA_TOOLS ? (
+                    <>
+                        <ToolbarButton id="tool-video" label={t("canvas.toolbar.video")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddVideo}>
+                            <Video className="size-4.5" />
+                        </ToolbarButton>
+                        <ToolbarButton id="tool-audio" label={t("canvas.toolbar.audio")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddAudio}>
+                            <Music2 className="size-4.5" />
+                        </ToolbarButton>
+                    </>
+                ) : null}
+                <ToolbarButton id="tool-smart-canvas" label={t("canvas.nodeTypes.smartCanvas")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddSmartCanvas}>
+                    <LayoutDashboard className="size-4.5" />
                 </ToolbarButton>
                 {extensionDefs.length ? (
                     <ToolbarButton
@@ -357,11 +363,11 @@ function toolLabel(id: string, t: (key: string) => string) {
     if (id === "tool-pan") return t("canvas.toolbar.pan");
     if (id === "tool-undo") return t("canvas.undo");
     if (id === "tool-redo") return t("canvas.redo");
-    if (id === "tool-text") return t("canvas.toolbar.text");
     if (id === "tool-image") return t("canvas.toolbar.image");
+    if (id === "tool-image-generation") return t("canvas.nodeTypes.imageGeneration");
     if (id === "tool-video") return t("canvas.toolbar.video");
     if (id === "tool-audio") return t("canvas.toolbar.audio");
-    if (id === "tool-group") return t("canvas.toolbar.group");
+    if (id === "tool-smart-canvas") return t("canvas.nodeTypes.smartCanvas");
     if (id === "tool-extensions") return t("canvas.toolbar.extensions");
     if (id === "tool-zoom") return t("canvas.toolbar.zoom");
     if (id === "tool-delete") return t("canvas.deleteSelected");

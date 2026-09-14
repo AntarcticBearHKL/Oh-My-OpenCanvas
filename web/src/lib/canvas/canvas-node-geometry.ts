@@ -1,4 +1,4 @@
-import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type ConnectionHandle } from "@/types/canvas";
+import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type CanvasNodeTypeId, type ConnectionHandle } from "@/types/canvas";
 
 export function nodeBounds(nodes: CanvasNodeData[]) {
     return nodes.reduce(
@@ -10,6 +10,44 @@ export function nodeBounds(nodes: CanvasNodeData[]) {
         }),
         { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity },
     );
+}
+
+export function snapDragToGuides(initialNodes: { id: string; x: number; y: number }[], nodes: CanvasNodeData[], dx: number, dy: number, threshold: number) {
+    const movedIds = new Set(initialNodes.map((item) => item.id));
+    const moved = nodes.filter((node) => movedIds.has(node.id));
+    if (!moved.length) return { dx, dy, guides: { x: [], y: [] } };
+    const bounds = moved.reduce(
+        (acc, node) => {
+            const start = initialNodes.find((item) => item.id === node.id)!;
+            return {
+                left: Math.min(acc.left, start.x + dx),
+                top: Math.min(acc.top, start.y + dy),
+                right: Math.max(acc.right, start.x + dx + node.width),
+                bottom: Math.max(acc.bottom, start.y + dy + node.height),
+            };
+        },
+        { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity },
+    );
+    const draggedX = [bounds.left, (bounds.left + bounds.right) / 2, bounds.right];
+    const draggedY = [bounds.top, (bounds.top + bounds.bottom) / 2, bounds.bottom];
+    let snapX: { diff: number; line: number } | null = null;
+    let snapY: { diff: number; line: number } | null = null;
+    for (const node of nodes) {
+        if (movedIds.has(node.id) || node.type === CanvasNodeType.Group) continue;
+        for (const line of [node.position.x, node.position.x + node.width / 2, node.position.x + node.width]) {
+            for (const value of draggedX) {
+                const diff = line - value;
+                if (Math.abs(diff) <= threshold && (!snapX || Math.abs(diff) < Math.abs(snapX.diff))) snapX = { diff, line };
+            }
+        }
+        for (const line of [node.position.y, node.position.y + node.height / 2, node.position.y + node.height]) {
+            for (const value of draggedY) {
+                const diff = line - value;
+                if (Math.abs(diff) <= threshold && (!snapY || Math.abs(diff) < Math.abs(snapY.diff))) snapY = { diff, line };
+            }
+        }
+    }
+    return { dx: dx + (snapX?.diff ?? 0), dy: dy + (snapY?.diff ?? 0), guides: { x: snapX ? [snapX.line] : [], y: snapY ? [snapY.line] : [] } };
 }
 
 export function nodeCenterInside(node: CanvasNodeData, rect: CanvasNodeData) {
@@ -158,10 +196,11 @@ export function normalizeConnection(firstNodeId: string, secondNodeId: string, n
     const first = nodes.find((node) => node.id === firstNodeId);
     const second = nodes.find((node) => node.id === secondNodeId);
     if (!first || !second || first.id === second.id) return null;
+    const isGenerationSink = (type: CanvasNodeTypeId) => type === CanvasNodeType.Config || type === CanvasNodeType.ImageGeneration;
     if (second.type === CanvasNodeType.Group) return null;
-    if (first.type === CanvasNodeType.Config && second.type === CanvasNodeType.Config) return null;
-    if (second.type === CanvasNodeType.Config) return { fromNodeId: first.id, toNodeId: second.id };
-    if (first.type === CanvasNodeType.Config && firstHandleType === "target") return { fromNodeId: second.id, toNodeId: first.id };
-    if (first.type === CanvasNodeType.Config) return { fromNodeId: first.id, toNodeId: second.id };
+    if (isGenerationSink(first.type) && isGenerationSink(second.type)) return null;
+    if (isGenerationSink(second.type)) return { fromNodeId: first.id, toNodeId: second.id };
+    if (isGenerationSink(first.type) && firstHandleType === "target") return { fromNodeId: second.id, toNodeId: first.id };
+    if (isGenerationSink(first.type)) return { fromNodeId: first.id, toNodeId: second.id };
     return { fromNodeId: first.id, toNodeId: second.id };
 }

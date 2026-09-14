@@ -7,7 +7,7 @@ import { applyGroupSelection, applyUngroupSelection, collectGroupMemberNodes, ge
 import { isCanvasReferenceNode } from "@/lib/canvas/canvas-resource-references";
 import { getNodeDefinition, isBuiltinNodeType as isBuiltinType } from "@/lib/canvas/node-registry";
 import type { AiConfig } from "@/stores/use-config-store";
-import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, type CanvasNodeData, type CanvasNodeTypeId, type ContextMenuState, type Position, type SelectionBox, type ViewportTransform } from "@/types/canvas";
+import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, type CanvasNodeData, type CanvasNodeTypeId, type Position, type SelectionBox, type ViewportTransform } from "@/types/canvas";
 
 type CanvasClipboard = {
     nodes: CanvasNodeData[];
@@ -43,7 +43,6 @@ type CanvasDocumentParams = {
     setRunningNodeId: Dispatch<SetStateAction<string | null>>;
     setReferencePickerNodeId: Dispatch<SetStateAction<string | null>>;
     setExpandedBatchNodeIds: Dispatch<SetStateAction<Set<string>>>;
-    setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
     setSelectionBox: Dispatch<SetStateAction<SelectionBox | null>>;
     setViewport: Dispatch<SetStateAction<ViewportTransform>>;
     setClearConfirmOpen: Dispatch<SetStateAction<boolean>>;
@@ -55,7 +54,7 @@ type CanvasDocumentParams = {
  * injected through params.
  */
 export function useCanvasDocument(params: CanvasDocumentParams) {
-    const { effectiveConfig, getCanvasCenter, nodesRef, connectionsRef, selectedNodeIdsRef, clipboardRef, referencePickerNodeId, referenceConnectedNodeIds, cleanupCanvasFiles, projectId, chatSessions, size, cancelPendingConnectionCreate, setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId, setHoveredNodeId, setToolbarNodeId, setInfoNodeId, setCropNodeId, setMaskEditNodeId, setAngleNodeId, setPreviewNodeId, setRunningNodeId, setReferencePickerNodeId, setExpandedBatchNodeIds, setContextMenu, setSelectionBox, setViewport, setClearConfirmOpen } = params;
+    const { effectiveConfig, getCanvasCenter, nodesRef, connectionsRef, selectedNodeIdsRef, clipboardRef, referencePickerNodeId, referenceConnectedNodeIds, cleanupCanvasFiles, projectId, chatSessions, size, cancelPendingConnectionCreate, setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId, setHoveredNodeId, setToolbarNodeId, setInfoNodeId, setCropNodeId, setMaskEditNodeId, setAngleNodeId, setPreviewNodeId, setRunningNodeId, setReferencePickerNodeId, setExpandedBatchNodeIds, setSelectionBox, setViewport, setClearConfirmOpen } = params;
     const createNode = useCallback(
         (type: CanvasNodeTypeId, position?: Position) => {
             const targetPosition = position || getCanvasCenter();
@@ -82,7 +81,7 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
                   ? Boolean(definition.autoOpenPanel)
                   : definition?.useBuiltinPanel
                     ? true
-                    : isBuiltinType(type) && type !== CanvasNodeType.Text && type !== CanvasNodeType.Audio && type !== CanvasNodeType.Group;
+                    : isBuiltinType(type) && type !== CanvasNodeType.Text && type !== CanvasNodeType.Audio && type !== CanvasNodeType.Group && type !== CanvasNodeType.Image;
             if (wantsPanel) setDialogNodeId(newNode.id);
         },
         [effectiveConfig.canvasImageCount, effectiveConfig.count, effectiveConfig.imageModel, effectiveConfig.model, effectiveConfig.size, getCanvasCenter],
@@ -114,7 +113,6 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
             setRunningNodeId((current) => (current && allIds.has(current) ? null : current));
             setReferencePickerNodeId((current) => (current && allIds.has(current) ? null : current));
             setExpandedBatchNodeIds((current) => new Set([...current].filter((nodeId) => !allIds.has(nodeId))));
-            setContextMenu((current) => (current?.type === "node" && allIds.has(current.nodeId) ? null : current));
             cleanupCanvasFiles({ projectId, nodes: nodesRef.current.filter((node) => !allIds.has(node.id)), chatSessions });
         },
         [chatSessions, cleanupCanvasFiles, projectId],
@@ -134,7 +132,6 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
         setSelectedConnectionId(null);
         setToolbarNodeId(result.selectedIds[0] || null);
         setDialogNodeId(null);
-        setContextMenu(null);
     }, []);
 
     const ungroupSelection = useCallback((ids?: Set<string>) => {
@@ -146,13 +143,11 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
         setSelectedConnectionId(null);
         setToolbarNodeId(result.selectedIds.length === 1 ? result.selectedIds[0] : null);
         setDialogNodeId(null);
-        setContextMenu(null);
     }, []);
 
     const deleteConnection = useCallback((connectionId: string) => {
         setConnections((prev) => prev.filter((conn) => conn.id !== connectionId));
         setSelectedConnectionId((current) => (current === connectionId ? null : current));
-        setContextMenu((current) => (current?.type === "connection" && current.connectionId === connectionId ? null : current));
     }, []);
 
     const disconnectNodeReference = useCallback((fromNodeId: string, toNodeId: string) => {
@@ -196,7 +191,6 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
         cancelPendingConnectionCreate();
         setSelectedNodeIds(new Set());
         setSelectedConnectionId(null);
-        setContextMenu(null);
         setSelectionBox(null);
         setHoveredNodeId(null);
         setToolbarNodeId(null);
@@ -311,14 +305,12 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
         setConnections((prev) => [...prev, ...nextConnections]);
         setSelectedNodeIds(new Set(pastedNodes.map((node) => node.id)));
         setSelectedConnectionId(null);
-        setContextMenu(null);
         setDialogNodeId(pastedNodes[0]?.type === CanvasNodeType.Group ? null : pastedNodes[0]?.id || null);
         return true;
     }, [getCanvasCenter]);
 
     const resetViewport = useCallback(() => {
         setViewport({ x: size.width / 2, y: size.height / 2, k: 1 });
-        setContextMenu(null);
     }, [size.height, size.width]);
 
     const setZoomScale = useCallback(
@@ -329,7 +321,6 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
                 y: size.height / 2 - ((size.height / 2 - prev.y) / prev.k) * nextScale,
                 k: nextScale,
             }));
-            setContextMenu(null);
         },
         [size.height, size.width],
     );

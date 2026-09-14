@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ChevronRight, Copy, Download, Group, Image as ImageIcon, Music2, Puzzle, RefreshCw, Star, Trash2, Video } from "lucide-react";
+import { ChevronRight, Copy, Download, Group, Image as ImageIcon, LayoutDashboard, Music2, Puzzle, RefreshCw, Star, Trash2, Video } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
@@ -9,13 +9,13 @@ import { buildNodeContext } from "@/lib/canvas/plugin-node-context";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { SmartCanvasNodeContent } from "./smart-canvas-node";
-import { CanvasNodeType, type CanvasNodeData, type CanvasNodeImage, type CanvasNodeText, type Position } from "@/types/canvas";
+import { CanvasNodeType, type CanvasNodeData, type CanvasNodeImage, type CanvasNodeMetadata, type CanvasNodeText, type Position } from "@/types/canvas";
 import type { CanvasNodeContext, CanvasPluginHost } from "@/types/canvas-plugin";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { useTranslation } from "react-i18next";
 
 type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
-const selectionBlue = "#2f80ff";
+export const selectionBlue = "#2f80ff";
 
 type CanvasNodeProps = {
     data: CanvasNodeData;
@@ -37,6 +37,7 @@ type CanvasNodeProps = {
     isGroupDropTarget?: boolean;
     boardImages?: CanvasNodeData[];
     batchExpanded?: boolean;
+    onBoardTextsChange?: (nodeId: string, texts: NonNullable<CanvasNodeMetadata["boardTexts"]>) => void;
     onMouseDown: (event: React.MouseEvent, nodeId: string) => void;
     onSelectCapture?: (event: React.MouseEvent, nodeId: string) => void;
     onHoverStart: (nodeId: string) => void;
@@ -56,7 +57,6 @@ type CanvasNodeProps = {
     onRetry?: (node: CanvasNodeData) => void;
     onViewImage?: (node: CanvasNodeData, imageId?: string) => void;
     onSelectReference?: (nodeId: string) => void;
-    onContextMenu: (event: React.MouseEvent, nodeId: string) => void;
 };
 
 type NodeContentRendererProps = {
@@ -82,6 +82,7 @@ type NodeContentRendererProps = {
     onViewBatchImage?: (imageId: string) => void;
     groupChildCount: number;
     boardImages?: CanvasNodeData[];
+    onBoardTextsChange?: (nodeId: string, texts: NonNullable<CanvasNodeMetadata["boardTexts"]>) => void;
 };
 
 export const CanvasNode = React.memo(function CanvasNode({
@@ -103,6 +104,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     isGroupDropTarget = false,
     boardImages,
     batchExpanded = false,
+    onBoardTextsChange,
     onMouseDown,
     onSelectCapture,
     onHoverStart,
@@ -122,7 +124,6 @@ export const CanvasNode = React.memo(function CanvasNode({
     onRetry,
     onViewImage,
     onSelectReference,
-    onContextMenu,
 }: CanvasNodeProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const { t } = useTranslation();
@@ -137,6 +138,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const hasAudioContent = data.type === CanvasNodeType.Audio && Boolean(data.metadata?.content);
     const isGroup = data.type === CanvasNodeType.Group;
     const isBoard = data.type === CanvasNodeType.SmartCanvas;
+    const isPlacedOnBoard = data.type === CanvasNodeType.Image && Boolean(data.metadata?.boardId);
     const batchCount = data.type === CanvasNodeType.Image ? data.metadata?.images?.length || 0 : data.type === CanvasNodeType.Text ? data.metadata?.texts?.length || 0 : 0;
     const isBatchRoot = batchCount > 1;
     // Nodes with the interaction/move toggle ignore content pointer events in move mode and allow interaction in interactive mode.
@@ -300,7 +302,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     return (
         <div
             data-node-id={data.id}
-            className={`node-element absolute flex select-none flex-col transition-shadow duration-200 ${isGroup ? "z-[5]" : isSelected ? "z-50" : "z-10"} ${referenceSelectionState === "available" ? "cursor-pointer" : referenceSelectionState ? "cursor-not-allowed" : ""}`}
+            className={`node-element absolute flex select-none flex-col transition-shadow duration-200 ${isGroup || isBoard ? "z-[5]" : isSelected ? "z-50" : "z-10"} ${referenceSelectionState === "available" ? "cursor-pointer" : referenceSelectionState ? "cursor-not-allowed" : ""}`}
             style={{
                 transform: `translate(${data.position.x}px, ${data.position.y}px)`,
                 width: data.width,
@@ -318,10 +320,6 @@ export const CanvasNode = React.memo(function CanvasNode({
             }}
             onMouseDownCapture={(event) => {
                 if (!referenceSelectionState) onSelectCapture?.(event, data.id);
-            }}
-            onContextMenu={(event) => {
-                if (referenceSelectionState) event.preventDefault();
-                else onContextMenu(event, data.id);
             }}
         >
             {!referenceSelectionState && (isSelected || hovered || isEditingTitle) && (
@@ -366,8 +364,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                     background: isGroup ? "transparent" : hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.node.fill,
                     borderColor: isGroup ? (isGroupDropTarget || isActive ? selectionBlue : theme.node.stroke) : hasImageContent ? imageBorderColor : isBoard && isGroupDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : transparentBg ? "transparent" : theme.node.stroke,
                     borderStyle: isGroup ? "dashed" : "solid",
-                    outline: isBoard && isGroupDropTarget ? `2px solid ${selectionBlue}66` : undefined,
-                    outlineOffset: isBoard && isGroupDropTarget ? 2 : undefined,
+                    outline: isBoard && isGroupDropTarget ? `2px solid ${selectionBlue}66` : isPlacedOnBoard ? `2px dashed ${selectionBlue}88` : undefined,
+                    outlineOffset: (isBoard && isGroupDropTarget) || isPlacedOnBoard ? 2 : undefined,
                     boxShadow: isGroupDropTarget && isGroup ? `0 0 0 2px ${selectionBlue}66, inset 0 0 0 999px ${selectionBlue}10` : isActive ? `0 0 0 1px ${selectionBlue}55` : isRelated ? `0 0 0 1px ${theme.node.muted}55` : undefined,
                 }}
                 onMouseDown={(event) => {
@@ -396,6 +394,12 @@ export const CanvasNode = React.memo(function CanvasNode({
                     setIsEditingContent(true);
                 }}
             >
+                {isPlacedOnBoard && !referenceSelectionState ? (
+                    <div className="pointer-events-none absolute left-2 top-2 z-40 flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium" style={{ background: theme.toolbar.panel, color: theme.node.muted }}>
+                        <LayoutDashboard className="size-3" />
+                        {t("canvas.smartCanvas.placedOnBoard")}
+                    </div>
+                ) : null}
                 <div
                     className={`relative flex h-full w-full items-center justify-center rounded-[inherit] ${isBatchRoot ? "overflow-visible" : "overflow-hidden"}`}
                     style={
@@ -428,6 +432,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onViewBatchImage={(imageId) => onViewImage?.(data, imageId)}
                         groupChildCount={groupChildCount}
                         boardImages={boardImages}
+                        onBoardTextsChange={onBoardTextsChange}
                     />
                 </div>
 
@@ -456,7 +461,7 @@ export const CanvasNode = React.memo(function CanvasNode({
 });
 
 function NodeContent(props: NodeContentRendererProps) {
-    if (props.node.type === CanvasNodeType.Config && props.renderNodeContent) return props.renderNodeContent(props.node);
+    if ((props.node.type === CanvasNodeType.Config || props.node.type === CanvasNodeType.ImageGeneration) && props.renderNodeContent) return props.renderNodeContent(props.node);
     if (props.isBatchRoot && props.node.type === CanvasNodeType.Image) return <ImageNodeContent {...props} />;
     if (props.node.type === CanvasNodeType.Text && props.node.metadata?.texts?.length && (props.node.metadata.status !== "error" || props.node.metadata.texts.some((text) => text.content))) return <TextContent {...props} />;
     if (props.node.metadata?.status === "loading") return <LoadingContent theme={props.theme} />;
@@ -478,6 +483,7 @@ const nodeContentRenderers = {
     [CanvasNodeType.Text]: TextContent,
     [CanvasNodeType.Image]: ImageNodeContent,
     [CanvasNodeType.Config]: EmptyImageContent,
+    [CanvasNodeType.ImageGeneration]: EmptyImageContent,
     [CanvasNodeType.Video]: VideoNodeContent,
     [CanvasNodeType.Audio]: AudioNodeContent,
     [CanvasNodeType.Group]: GroupNodeContent,

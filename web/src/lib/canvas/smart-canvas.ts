@@ -7,8 +7,10 @@ export type SmartCanvasResolution = "1k" | "2k" | "4k";
 
 export const SMART_CANVAS_DEFAULT_RATIO = "16:9";
 export const SMART_CANVAS_DEFAULT_RESOLUTION: SmartCanvasResolution = "2k";
+export const SMART_CANVAS_DEFAULT_BACKGROUND = "transparent";
 export const SMART_CANVAS_BASE_WIDTH = 640;
 export const SMART_CANVAS_BASE_HEIGHT = 360;
+export const SMART_CANVAS_DEFAULT_FONT_SIZE = 32;
 
 export type SmartCanvasComposite = {
     dataUrl: string;
@@ -24,12 +26,45 @@ export function smartCanvasResolution(board: CanvasNodeData) {
     return board.metadata?.boardResolution || SMART_CANVAS_DEFAULT_RESOLUTION;
 }
 
+export function smartCanvasBackground(board: CanvasNodeData) {
+    return board.metadata?.boardBackground || SMART_CANVAS_DEFAULT_BACKGROUND;
+}
+
+export function smartCanvasTexts(board: CanvasNodeData) {
+    return board.metadata?.boardTexts ?? [];
+}
+
 export function smartCanvasTargetSize(board: CanvasNodeData) {
     return readMediaDimensions("", smartCanvasResolution(board), smartCanvasRatio(board));
 }
 
 export function smartCanvasSizeForRatio(ratio: string) {
     return nodeSizeFromRatio(ratio, SMART_CANVAS_BASE_WIDTH, SMART_CANVAS_BASE_HEIGHT) || { width: SMART_CANVAS_BASE_WIDTH, height: SMART_CANVAS_BASE_HEIGHT };
+}
+
+export function arrangeBoardImages(board: CanvasNodeData, images: CanvasNodeData[]) {
+    const count = images.length;
+    if (!count) return [];
+    const cols = Math.ceil(Math.sqrt(count));
+    const rows = Math.ceil(count / cols);
+    const gap = 16;
+    const cellW = (board.width - gap * (cols + 1)) / cols;
+    const cellH = (board.height - gap * (rows + 1)) / rows;
+    return images.map((image, index) => {
+        const col = index % cols;
+        const row = Math.floor(index / cols);
+        const cellX = board.position.x + gap + col * (cellW + gap);
+        const cellY = board.position.y + gap + row * (cellH + gap);
+        const naturalWidth = image.metadata?.naturalWidth || 0;
+        const naturalHeight = image.metadata?.naturalHeight || 0;
+        const useNatural = naturalWidth > 0 && naturalHeight > 0;
+        const aspectW = useNatural ? naturalWidth : image.width;
+        const aspectH = useNatural ? naturalHeight : image.height;
+        const scale = aspectW > 0 && aspectH > 0 ? Math.min(cellW / aspectW, cellH / aspectH) : 0;
+        const width = Math.round(scale ? Math.max(1, aspectW * scale) : Math.max(1, cellW));
+        const height = Math.round(scale ? Math.max(1, aspectH * scale) : Math.max(1, cellH));
+        return { id: image.id, position: { x: Math.round(cellX + (cellW - width) / 2), y: Math.round(cellY + (cellH - height) / 2) }, width, height };
+    });
 }
 
 export async function composeSmartCanvas(board: CanvasNodeData, images: CanvasNodeData[], nodes: CanvasNodeData[]): Promise<SmartCanvasComposite> {
@@ -53,12 +88,25 @@ export async function composeSmartCanvas(board: CanvasNodeData, images: CanvasNo
     context.rect(0, 0, width, height);
     context.clip();
 
+    const background = smartCanvasBackground(board);
+    if (background !== "transparent") {
+        context.fillStyle = background;
+        context.fillRect(0, 0, width, height);
+    }
+
     for (const image of ordered) {
         const url = await resolveImageUrl(image.metadata?.storageKey, image.metadata?.content || "");
         if (!url) continue;
         const element = await loadCompositeImage(url);
         if (!element) continue;
         context.drawImage(element, (image.position.x - board.position.x) * scaleX, (image.position.y - board.position.y) * scaleY, image.width * scaleX, image.height * scaleY);
+    }
+
+    context.textBaseline = "top";
+    for (const text of smartCanvasTexts(board)) {
+        context.font = `${text.fontSize * scaleY}px sans-serif`;
+        context.fillStyle = text.color;
+        text.text.split("\n").forEach((line, index) => context.fillText(line, text.x * scaleX, (text.y + index * text.fontSize * 1.2) * scaleY));
     }
 
     try {

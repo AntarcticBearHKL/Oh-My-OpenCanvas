@@ -11,7 +11,7 @@ import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
 import { CanvasTextSettingsPopover } from "./canvas-text-settings-popover";
-import type { CanvasGenerationMode, CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
+import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
 
 type CanvasConfigNodePanelProps = {
     node: CanvasNodeData;
@@ -29,6 +29,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const mode = node.metadata?.generationMode || "image";
+    const isImageGenerationNode = node.type === CanvasNodeType.ImageGeneration;
     const config = buildNodeConfig(globalConfig, node, mode);
     const chipStyle = { background: theme.node.fill, borderColor: theme.node.stroke, color: theme.node.text };
     const hasAnyInput = Boolean(inputSummary.textCount || inputSummary.imageCount || inputSummary.videoCount || inputSummary.audioCount);
@@ -38,9 +39,10 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
     return (
         <div className="flex h-full w-full cursor-move flex-col px-3 pb-3 pt-7 text-sm" style={{ color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
             <div className="mb-2 flex items-center justify-between gap-3">
-                <div className="shrink-0 text-sm font-semibold">{t("canvas.configNode.title")}</div>
-                <div className="cursor-default" onMouseDown={(event) => event.stopPropagation()}>
-                    <Segmented
+                <div className="shrink-0 text-sm font-semibold">{t(isImageGenerationNode ? "canvas.nodeTypes.imageGeneration" : "canvas.configNode.title")}</div>
+                {isImageGenerationNode ? null : (
+                    <div className="cursor-default" onMouseDown={(event) => event.stopPropagation()}>
+                        <Segmented
                         size="small"
                         className="canvas-config-mode !rounded-md !p-0.5"
                         value={mode}
@@ -83,8 +85,9 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                                 ),
                             },
                         ]}
-                    />
-                </div>
+                        />
+                    </div>
+                )}
             </div>
 
             <div className="mb-2 flex flex-wrap gap-1.5">

@@ -13,6 +13,7 @@ export enum CanvasNodeType {
     Image = "image",
     Text = "text",
     Config = "config",
+    ImageGeneration = "image-generation",
     Video = "video",
     Audio = "audio",
     Group = "group",
@@ -88,6 +89,8 @@ export type CanvasNodeMetadata = {
     boardRatio?: string; // Smart Canvas board aspect ratio, e.g. "16:9"; defaults to "16:9".
     boardResolution?: "1k" | "2k" | "4k"; // Smart Canvas composite resolution tier; defaults to "2k".
     boardId?: string; // Set on an IMAGE node to mark it as placed on that Smart Canvas board.
+    boardBackground?: string; // Smart Canvas board background colour as a CSS colour string; defaults to "transparent".
+    boardTexts?: { id: string; text: string; x: number; y: number; fontSize: number; color: string }[]; // Smart Canvas text annotations drawn above placed images; x/y are board-local top-left coordinates and fontSize uses board units.
     interactive?: boolean; // Plugin node interaction/move state; see CanvasNodeDefinition.interactionToggle.
 };
 
@@ -154,17 +157,3 @@ export type SelectionBox = {
     additive: boolean;
     initialSelectedNodeIds: string[];
 };
-
-export type ContextMenuState =
-    | {
-          type: "node";
-          x: number;
-          y: number;
-          nodeId: string;
-      }
-    | {
-          type: "connection";
-          x: number;
-          y: number;
-          connectionId: string;
-      };

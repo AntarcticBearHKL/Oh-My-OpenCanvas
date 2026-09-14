@@ -12,7 +12,7 @@ import { createCanvasNode, audioMetadata, imageMetadata, videoMetadata } from "@
 import { isAudioFile } from "@/lib/canvas/canvas-generation-helpers";
 import { NODE_STATUS_SUCCESS, VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH } from "@/lib/canvas/canvas-node-constants";
 import type { InsertAssetPayload } from "@/components/canvas/asset-picker-modal";
-import { CanvasNodeType, type CanvasAssistantImage, type CanvasNodeData, type ContextMenuState, type Position } from "@/types/canvas";
+import { CanvasNodeType, type CanvasAssistantImage, type CanvasNodeData, type Position } from "@/types/canvas";
 
 type CanvasInsertionParams = {
     containerRef: RefObject<HTMLDivElement | null>;
@@ -27,7 +27,6 @@ type CanvasInsertionParams = {
     setSelectedNodeIds: Dispatch<SetStateAction<Set<string>>>;
     setSelectedConnectionId: Dispatch<SetStateAction<string | null>>;
     setDialogNodeId: Dispatch<SetStateAction<string | null>>;
-    setContextMenu: Dispatch<SetStateAction<ContextMenuState | null>>;
     setAssetPickerOpen: Dispatch<SetStateAction<boolean>>;
 };
 
@@ -37,7 +36,7 @@ type CanvasInsertionParams = {
  * implementations; every input is injected through params.
  */
 export function useCanvasInsertion(params: CanvasInsertionParams) {
-    const { containerRef, imageInputRef, uploadTargetRef, size, screenToCanvas, getCanvasCenter, message, t, setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId, setContextMenu, setAssetPickerOpen } = params;
+    const { containerRef, imageInputRef, uploadTargetRef, size, screenToCanvas, getCanvasCenter, message, t, setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId, setAssetPickerOpen } = params;
     const createImageFileNode = useCallback(async (file: File, position: Position) => {
         const image = await uploadImage(file);
         const size = fitNodeSize(image.width, image.height);
@@ -112,7 +111,6 @@ export function useCanvasInsertion(params: CanvasInsertionParams) {
             setNodes((prev) => [...prev, node]);
             setSelectedNodeIds(new Set([node.id]));
             setSelectedConnectionId(null);
-            setContextMenu(null);
             setDialogNodeId(node.id);
             return true;
         },

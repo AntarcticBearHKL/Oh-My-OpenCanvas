@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { buildCanvasToolRequest } from "./operations";
+import { toolInputSchemas } from "./schemas";
 
 type CanvasOp = { type: string; nodeType?: string; metadata?: { prompt?: unknown }; fromNodeId?: string; toNodeId?: string };
 
@@ -26,4 +27,15 @@ test("generation flow still creates a prompt node for prose prompts", () => {
     assert.equal(ops.filter((op) => op.type === "add_node" && op.nodeType === "text").length, 1);
     const config = ops.find((op) => op.type === "add_node" && op.nodeType === "config");
     assert.match(String(config?.metadata?.prompt), /@\[node:text-/);
+});
+
+test("smart canvas ops and node types are accepted by tool schemas", () => {
+    const ops = toolInputSchemas.canvas_apply_ops.parse({ ops: [{ type: "arrange_board", id: "board-1" }, { type: "place_on_board", nodeId: "image-1", boardId: "board-1" }, { type: "place_on_board", nodeId: "image-1" }] }).ops;
+    assert.deepEqual(ops, [
+        { type: "arrange_board", id: "board-1" },
+        { type: "place_on_board", nodeId: "image-1", boardId: "board-1" },
+        { type: "place_on_board", nodeId: "image-1" },
+    ]);
+    assert.equal(toolInputSchemas.canvas_create_node.parse({ nodeType: "smart-canvas" }).nodeType, "smart-canvas");
+    assert.equal(toolInputSchemas.canvas_create_node.parse({ nodeType: "image-generation" }).nodeType, "image-generation");
 });

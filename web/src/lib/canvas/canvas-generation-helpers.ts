@@ -149,7 +149,7 @@ export function findRetrySourceNode(nodeId: string, nodes: CanvasNodeData[], con
         if (visited.has(id)) continue;
         visited.add(id);
         const node = nodes.find((item) => item.id === id);
-        if (node?.type === CanvasNodeType.Config) return node;
+        if (node?.type === CanvasNodeType.Config || node?.type === CanvasNodeType.ImageGeneration) return node;
         connections.filter((connection) => connection.toNodeId === id).forEach((connection) => queue.push(connection.fromNodeId));
     }
     return null;
