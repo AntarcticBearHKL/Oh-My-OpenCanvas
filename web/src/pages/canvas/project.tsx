@@ -38,6 +38,7 @@ import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import { Minimap } from "@/components/canvas/canvas-mini-map";
 import { CanvasNode, selectionBlue } from "@/components/canvas/canvas-node";
 import { CanvasNodePromptPanel, type CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
+import { PromptNodePanel } from "@/components/canvas/prompt-node-panel";
 import { SmartCanvasSettingsPopover } from "@/components/canvas/smart-canvas-settings-popover";
 import { CanvasToolbar } from "@/components/canvas/canvas-toolbar";
 import { AssetPickerModal } from "@/components/canvas/asset-picker-modal";
@@ -1573,6 +1574,8 @@ function InfiniteCanvasPage() {
                     onDisconnectReference={disconnectNodeReference}
                     onStartReferenceSelection={startNodeReferenceSelection}
                 />
+            ) : panelNode.type === CanvasNodeType.Prompt ? (
+                <PromptNodePanel node={panelNode} onContentChange={handleNodeContentChange} />
             ) : panelNode.type === CanvasNodeType.SmartCanvas ? (
                 <div className="flex items-center gap-2" style={{ color: theme.node.text }}>
                     <SmartCanvasSettingsPopover ratio={panelNode.metadata?.boardRatio || "16:9"} resolution={panelNode.metadata?.boardResolution || "2k"} background={smartCanvasBackground(panelNode)} onChange={(patch) => handleSmartCanvasChange(panelNode.id, patch)} />
@@ -1617,7 +1620,7 @@ function InfiniteCanvasPage() {
                     }}
                 />
             ),
-        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleArrangeBoard, handleComposeBoard, handleConfigNodeChange, handleGenerateNode, handleNodePromptChange, handleSmartCanvasChange, mentionReferencesByNodeId, nodes, renderPluginPanel, runningNodeId, startNodeReferenceSelection, t, theme.node.text],
+        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleArrangeBoard, handleComposeBoard, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleNodePromptChange, handleSmartCanvasChange, mentionReferencesByNodeId, nodes, renderPluginPanel, runningNodeId, startNodeReferenceSelection, t, theme.node.text],
     );
 
     const renderNodeContentPanel = useCallback(

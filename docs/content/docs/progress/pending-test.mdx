@@ -146,3 +146,9 @@ Pending verification:
 - Image generation node: the built-in Image generation node should render a light, flat placeholder (soft panel surface, centred Sparkles icon, title and hint, dashed hairline outline, same radius as other nodes) and still open its built-in generation panel on click; its size and metadata are unchanged.
 - Unified design tokens: the canvas library, prompt library, My Assets and Settings pages should use the same 1px hairline border (~10% black/white), panel/background surface relationship, radius scale (rows/cards `rounded-xl`, larger surfaces `rounded-2xl`) and hover feedback (`hover:bg-black/5 dark:hover:bg-white/10`) in both themes, with layouts and behaviour unchanged.
 
+## Prompt node
+
+Pending verification:
+
+- Prompt node as a prompt source: adding a Prompt node should render only its prompt text plus a hint that the panel below edits it, with no Plugin missing placeholder and no in-node library button. Clicking the node should open a compact card in the same style as the other canvas panels, with Pick from library as its first control and an editable prompt textarea below; Pick from library should open a searchable preset-prompt picker, and picking a preset should update both the textarea and the node. Typing should persist after a refresh, and the panel must not show any model, quality, size, count, reference, or generate controls. A non-empty Prompt node connected to a generation node should pass its text into the prompt like other text inputs and show a Prompt relationship label on the connection.
+

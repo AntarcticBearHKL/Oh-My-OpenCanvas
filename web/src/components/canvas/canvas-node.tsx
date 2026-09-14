@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ChevronRight, Copy, Download, Group, Image as ImageIcon, Info, LayoutDashboard, Maximize2, Music2, Puzzle, RefreshCw, Sparkles, Star, Trash2, Video } from "lucide-react";
+import { ChevronRight, Copy, Download, Group, Image as ImageIcon, Info, LayoutDashboard, Music2, Puzzle, RefreshCw, Sparkles, Star, Trash2, Video } from "lucide-react";
 
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -447,23 +447,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 </div>
 
                 {hasImageContent ? (
-                    <>
-                        <ImageInfoBar node={data} onInfo={onInfo} />
-                        <button
-                            type="button"
-                            className="pointer-events-auto absolute bottom-3 right-3 z-40 grid size-7 place-items-center rounded-md text-white/85 transition hover:bg-black/10 dark:hover:bg-white/10"
-                            aria-label={t("canvas.imageTools.view")}
-                            title={t("canvas.imageTools.view")}
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                onViewImage?.(data);
-                            }}
-                            onMouseDown={(event) => event.stopPropagation()}
-                            onPointerDown={(event) => event.stopPropagation()}
-                        >
-                            <Maximize2 className="size-4" />
-                        </button>
-                    </>
+                    <ImageInfoBar node={data} onInfo={onInfo} />
                 ) : null}
 
                 {!isGroup && !hasImageContent && !hasVideoContent && !hasAudioContent ? <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12" style={{ background: `linear-gradient(to top, ${theme.canvas.background}66, transparent)` }} /> : null}
@@ -1042,8 +1026,8 @@ function ResizeGrip({ active, onMouseDown }: { active: boolean; onMouseDown: (ev
     const theme = useCanvasTheme();
 
     return (
-        <div className="absolute bottom-1 right-1 z-30 grid size-5 cursor-nwse-resize place-items-center" onMouseDown={(event) => onMouseDown(event, "bottom-right")}>
-            <div className="size-3 border-b-2 border-r-2 transition-opacity duration-150" style={{ borderColor: active ? theme.node.muted : theme.node.stroke, opacity: active ? 1 : 0.8 }} />
+        <div className="absolute -bottom-3 -right-3 z-30 grid size-8 cursor-nwse-resize place-items-center" onMouseDown={(event) => onMouseDown(event, "bottom-right")}>
+            <div className="size-5 rounded-br-[18px] border-b-[3px] border-r-[3px] transition-opacity duration-150" style={{ borderColor: active ? theme.node.muted : theme.node.stroke, opacity: active ? 1 : 0.85 }} />
         </div>
     );
 }
