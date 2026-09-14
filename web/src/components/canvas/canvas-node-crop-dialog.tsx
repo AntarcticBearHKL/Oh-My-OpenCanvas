@@ -91,7 +91,7 @@ export function CanvasNodeCropDialog({ dataUrl, open, onClose, onConfirm }: { da
                                     <button
                                         key={handle}
                                         type="button"
-                                        className="absolute size-3 rounded-full border border-black bg-white"
+                                        className="absolute size-3 rounded-full border border-black bg-card"
                                         style={handleStyle(handle)}
                                         onPointerDown={(event) => startDrag("resize", event, handle)}
                                         aria-label={t("canvas.editors.adjustCrop")}

@@ -79,7 +79,7 @@ export function CanvasNodeResolutionDialog({ dataUrl, open, onClose, onConfirm }
                             key={algorithm}
                             type="button"
                             aria-pressed={active}
-                            className="rounded-xl border px-3 py-2 text-left transition hover:bg-black/5 dark:hover:bg-white/5"
+                            className="rounded-xl border px-3 py-2 text-left transition hover:bg-black/5 dark:hover:bg-card/5"
                             style={{ borderColor: active ? theme.node.activeStroke : theme.node.stroke }}
                             onClick={() => setParams((current) => ({ ...current, algorithm }))}
                         >

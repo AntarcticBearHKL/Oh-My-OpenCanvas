@@ -25,7 +25,7 @@ export function PromptNodePanel({ node, onContentChange }: { node: CanvasNodeDat
         >
             <button
                 type="button"
-                className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition hover:bg-black/5 dark:hover:bg-white/10"
+                className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition hover:bg-black/5 dark:hover:bg-card/10"
                 style={{ color: theme.node.text }}
                 onClick={() => setPickerOpen(true)}
             >
@@ -68,7 +68,7 @@ function PromptLibraryPicker({ open, onSelect, onClose }: { open: boolean; onSel
                             <button
                                 key={`${item.sourceId}:${item.id}`}
                                 type="button"
-                                className="block w-full rounded-lg px-3 py-2 text-left transition hover:bg-black/5 dark:hover:bg-white/5"
+                                className="block w-full rounded-lg px-3 py-2 text-left transition hover:bg-black/5 dark:hover:bg-card/5"
                                 onClick={() => onSelect(item)}
                             >
                                 <div className="truncate text-sm font-medium">{item.title}</div>

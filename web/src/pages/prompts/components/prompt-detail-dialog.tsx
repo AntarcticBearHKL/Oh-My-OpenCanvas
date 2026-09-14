@@ -12,7 +12,7 @@ export function PromptDetailDialog({ prompt, onClose, onCopy, onSaveAsset }: { p
             {prompt ? (
                 <div className="flex h-full min-h-0 flex-col">
                     <div className="shrink-0 space-y-3 pb-4">
-                        {prompt.coverUrl ? <img src={prompt.coverUrl} alt={prompt.title} className="h-48 w-full rounded-xl object-cover sm:h-56" /> : <div className="grid h-48 w-full place-items-center rounded-xl bg-muted text-stone-400 dark:text-stone-600 sm:h-56"><FileText className="size-9" /></div>}
+                        {prompt.coverUrl ? <img src={prompt.coverUrl} alt={prompt.title} className="h-48 w-full rounded-xl object-cover sm:h-56" /> : <div className="grid h-48 w-full place-items-center rounded-xl bg-muted text-muted-foreground dark:text-muted-foreground sm:h-56"><FileText className="size-9" /></div>}
                         {prompt.referenceImageUrls.length > 1 ? <div className="grid grid-cols-6 gap-2">{prompt.referenceImageUrls.filter((url) => url !== prompt.coverUrl).slice(0, 6).map((url) => <img key={url} src={url} alt="" className="aspect-square w-full rounded-md object-cover" loading="lazy" />)}</div> : null}
                     </div>
                     <div className="min-h-0 min-w-0 flex-1 overflow-y-auto border-y border-border py-4 pr-2">
@@ -23,10 +23,10 @@ export function PromptDetailDialog({ prompt, onClose, onCopy, onSaveAsset }: { p
                                 </Tag>
                             ))}
                         </div>
-                        {prompt.description ? <p className="mt-4 text-sm leading-6 text-stone-500 dark:text-stone-400">{prompt.description}</p> : null}
-                        {prompt.preview ? <pre className="mt-4 whitespace-pre-wrap rounded-xl bg-muted p-3 text-xs leading-5 text-stone-600 dark:text-stone-300">{prompt.preview}</pre> : null}
-                        <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-stone-800 dark:text-stone-300">{prompt.prompt}</p>
-                        {prompt.createdAt || prompt.updatedAt ? <div className="mt-4 text-xs text-stone-500 dark:text-stone-400">{prompt.createdAt ? t("common.created", { date: formatPromptDate(prompt.createdAt, i18n.resolvedLanguage) }) : null}{prompt.createdAt && prompt.updatedAt ? " · " : null}{prompt.updatedAt ? t("common.updated", { date: formatPromptDate(prompt.updatedAt, i18n.resolvedLanguage) }) : null}</div> : null}
+                        {prompt.description ? <p className="mt-4 text-sm leading-6 text-muted-foreground">{prompt.description}</p> : null}
+                        {prompt.preview ? <pre className="mt-4 whitespace-pre-wrap rounded-xl bg-muted p-3 text-xs leading-5 text-muted-foreground">{prompt.preview}</pre> : null}
+                        <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-foreground dark:text-muted-foreground">{prompt.prompt}</p>
+                        {prompt.createdAt || prompt.updatedAt ? <div className="mt-4 text-xs text-muted-foreground">{prompt.createdAt ? t("common.created", { date: formatPromptDate(prompt.createdAt, i18n.resolvedLanguage) }) : null}{prompt.createdAt && prompt.updatedAt ? " · " : null}{prompt.updatedAt ? t("common.updated", { date: formatPromptDate(prompt.updatedAt, i18n.resolvedLanguage) }) : null}</div> : null}
                     </div>
                     <div className="shrink-0 pt-4">
                         <Space wrap>

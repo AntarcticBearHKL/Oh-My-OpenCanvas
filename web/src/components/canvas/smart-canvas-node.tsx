@@ -113,7 +113,7 @@ export function SmartCanvasNodeContent({ node, boardImages = EMPTY_BOARD_IMAGES,
                     )}
                     <button
                         type="button"
-                        className="absolute -left-6 top-0 grid size-5 place-items-center rounded opacity-0 transition hover:bg-black/5 group-hover:opacity-100 dark:hover:bg-white/10"
+                        className="absolute -left-6 top-0 grid size-5 place-items-center rounded opacity-0 transition hover:bg-black/5 group-hover:opacity-100 dark:hover:bg-card/10"
                         style={{ color: theme.node.muted }}
                         aria-label={t("canvas.smartCanvas.deleteText")}
                         title={t("canvas.smartCanvas.deleteText")}

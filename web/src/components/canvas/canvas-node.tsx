@@ -668,7 +668,7 @@ function ExpandedTextCard({ node, text, index, onSetPrimary }: { node: CanvasNod
                     <div className="thin-scrollbar h-full overflow-y-auto whitespace-pre-wrap break-words px-4 pb-4 pt-14 font-mono text-sm leading-6" style={{ color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
                         {text.content}
                     </div>
-                    <button type="button" className="absolute right-2.5 top-2.5 flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition hover:bg-black/5 dark:hover:bg-white/10" style={{ color: theme.node.text }} onClick={(event) => (event.stopPropagation(), onSetPrimary())}>
+                    <button type="button" className="absolute right-2.5 top-2.5 flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition hover:bg-black/5 dark:hover:bg-card/10" style={{ color: theme.node.text }} onClick={(event) => (event.stopPropagation(), onSetPrimary())}>
                         <Star className="size-3.5" style={{ color: selectionBlue }} />
                         {t("canvas.node.setPrimaryText")}
                     </button>
@@ -967,7 +967,7 @@ function ImageInfoBar({ node, onInfo }: { node: CanvasNodeData; onInfo?: (node: 
             </span>
             <button
                 type="button"
-                className="pointer-events-auto grid size-5 shrink-0 place-items-center rounded-full transition hover:bg-black/5 dark:hover:bg-white/10"
+                className="pointer-events-auto grid size-5 shrink-0 place-items-center rounded-full transition hover:bg-black/5 dark:hover:bg-card/10"
                 style={{ color: theme.node.muted }}
                 aria-label={t("canvas.imageTools.info")}
                 title={t("canvas.imageTools.info")}

@@ -34,7 +34,7 @@ export function CanvasProjectRow({ project }: { project: CanvasProject }) {
 
     return (
         <div
-            className="flex h-14 w-full cursor-pointer items-center gap-2 border-b border-border px-2 transition last:border-b-0 hover:bg-black/5 dark:hover:bg-white/10"
+            className="flex h-14 w-full cursor-pointer items-center gap-2 border-b border-border px-2 transition last:border-b-0 hover:bg-black/5 dark:hover:bg-card/10"
             onClick={() => !editing && open()}
         >
             <input
@@ -42,7 +42,7 @@ export function CanvasProjectRow({ project }: { project: CanvasProject }) {
                 checked={selected}
                 onClick={(event) => event.stopPropagation()}
                 onChange={(event) => toggleSelected(project.id, event.target.checked)}
-                className="size-4 shrink-0 accent-stone-950 dark:accent-stone-100"
+                className="size-4 shrink-0 accent-foreground"
                 aria-label={t("canvas.project.select", { name: project.title })}
             />
             {editing ? (
@@ -50,7 +50,7 @@ export function CanvasProjectRow({ project }: { project: CanvasProject }) {
             ) : (
                 <button
                     type="button"
-                    className="min-w-0 shrink cursor-pointer truncate text-left text-sm font-medium text-stone-900 dark:text-stone-100"
+                    className="min-w-0 shrink cursor-pointer truncate text-left text-sm font-medium text-foreground"
                     onClick={(event) => {
                         event.stopPropagation();
                         open();
@@ -59,7 +59,7 @@ export function CanvasProjectRow({ project }: { project: CanvasProject }) {
                     {project.title}
                 </button>
             )}
-            <p className="hidden shrink-0 whitespace-nowrap text-xs text-stone-500 lg:block dark:text-stone-400" style={{ margin: 0 }}>
+            <p className="hidden shrink-0 whitespace-nowrap text-xs text-muted-foreground lg:block dark:text-muted-foreground" style={{ margin: 0 }}>
                 {t("canvas.project.stats", { nodes: project.nodes.length, connections: project.connections.length })}
                 <span className="mx-1.5">·</span>
                 {t("canvas.project.updated", { date: new Date(project.updatedAt).toLocaleString(i18n.resolvedLanguage, { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) })}

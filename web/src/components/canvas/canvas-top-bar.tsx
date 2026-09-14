@@ -52,14 +52,14 @@ export function CanvasTopBar({
                             type="button"
                             onClick={toggleSidePanel}
                             aria-label={sidePanelOpen ? t("canvas.collapsePanel") : t("canvas.expandPanel")}
-                            className="grid size-7 place-items-center rounded-full transition hover:bg-black/5 dark:hover:bg-white/10"
+                            className="grid size-7 place-items-center rounded-full transition hover:bg-black/5 dark:hover:bg-card/10"
                             style={{ color: theme.node.text }}
                         >
                             {sidePanelOpen ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
                         </button>
                     </Tooltip>
                     <Tooltip title={t("canvas.projects")}>
-                        <button type="button" onClick={onProjects} aria-label={t("canvas.projects")} className="grid size-7 place-items-center rounded-full transition hover:bg-black/5 dark:hover:bg-white/10" style={{ color: theme.node.text }}>
+                        <button type="button" onClick={onProjects} aria-label={t("canvas.projects")} className="grid size-7 place-items-center rounded-full transition hover:bg-black/5 dark:hover:bg-card/10" style={{ color: theme.node.text }}>
                             <House className="size-4" />
                         </button>
                     </Tooltip>

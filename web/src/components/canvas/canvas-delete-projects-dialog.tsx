@@ -34,7 +34,7 @@ export function CanvasDeleteProjectsDialog() {
                 </>
             }
         >
-            <p className="text-sm text-stone-500">{t("canvas.project.deleteDescription", { count: ids.length })}</p>
+            <p className="text-sm text-muted-foreground">{t("canvas.project.deleteDescription", { count: ids.length })}</p>
         </Modal>
     );
 }

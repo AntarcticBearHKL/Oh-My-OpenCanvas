@@ -38,18 +38,18 @@ export function ConfigLocalModels() {
         <div className="space-y-3">
             <div>
                 <div className="text-sm font-semibold">{t("config.localModels.title")}</div>
-                <div className="mt-1 text-xs text-stone-500">{t("config.localModels.description")}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{t("config.localModels.description")}</div>
             </div>
-            <section className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
+            <section className="rounded-lg border border-border p-4 dark:border-border">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                         <div className="flex items-center gap-2 text-sm font-semibold">
                             <Eraser className="size-4" />
                             {t("config.localModels.backgroundRemoval")}
                         </div>
-                        <div className="mt-1 text-xs text-stone-500">{t("config.localModels.backgroundRemovalDescription")}</div>
+                        <div className="mt-1 text-xs text-muted-foreground">{t("config.localModels.backgroundRemovalDescription")}</div>
                     </div>
-                    <div className="shrink-0 text-right text-xs text-stone-500">
+                    <div className="shrink-0 text-right text-xs text-muted-foreground">
                         <div>{t("config.localModels.size")}</div>
                         <div className="mt-0.5">{t(`config.localModels.status.${backgroundRemoval.status}`, { percent: backgroundRemoval.percent })}</div>
                     </div>

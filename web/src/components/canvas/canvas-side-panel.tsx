@@ -72,7 +72,7 @@ export function CanvasSidePanel({ onInsertAsset }: Props) {
             >
                 <div className="flex items-center gap-5 px-4 pt-3.5">
                     <span className="pb-1.5 text-sm font-semibold" style={{ color: theme.node.text }}>{t("canvas.sidePanel.assets")}</span>
-                    <button type="button" onClick={closePanel} className="ml-auto grid size-7 place-items-center rounded-md opacity-55 transition hover:bg-black/5 hover:opacity-100 md:hidden dark:hover:bg-white/10" aria-label={t("canvas.collapsePanel")}>
+                    <button type="button" onClick={closePanel} className="ml-auto grid size-7 place-items-center rounded-md opacity-55 transition hover:bg-black/5 hover:opacity-100 md:hidden dark:hover:bg-card/10" aria-label={t("canvas.collapsePanel")}>
                         <PanelLeftClose className="size-4" />
                     </button>
                 </div>
@@ -186,11 +186,11 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
     return (
         <div className="flex h-full flex-col">
             <div className="flex items-center gap-2 px-3 pb-2 pt-1">
-                <Input size="small" allowClear className="min-w-0 flex-1" prefix={<Search className="size-3.5 text-stone-400" />} placeholder={t("canvas.sidePanel.searchAssets")} value={keyword} onChange={(e) => setKeyword(e.target.value)} />
+                <Input size="small" allowClear className="min-w-0 flex-1" prefix={<Search className="size-3.5 text-muted-foreground" />} placeholder={t("canvas.sidePanel.searchAssets")} value={keyword} onChange={(e) => setKeyword(e.target.value)} />
                 <button
                     type="button"
                     onClick={addGroup}
-                    className="grid size-6 shrink-0 place-items-center rounded-md opacity-70 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
+                    className="grid size-6 shrink-0 place-items-center rounded-md opacity-70 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-card/10"
                     aria-label={t("canvas.sidePanel.group.create")}
                     title={t("canvas.sidePanel.group.create")}
                 >
@@ -200,7 +200,7 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
                     type="button"
                     disabled={uploading}
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-white/10"
+                    className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-card/10"
                     style={{ color: theme.node.text }}
                 >
                     <Plus className="size-3.5" />
@@ -314,7 +314,7 @@ function AssetCard({ asset, theme, onInsert, onRemove }: { asset: Asset; theme: 
                 <button
                     type="button"
                     onClick={onInsert}
-                    className="grid size-7 place-items-center rounded-full bg-white/90 text-stone-700 backdrop-blur transition hover:bg-white hover:text-stone-900 dark:bg-black/60 dark:text-stone-100 dark:hover:bg-black/80"
+                    className="grid size-7 place-items-center rounded-full bg-card/90 text-foreground backdrop-blur transition hover:bg-card hover:text-foreground dark:bg-black/60 dark:text-foreground dark:hover:bg-black/80"
                     aria-label={t("canvas.sidePanel.inserted")}
                     title={t("canvas.sidePanel.inserted")}
                 >
@@ -331,7 +331,7 @@ function AssetCard({ asset, theme, onInsert, onRemove }: { asset: Asset; theme: 
                 >
                     <button
                         type="button"
-                        className="grid size-7 place-items-center rounded-full bg-white/90 text-stone-700 backdrop-blur transition hover:bg-white hover:text-stone-900 dark:bg-black/60 dark:text-stone-100 dark:hover:bg-black/80"
+                        className="grid size-7 place-items-center rounded-full bg-card/90 text-foreground backdrop-blur transition hover:bg-card hover:text-foreground dark:bg-black/60 dark:text-foreground dark:hover:bg-black/80"
                         aria-label={t("canvas.sidePanel.group.move")}
                         title={t("canvas.sidePanel.group.move")}
                     >
@@ -341,7 +341,7 @@ function AssetCard({ asset, theme, onInsert, onRemove }: { asset: Asset; theme: 
                 <Popconfirm title={t("canvas.sidePanel.removeAssetTitle")} okText={t("canvas.sidePanel.remove")} cancelText={t("common.cancel")} okButtonProps={{ danger: true }} onConfirm={onRemove}>
                     <button
                         type="button"
-                        className="grid size-7 place-items-center rounded-full bg-white/90 text-stone-700 backdrop-blur transition hover:bg-white hover:text-red-500 dark:bg-black/60 dark:text-stone-100 dark:hover:bg-black/80 dark:hover:text-red-400"
+                        className="grid size-7 place-items-center rounded-full bg-card/90 text-foreground backdrop-blur transition hover:bg-card hover:text-red-500 dark:bg-black/60 dark:text-foreground dark:hover:bg-black/80 dark:hover:text-red-400"
                         aria-label={t("canvas.sidePanel.removeAsset")}
                     >
                         <Trash2 className="size-3.5" />

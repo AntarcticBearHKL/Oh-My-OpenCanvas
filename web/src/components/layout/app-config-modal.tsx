@@ -64,18 +64,18 @@ export function AppConfigPanel() {
                         children: (
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between gap-3">
-                                    <div className="text-xs text-stone-500">{t("config.channels.count", { count: config.channels.length })}</div>
+                                    <div className="text-xs text-muted-foreground">{t("config.channels.count", { count: config.channels.length })}</div>
                                     <Button type="primary" size="small" icon={<Plus className="size-4" />} onClick={addChannel}>
                                         {t("config.channels.add")}
                                     </Button>
                                 </div>
                                 {config.channels.length ? (
-                                    <div className="divide-y divide-stone-200 overflow-hidden rounded-lg border border-stone-200 dark:divide-stone-800 dark:border-stone-800">
+                                    <div className="divide-y divide-border overflow-hidden rounded-lg border border-border dark:divide-border dark:border-border">
                                         {config.channels.map((channel) => (
-                                            <div key={channel.id} className="flex items-center gap-3 px-3.5 py-3 transition hover:bg-stone-100/60 dark:hover:bg-stone-800/40">
+                                            <div key={channel.id} className="flex items-center gap-3 px-3.5 py-3 transition hover:bg-muted/60 dark:hover:bg-muted/40">
                                                 <div className="min-w-0 flex-1">
                                                     <div className="truncate text-sm font-medium">{channel.name || t("config.channels.unnamed")}</div>
-                                                    <div className="mt-0.5 truncate text-xs text-stone-500">
+                                                    <div className="mt-0.5 truncate text-xs text-muted-foreground">
                                                         {t("config.channels.modelCount", { count: channel.models.length })} · {channel.baseUrl || t("config.channels.missingUrl")}
                                                     </div>
                                                 </div>
@@ -87,10 +87,10 @@ export function AppConfigPanel() {
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col items-center rounded-lg border border-dashed border-stone-300 px-6 py-10 text-center dark:border-stone-700">
-                                        <Cloud className="size-6 text-stone-400 dark:text-stone-500" />
+                                    <div className="flex flex-col items-center rounded-lg border border-dashed border-border px-6 py-10 text-center dark:border-border">
+                                        <Cloud className="size-6 text-muted-foreground" />
                                         <div className="mt-3 text-sm font-medium">{t("config.channels.emptyTitle")}</div>
-                                        <div className="mt-1 max-w-80 text-xs text-stone-500">{t("config.channels.empty")}</div>
+                                        <div className="mt-1 max-w-80 text-xs text-muted-foreground">{t("config.channels.empty")}</div>
                                         <Button className="mt-4" icon={<Plus className="size-4" />} onClick={addChannel}>
                                             {t("config.channels.add")}
                                         </Button>
@@ -198,7 +198,7 @@ export function AppConfigPanel() {
                             <div className="space-y-4">
                                 <div>
                                     <div className="mb-2 text-sm font-semibold">{t("config.preferences.shortcuts")}</div>
-                                    <div className="divide-y divide-stone-200 overflow-hidden rounded-lg border border-stone-200 dark:divide-stone-800 dark:border-stone-800">
+                                    <div className="divide-y divide-border overflow-hidden rounded-lg border border-border dark:divide-border dark:border-border">
                                         <Shortcut keys={["Ctrl / Space", t("canvas.shortcut.drag")]} value={t("canvas.shortcut.toggleTool")} />
                                         <Shortcut keys={[t("canvas.shortcut.wheel")]} value={t("canvas.shortcut.zoom")} />
                                         <Shortcut keys={[t("canvas.shortcut.zoomSlider")]} value={t("canvas.shortcut.preciseZoom")} />
@@ -216,10 +216,10 @@ export function AppConfigPanel() {
                                         <Shortcut keys={[t("canvas.shortcut.dropMedia")]} value={t("canvas.shortcut.upload")} />
                                     </div>
                                 </div>
-                                <div className="rounded-lg border border-stone-200 px-4 py-3.5 dark:border-stone-800">
-                                    <div className="text-xs text-stone-500">{t("config.preferences.version")}</div>
+                                <div className="rounded-lg border border-border px-4 py-3.5 dark:border-border">
+                                    <div className="text-xs text-muted-foreground">{t("config.preferences.version")}</div>
                                     <div className="mt-2">
-                                        <VersionReleaseModal className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-200 dark:hover:bg-stone-800" />
+                                        <VersionReleaseModal className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground transition hover:bg-muted dark:border-border dark:text-foreground dark:hover:bg-muted" />
                                     </div>
                                 </div>
                             </div>
@@ -290,12 +290,12 @@ function Shortcut({ keys, value }: { keys: string[]; value: string }) {
             <span className="flex min-w-0 flex-wrap items-center gap-1">
                 {keys.map((key, index) => (
                     <span key={`${key}-${index}`} className="flex items-center gap-1">
-                        {index ? <span className="text-[11px] text-stone-400 dark:text-stone-500">+</span> : null}
-                        <kbd className="rounded-md border border-stone-200 bg-stone-100/80 px-2 py-1 text-center text-[11px] font-medium leading-none text-stone-600 dark:border-stone-700 dark:bg-stone-800/70 dark:text-stone-300">{key}</kbd>
+                        {index ? <span className="text-[11px] text-muted-foreground">+</span> : null}
+                        <kbd className="rounded-md border border-border bg-muted/80 px-2 py-1 text-center text-[11px] font-medium leading-none text-muted-foreground dark:border-border dark:bg-muted/70 dark:text-muted-foreground">{key}</kbd>
                     </span>
                 ))}
             </span>
-            <span className="shrink-0 text-xs text-stone-500">{value}</span>
+            <span className="shrink-0 text-xs text-muted-foreground">{value}</span>
         </div>
     );
 }

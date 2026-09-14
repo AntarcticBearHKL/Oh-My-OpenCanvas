@@ -27,7 +27,7 @@ export function CanvasNodeLayerPopover({ node, nodes, onMove }: { node: CanvasNo
                 <div className="mt-2 grid grid-cols-2 gap-1.5">
                     <button
                         type="button"
-                        className="flex h-8 items-center justify-center gap-1 rounded-lg text-xs transition hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent dark:hover:bg-white/10 dark:disabled:hover:bg-transparent"
+                        className="flex h-8 items-center justify-center gap-1 rounded-lg text-xs transition hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent dark:hover:bg-card/10 dark:disabled:hover:bg-transparent"
                         aria-label={t("canvas.nodeToolbar.bringForward")}
                         title={t("canvas.nodeToolbar.bringForward")}
                         disabled={!canRaise}
@@ -38,7 +38,7 @@ export function CanvasNodeLayerPopover({ node, nodes, onMove }: { node: CanvasNo
                     </button>
                     <button
                         type="button"
-                        className="flex h-8 items-center justify-center gap-1 rounded-lg text-xs transition hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent dark:hover:bg-white/10 dark:disabled:hover:bg-transparent"
+                        className="flex h-8 items-center justify-center gap-1 rounded-lg text-xs transition hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent dark:hover:bg-card/10 dark:disabled:hover:bg-transparent"
                         aria-label={t("canvas.nodeToolbar.sendBackward")}
                         title={t("canvas.nodeToolbar.sendBackward")}
                         disabled={!canLower}
