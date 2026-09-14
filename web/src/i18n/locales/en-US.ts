@@ -184,7 +184,7 @@ export default {
         },
         promptNode: { pick: "Pick from library", pickerTitle: "Pick a prompt", search: "Search prompts", placeholder: "Type a prompt or pick one from the library", empty: "No prompts", panelHint: "Pick or edit the prompt in the panel below" },
         videoFrames: { first: "Capture first frame", last: "Capture last frame", current: "Capture current frame", firstTitle: "{{name}} first frame", lastTitle: "{{name}} last frame", currentTitle: "{{name}} current frame", captured: "Image node created", failed: "Could not capture this frame. Try again." },
-        sidePanel: {
+        switcher: { placeholder: "Switch canvas", nodes: "{{count}} nodes" }, sidePanel: {
             assets: "Assets", resize: "Resize left panel", exportFailed: "Export failed. Try again.",
             addingAssets: "Adding assets…", addedAssets: "Added {{count}} assets", mediaOnly: "Only image and video files are supported", addFailed: "Failed to add assets. Try again.", searchAssets: "Search assets", add: "Add", noAssets: "No assets", inserted: "Insert into canvas", removeAssetTitle: "Remove this asset?", remove: "Remove", removeAsset: "Remove asset", assetRemoved: "Asset removed",
             group: {

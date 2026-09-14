@@ -13,6 +13,7 @@ import { useAssetStore, type Asset } from "@/stores/use-asset-store";
 import { CANVAS_SIDE_PANEL_MAX_WIDTH, CANVAS_SIDE_PANEL_MIN_WIDTH, CANVAS_SIDE_PANEL_MOTION_MS, useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
 
 import type { InsertAssetPayload } from "./asset-picker-modal";
+import { CanvasSwitcher } from "./canvas-switcher";
 
 const PANEL_MOTION_SECONDS = CANVAS_SIDE_PANEL_MOTION_MS / 1000;
 const PANEL_EASE = [0.22, 1, 0.36, 1] as const;
@@ -75,6 +76,9 @@ export function CanvasSidePanel({ onInsertAsset }: Props) {
                     <button type="button" onClick={closePanel} className="ml-auto grid size-7 place-items-center rounded-md opacity-55 transition hover:bg-black/5 hover:opacity-100 md:hidden dark:hover:bg-card/10" aria-label={t("canvas.collapsePanel")}>
                         <PanelLeftClose className="size-4" />
                     </button>
+                </div>
+                <div className="px-3 pb-1">
+                    <CanvasSwitcher />
                 </div>
                 <div className="mt-2 min-h-0 flex-1 overflow-hidden">
                     <CanvasAssetsTab onInsert={onInsertAsset} theme={theme} />
