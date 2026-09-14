@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { Brush, Camera, Copy, Eraser, FileText, Grid2x2, Lock, LockOpen, Maximize2, Scissors, Sparkles, Upload, ZoomIn } from "lucide-react";
+import { Brush, Camera, Copy, Eraser, Grid2x2, Lock, LockOpen, Maximize2, Scissors, Sparkles, ZoomIn } from "lucide-react";
 
 import type { CanvasNodeData } from "@/types/canvas";
 import i18n from "@/i18n";
 
-export type ImageNodeActionToolId = "copyPrompt" | "reversePrompt" | "replace" | "resize" | "maskEdit" | "crop" | "removeBackground" | "split" | "upscale" | "superResolve" | "angle" | "view" | "duplicate";
+export type ImageNodeActionToolId = "resize" | "maskEdit" | "crop" | "removeBackground" | "split" | "upscale" | "superResolve" | "angle" | "view" | "duplicate";
 export type ImageQuickToolId = "info" | "delete" | "saveAsset" | "download" | ImageNodeActionToolId;
 
 type ImageToolHandlers = {
@@ -18,8 +18,6 @@ type ImageToolHandlers = {
     onSuperResolve: (node: CanvasNodeData) => void;
     onAngle: (node: CanvasNodeData) => void;
     onViewImage: (node: CanvasNodeData) => void;
-    onCopyPrompt: (node: CanvasNodeData) => void;
-    onReversePrompt: (node: CanvasNodeData) => void;
     onDuplicate: (node: CanvasNodeData) => void;
 };
 
@@ -38,35 +36,11 @@ type ImageQuickToolsConfig = {
     showLabels: boolean;
 };
 
-export const IMAGE_QUICK_TOOLS_STORAGE_KEY = "canvas-image-quick-tools-v9";
+export const IMAGE_QUICK_TOOLS_STORAGE_KEY = "canvas-image-quick-tools-v10";
 
 const defaultBaseToolIds: ImageQuickToolId[] = ["info", "delete", "saveAsset", "download"];
 
 const imageToolDefinitions: ImageToolDefinition[] = [
-    {
-        id: "copyPrompt",
-        defaultVisible: true,
-        label: () => i18n.t("canvas.imageTools.copyPrompt"),
-        title: () => i18n.t("canvas.imageTools.copyPromptTitle"),
-        icon: () => <Copy className="size-4" />,
-        run: (node, handlers) => handlers.onCopyPrompt(node),
-    },
-    {
-        id: "reversePrompt",
-        defaultVisible: true,
-        label: () => i18n.t("canvas.imageTools.reversePrompt"),
-        title: () => i18n.t("canvas.imageTools.reversePromptTitle"),
-        icon: () => <FileText className="size-4" />,
-        run: (node, handlers) => handlers.onReversePrompt(node),
-    },
-    {
-        id: "replace",
-        defaultVisible: true,
-        label: () => i18n.t("canvas.imageTools.replace"),
-        title: () => i18n.t("canvas.imageTools.replace"),
-        icon: () => <Upload className="size-4" />,
-        run: (node, handlers) => handlers.onUpload(node),
-    },
     {
         id: "resize",
         defaultVisible: false,

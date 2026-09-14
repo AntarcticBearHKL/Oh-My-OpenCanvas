@@ -54,7 +54,6 @@ export type AiConfig = {
     count: string;
     canvasImageCount: string;
     canvasBackgroundMode: CanvasBackgroundMode;
-    showImageInfo: boolean;
 };
 
 export type WebdavSyncConfig = {
@@ -64,7 +63,7 @@ export type WebdavSyncConfig = {
     directory: string;
     lastSyncedAt: string;
 };
-export type ConfigTabKey = "channels" | "appearance" | "models" | "generation" | "prompt-sources" | "webdav" | "local-storage" | "about";
+export type ConfigTabKey = "channels" | "appearance" | "models" | "generation" | "local-models" | "prompt-sources" | "webdav" | "local-storage" | "about";
 
 type ChannelCredentialsImportResult = {
     status: "created" | "updated" | "missing-base-url" | "invalid-base-url";
@@ -104,7 +103,6 @@ export const defaultConfig: AiConfig = {
     count: "1",
     canvasImageCount: "1",
     canvasBackgroundMode: "dots",
-    showImageInfo: false,
 };
 
 const defaultWebdavSyncConfig: WebdavSyncConfig = {
@@ -252,7 +250,6 @@ export const useConfigStore = create<ConfigStore>()(
                         videoMode: config.videoMode === "reference" ? "reference" : "frames",
                         canvasImageCount: config.canvasImageCount || "1",
                         canvasBackgroundMode: config.canvasBackgroundMode || "dots",
-                        showImageInfo: Boolean(config.showImageInfo),
                     },
                 };
             },

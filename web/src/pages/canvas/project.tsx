@@ -8,7 +8,8 @@ import { Download, ImagePlus, LayoutDashboard, LayoutGrid, Type } from "lucide-r
 import { requestEdit, requestGeneration, requestImageQuestion } from "@/services/api/image";
 import { requestAudioGeneration, storeGeneratedAudio } from "@/services/api/audio";
 import { createVideoGenerationTask, isVideoTaskFailed, storeGeneratedVideo, waitForVideoGenerationTask } from "@/services/api/video";
-import { defaultConfig, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
+import { useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
+import { useLocalModelStore } from "@/stores/use-local-model-store";
 import { resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { removeImageBackground } from "@/services/background-removal";
 import { uploadMediaFile, type UploadedFile } from "@/services/file-storage";
@@ -151,6 +152,7 @@ function InfiniteCanvasPage() {
     const effectiveConfig = useEffectiveConfig();
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
+    const prepareBackgroundRemoval = useLocalModelStore((state) => state.prepareBackgroundRemoval);
     const addAsset = useAssetStore((state) => state.addAsset);
     const cleanupAssetImages = useAssetStore((state) => state.cleanupImages);
     const hydrated = useCanvasStore((state) => state.hydrated);
@@ -1279,7 +1281,7 @@ function InfiniteCanvasPage() {
                     metadata: imageMetadata(image),
                 };
                 setNodes((prev) => [...prev, child]);
-                setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: id }]);
+                setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: id, relation: "frame" }]);
                 setSelectedNodeIds(new Set([id]));
                 setSelectedConnectionId(null);
                 setDialogNodeId(id);
@@ -1337,44 +1339,6 @@ function InfiniteCanvasPage() {
         [addAsset, message, t],
     );
 
-    const createImageReversePromptNodes = useCallback(
-        (node: CanvasNodeData) => {
-            if (node.type !== CanvasNodeType.Image || !node.metadata?.content) {
-                message.warning(t("canvas.projectPage.emptyReverse"));
-                return;
-            }
-
-            const gap = 96;
-            const textSpec = NODE_DEFAULT_SIZE[CanvasNodeType.Text];
-            const configSpec = NODE_DEFAULT_SIZE[CanvasNodeType.Config];
-            const centerY = node.position.y + node.height / 2;
-            const textNode = {
-                ...createCanvasNode(CanvasNodeType.Text, { x: node.position.x + node.width + gap + textSpec.width / 2, y: centerY }, { content: t("canvas.projectPage.reversePreset"), prompt: t("canvas.projectPage.reversePreset"), status: NODE_STATUS_SUCCESS, fontSize: 14 }),
-                title: t("canvas.projectPage.reverseTitle"),
-            };
-            const configNode = {
-                ...createCanvasNode(
-                    CanvasNodeType.Config,
-                    { x: textNode.position.x + textNode.width + gap + configSpec.width / 2, y: centerY },
-                    {
-                        generationMode: "text",
-                        model: effectiveConfig.textModel || effectiveConfig.model || defaultConfig.textModel,
-                        count: 1,
-                        composerContent: t("canvas.reverseComposer", { imageId: node.id, textId: textNode.id }),
-                    },
-                ),
-                title: t("canvas.projectPage.reverseConfigTitle"),
-            };
-
-            setNodes((prev) => [...prev, textNode, configNode]);
-            setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: configNode.id }, { id: nanoid(), fromNodeId: textNode.id, toNodeId: configNode.id }]);
-            setSelectedNodeIds(new Set([configNode.id]));
-            setSelectedConnectionId(null);
-            setDialogNodeId(configNode.id);
-        },
-        [effectiveConfig.model, effectiveConfig.textModel, message, t],
-    );
-
     const cropImageNode = useCallback(async (node: CanvasNodeData, crop: CanvasImageCropRect) => {
         if (!node.metadata?.content) return;
         const cropped = await cropDataUrl(node.metadata.content, crop);
@@ -1394,7 +1358,7 @@ function InfiniteCanvasPage() {
             },
         };
         setNodes((prev) => [...prev, child]);
-        setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: childId }]);
+        setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: childId, relation: "crop" }]);
         setSelectedNodeIds(new Set([childId]));
         setDialogNodeId(childId);
         setCropNodeId(null);
@@ -1402,9 +1366,22 @@ function InfiniteCanvasPage() {
 
     const removeNodeBackground = useCallback(async (node: CanvasNodeData) => {
         if (node.type !== CanvasNodeType.Image) return;
-        const source = await resolveImageUrl(node.metadata?.storageKey, node.metadata?.content || "");
-        if (!source) return;
         const key = `remove-bg-${node.id}`;
+        const progressTimer = window.setInterval(() => {
+            const { status, percent } = useLocalModelStore.getState().backgroundRemoval;
+            if (status === "downloading") message.loading({ content: t("canvas.imageTools.removeBackgroundDownloading", { percent }), key, duration: 0 });
+        }, 500);
+        const prepared = await prepareBackgroundRemoval();
+        window.clearInterval(progressTimer);
+        if (!prepared) {
+            message.error({ content: t("canvas.imageTools.removeBackgroundFailed"), key });
+            return;
+        }
+        const source = await resolveImageUrl(node.metadata?.storageKey, node.metadata?.content || "");
+        if (!source) {
+            message.destroy(key);
+            return;
+        }
         message.loading({ content: t("canvas.imageTools.removeBackgroundRunning"), key, duration: 0 });
         try {
             const blob = await removeImageBackground(source, (progressKey, current, total) => {
@@ -1425,13 +1402,13 @@ function InfiniteCanvasPage() {
                     metadata: { ...imageMetadata(image), prompt: node.metadata?.prompt },
                 },
             ]);
-            setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: childId }]);
+            setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: childId, relation: "background-removal" }]);
             setSelectedNodeIds(new Set([childId]));
             message.success({ content: t("canvas.imageTools.removeBackgroundDone"), key });
         } catch {
             message.error({ content: t("canvas.imageTools.removeBackgroundFailed"), key });
         }
-    }, [message, t]);
+    }, [message, prepareBackgroundRemoval, t]);
 
     const splitImageNode = useCallback(
         async (node: CanvasNodeData, params: CanvasImageSplitParams) => {
@@ -1462,7 +1439,7 @@ function InfiniteCanvasPage() {
                 }),
             );
             setNodes((prev) => [...prev, ...childNodes]);
-            setConnections((prev) => [...prev, ...childNodes.map((child) => ({ id: nanoid(), fromNodeId: node.id, toNodeId: child.id }))]);
+            setConnections((prev) => [...prev, ...childNodes.map((child) => ({ id: nanoid(), fromNodeId: node.id, toNodeId: child.id, relation: "split" }))]);
             setSelectedNodeIds(new Set(childNodes.map((child) => child.id)));
             setSelectedConnectionId(null);
             setDialogNodeId(null);
@@ -1492,7 +1469,7 @@ function InfiniteCanvasPage() {
             },
         };
         setNodes((prev) => [...prev, child]);
-        setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: childId }]);
+        setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: childId, relation: "upscale" }]);
         setSelectedNodeIds(new Set([childId]));
         setDialogNodeId(childId);
     }, []);
@@ -1734,6 +1711,7 @@ function InfiniteCanvasPage() {
                                         from={from}
                                         to={to}
                                         active={selectedConnectionId === connection.id || relatedHighlight.connectionIds.has(connection.id)}
+                                        scale={viewport.k}
                                         onSelect={() => {
                                             setSelectedConnectionId(connection.id);
                                             setSelectedNodeIds(new Set());
@@ -1761,7 +1739,6 @@ function InfiniteCanvasPage() {
                             boardImages={boardImagesById.get(node.id)}
                             onBoardTextsChange={handleBoardTextsChange}
                             batchExpanded={expandedBatchNodeIds.has(node.id)}
-                            showImageInfo={effectiveConfig.showImageInfo}
                             mentionReferences={mentionReferencesByNodeId.get(node.id) || EMPTY_REFERENCES}
                             pluginHost={pluginHost}
                             registryVersion={nodeRegistryVersion}
@@ -1840,7 +1817,6 @@ function InfiniteCanvasPage() {
                     onSuperResolve={(node) => setSuperResolveNodeId(node.id)}
                     onAngle={(node) => setAngleNodeId(node.id)}
                     onViewImage={handleNodeViewImage}
-                    onReversePrompt={createImageReversePromptNodes}
                     onRetry={(node) => void handleRetryNode(node)}
                     onToggleFreeResize={(node) => toggleNodeFreeResize(node.id)}
                     onDelete={(node) => deleteNodes(new Set([node.id]))}

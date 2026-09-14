@@ -16,7 +16,6 @@ export type CanvasImageMaskEditPayload = {
 type DrawMode = "paint" | "erase";
 type Point = { x: number; y: number };
 type MaskStroke = { mode: DrawMode; size: number; points: Point[] };
-type BrushPreview = { x: number; y: number; size: number; adjusting: boolean };
 
 const defaultBrushSize = 100;
 const maskOverlayColor = "#2563eb";
@@ -26,7 +25,12 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
     const { t } = useTranslation();
     const maskCanvasRef = useRef<HTMLCanvasElement>(null);
     const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+    const maskContextRef = useRef<CanvasRenderingContext2D | null>(null);
+    const previewContextRef = useRef<CanvasRenderingContext2D | null>(null);
     const imageRef = useRef<HTMLImageElement>(null);
+    const brushPreviewRef = useRef<HTMLDivElement>(null);
+    const brushPointRef = useRef<{ x: number; y: number; size: number } | null>(null);
+    const brushFrameRef = useRef<number | null>(null);
     const drawingRef = useRef<{ active: boolean; stroke: MaskStroke | null }>({ active: false, stroke: null });
     const brushAdjustRef = useRef<{ active: boolean; pointerId: number; startX: number; startSize: number; previewX: number; previewY: number } | null>(null);
     const historyRef = useRef<MaskStroke[]>([]);
@@ -38,8 +42,18 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
     const [error, setError] = useState("");
     const [historySize, setHistorySize] = useState(0);
     const [redoSize, setRedoSize] = useState(0);
-    const [brushPreview, setBrushPreview] = useState<BrushPreview | null>(null);
+    const [brushVisible, setBrushVisible] = useState(false);
+    const [brushAdjusting, setBrushAdjusting] = useState(false);
     const viewport = useImageEditorViewport(image, open);
+
+    const attachMaskCanvas = useCallback((node: HTMLCanvasElement | null) => {
+        maskCanvasRef.current = node;
+        maskContextRef.current = node ? node.getContext("2d", { willReadFrequently: true }) : null;
+    }, []);
+    const attachPreviewCanvas = useCallback((node: HTMLCanvasElement | null) => {
+        previewCanvasRef.current = node;
+        previewContextRef.current = node ? node.getContext("2d") : null;
+    }, []);
 
     useEffect(() => {
         if (!open) return;
@@ -49,7 +63,8 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
         setError("");
         setHistorySize(0);
         setRedoSize(0);
-        setBrushPreview(null);
+        setBrushVisible(false);
+        setBrushAdjusting(false);
         historyRef.current = [];
         redoRef.current = [];
         brushAdjustRef.current = null;
@@ -58,17 +73,28 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
     }, [dataUrl, open]);
 
     useEffect(() => {
-        clearCanvas(maskCanvasRef.current);
-        clearCanvas(previewCanvasRef.current);
+        clearCanvas(maskCanvasRef.current, maskContextRef.current);
+        clearCanvas(previewCanvasRef.current, previewContextRef.current);
     }, [image]);
+
+    useEffect(() => {
+        if (!brushVisible) return;
+        paintBrushPreview();
+    }, [brushVisible, viewport.imageScale]);
+
+    useEffect(
+        () => () => {
+            if (brushFrameRef.current) cancelAnimationFrame(brushFrameRef.current);
+        },
+        [],
+    );
 
     const draw = (event: ReactPointerEvent<HTMLCanvasElement>) => {
         const point = readCanvasPoint(event.currentTarget, event.clientX, event.clientY);
-        const maskCanvas = maskCanvasRef.current;
-        const context = maskCanvas?.getContext("2d", { willReadFrequently: true });
-        const previewContext = previewCanvasRef.current?.getContext("2d");
+        const context = maskContextRef.current;
+        const previewContext = previewContextRef.current;
         const stroke = drawingRef.current.stroke;
-        if (!maskCanvas || !context || !previewContext || !stroke) return;
+        if (!context || !previewContext || !stroke) return;
         configureStrokeContext(context, stroke);
         configurePreviewStrokeContext(previewContext, stroke);
         const last = stroke.points.at(-1);
@@ -80,12 +106,27 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
         }
     };
 
-    const updateBrushPreview = (event: ReactPointerEvent<HTMLCanvasElement>, size = brushSize, adjusting = false) => {
-        setBrushPreview({
-            x: event.clientX,
-            y: event.clientY,
-            size,
-            adjusting,
+    const paintBrushPreview = () => {
+        const element = brushPreviewRef.current;
+        const point = brushPointRef.current;
+        if (!element || !point) return;
+        element.style.width = `${Math.max(4, point.size * viewport.imageScale)}px`;
+        element.style.transform = `translate3d(${point.x}px, ${point.y}px, 0) translate(-50%, -50%)`;
+    };
+
+    const showBrushPreview = (event: ReactPointerEvent<HTMLCanvasElement>, adjusting: boolean, size = brushSize) => {
+        brushPointRef.current = { x: event.clientX, y: event.clientY, size };
+        setBrushVisible(true);
+        setBrushAdjusting(adjusting);
+        paintBrushPreview();
+    };
+
+    const moveBrushPreview = (x: number, y: number, size: number) => {
+        brushPointRef.current = { x, y, size };
+        if (brushFrameRef.current) return;
+        brushFrameRef.current = requestAnimationFrame(() => {
+            brushFrameRef.current = null;
+            paintBrushPreview();
         });
     };
 
@@ -102,14 +143,14 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
                 previewX: event.clientX,
                 previewY: event.clientY,
             };
-            updateBrushPreview(event, brushSize, true);
+            showBrushPreview(event, true);
             return;
         }
         if (event.button !== 0) return;
         event.preventDefault();
         event.stopPropagation();
         event.currentTarget.setPointerCapture(event.pointerId);
-        updateBrushPreview(event);
+        showBrushPreview(event, false);
         drawingRef.current = { active: true, stroke: { mode, size: brushSize, points: [] } };
         draw(event);
     };
@@ -121,15 +162,10 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
             event.stopPropagation();
             const nextSize = clampBrushSize(brushAdjust.startSize + event.clientX - brushAdjust.startX);
             setBrushSize(nextSize);
-            setBrushPreview({
-                x: brushAdjust.previewX,
-                y: brushAdjust.previewY,
-                size: nextSize,
-                adjusting: true,
-            });
+            moveBrushPreview(brushAdjust.previewX, brushAdjust.previewY, nextSize);
             return;
         }
-        updateBrushPreview(event);
+        moveBrushPreview(event.clientX, event.clientY, brushSize);
         if (!drawingRef.current.active) return;
         event.preventDefault();
         draw(event);
@@ -140,7 +176,7 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
         if (brushAdjust?.active && event.pointerId === brushAdjust.pointerId) {
             brushAdjustRef.current = null;
             if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-            updateBrushPreview(event, brushSize);
+            showBrushPreview(event, false);
             return;
         }
         const stroke = drawingRef.current.stroke;
@@ -159,7 +195,7 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
         if (stroke) redoRef.current.push(stroke);
         setHistorySize(historyRef.current.length);
         setRedoSize(redoRef.current.length);
-        replayMask(historyRef.current, maskCanvasRef.current, previewCanvasRef.current);
+        replayMask(historyRef.current, maskCanvasRef.current, maskContextRef.current, previewCanvasRef.current, previewContextRef.current);
         setError("");
     }, []);
 
@@ -169,7 +205,7 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
         if (stroke) historyRef.current.push(stroke);
         setHistorySize(historyRef.current.length);
         setRedoSize(redoRef.current.length);
-        replayMask(historyRef.current, maskCanvasRef.current, previewCanvasRef.current);
+        replayMask(historyRef.current, maskCanvasRef.current, maskContextRef.current, previewCanvasRef.current, previewContextRef.current);
         setError("");
     }, []);
 
@@ -178,8 +214,8 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
         redoRef.current = [];
         setHistorySize(0);
         setRedoSize(0);
-        clearCanvas(maskCanvasRef.current);
-        clearCanvas(previewCanvasRef.current);
+        clearCanvas(maskCanvasRef.current, maskContextRef.current);
+        clearCanvas(previewCanvasRef.current, previewContextRef.current);
         setError("");
     };
 
@@ -225,11 +261,11 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
                         <div ref={viewport.stageRef} className="absolute isolate overflow-hidden rounded-lg bg-transparent select-none [backface-visibility:hidden] [contain:layout_paint] [transform:translateZ(0)]" style={viewport.stageStyle}>
                             {image ? (
                                 <>
-                                    <canvas ref={maskCanvasRef} width={image.width} height={image.height} className="hidden" />
+                                    <canvas ref={attachMaskCanvas} width={image.width} height={image.height} className="hidden" />
                                     <div className="absolute left-0 top-0 [backface-visibility:hidden]" style={viewport.mediaStyle}>
                                         <img ref={imageRef} src={dataUrl} alt="" className="absolute inset-0 block h-full w-full bg-transparent object-contain" draggable={false} />
                                         <canvas
-                                            ref={previewCanvasRef}
+                                            ref={attachPreviewCanvas}
                                             width={image.width}
                                             height={image.height}
                                             className="absolute inset-0 h-full w-full cursor-none touch-none"
@@ -238,9 +274,9 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
                                             onPointerMove={moveDraw}
                                             onPointerUp={stopDraw}
                                             onPointerCancel={stopDraw}
-                                            onPointerEnter={(event) => updateBrushPreview(event)}
+                                            onPointerEnter={(event) => showBrushPreview(event, false)}
                                             onPointerLeave={() => {
-                                                if (!drawingRef.current.active && !brushAdjustRef.current?.active) setBrushPreview(null);
+                                                if (!drawingRef.current.active && !brushAdjustRef.current?.active) setBrushVisible(false);
                                             }}
                                             onContextMenu={(event) => event.preventDefault()}
                                         />
@@ -250,13 +286,14 @@ export function CanvasNodeMaskEditDialog({ dataUrl, open, onClose, onConfirm }: 
                         </div>
                     </div>
                 </div>
-                {brushPreview
+                {image
                     ? createPortal(
                           <div
-                              className={`pointer-events-none fixed z-[1100] rounded-full border-2 ${brushPreview.adjusting ? "border-[#fbbf24] bg-black/10" : "border-white/90 bg-black/5"} shadow-[0_0_0_1px_rgba(0,0,0,.8)]`}
-                              style={{ left: brushPreview.x, top: brushPreview.y, width: Math.max(4, brushPreview.size * viewport.imageScale), aspectRatio: 1, transform: "translate(-50%, -50%)" }}
+                              ref={brushPreviewRef}
+                              className={`pointer-events-none fixed left-0 top-0 z-[1100] rounded-full border-2 ${brushAdjusting ? "border-[#fbbf24] bg-black/10" : "border-white/90 bg-black/5"} ${brushVisible ? "" : "invisible"} shadow-[0_0_0_1px_rgba(0,0,0,.8)]`}
+                              style={{ aspectRatio: 1 }}
                           >
-                              {brushPreview.adjusting ? <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-black/75 px-1.5 py-0.5 text-xs font-semibold text-white">{brushSize}px</span> : null}
+                              {brushAdjusting ? <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded bg-black/75 px-1.5 py-0.5 text-xs font-semibold text-white">{brushSize}px</span> : null}
                           </div>,
                           document.body,
                       )
@@ -352,8 +389,7 @@ function clampBrushSize(value: number) {
     return Math.min(160, Math.max(8, Math.round(value / 2) * 2));
 }
 
-function clearCanvas(canvas: HTMLCanvasElement | null) {
-    const context = canvas?.getContext("2d", { willReadFrequently: true });
+function clearCanvas(canvas: HTMLCanvasElement | null, context: CanvasRenderingContext2D | null) {
     if (!canvas || !context) return;
     context.clearRect(0, 0, canvas.width, canvas.height);
 }
@@ -389,18 +425,16 @@ function configurePreviewStrokeContext(context: CanvasRenderingContext2D, stroke
     context.fillStyle = maskOverlayColor;
 }
 
-function replayMask(strokes: MaskStroke[], maskCanvas: HTMLCanvasElement | null, previewCanvas: HTMLCanvasElement | null) {
-    const context = maskCanvas?.getContext("2d", { willReadFrequently: true });
-    const previewContext = previewCanvas?.getContext("2d");
-    if (!maskCanvas || !context || !previewCanvas || !previewContext) return;
-    context.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
+function replayMask(strokes: MaskStroke[], maskCanvas: HTMLCanvasElement | null, maskContext: CanvasRenderingContext2D | null, previewCanvas: HTMLCanvasElement | null, previewContext: CanvasRenderingContext2D | null) {
+    if (!maskCanvas || !maskContext || !previewCanvas || !previewContext) return;
+    maskContext.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
     previewContext.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
     for (const stroke of strokes) {
-        configureStrokeContext(context, stroke);
+        configureStrokeContext(maskContext, stroke);
         configurePreviewStrokeContext(previewContext, stroke);
         stroke.points.forEach((point, index) => {
             const previous = stroke.points[index - 1] || point;
-            drawMaskStroke(context, previous, point, stroke.size);
+            drawMaskStroke(maskContext, previous, point, stroke.size);
             drawMaskStroke(previewContext, previous, point, stroke.size);
         });
     }

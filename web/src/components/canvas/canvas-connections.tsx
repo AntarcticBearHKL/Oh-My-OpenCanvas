@@ -1,3 +1,4 @@
+import { connectionRelationLabel } from "@/lib/canvas/canvas-connections";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { CanvasConnection, CanvasNodeData, ConnectionHandle, Position } from "@/types/canvas";
@@ -8,12 +9,14 @@ export function ConnectionPath({
     to,
     active,
     onSelect,
+    scale,
 }: {
     connection: CanvasConnection;
     from: CanvasNodeData;
     to: CanvasNodeData;
     active: boolean;
     onSelect: () => void;
+    scale: number;
 }) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const startX = from.position.x + from.width;
@@ -23,6 +26,7 @@ export function ConnectionPath({
     const dx = Math.abs(endX - startX);
     const curvature = Math.max(dx * 0.5, 50);
     const pathD = `M ${startX} ${startY} C ${startX + curvature} ${startY}, ${endX - curvature} ${endY}, ${endX} ${endY}`;
+    const label = connectionRelationLabel(connection, from, to);
 
     return (
         <g>
@@ -40,12 +44,30 @@ export function ConnectionPath({
             />
             <path
                 d={pathD}
-                stroke={active ? theme.node.activeStroke : theme.node.muted}
+                stroke={active ? theme.node.activeStroke : theme.node.faint}
                 strokeWidth={active ? 3 : 2}
                 strokeOpacity={active ? 1 : 0.82}
                 fill="none"
                 style={{ pointerEvents: "none" }}
             />
+            {label ? (
+                <text
+                    x={(startX + endX) / 2}
+                    y={(startY + endY) / 2}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize={12 / scale}
+                    fontWeight={500}
+                    fill={active ? theme.node.activeStroke : theme.node.faint}
+                    stroke={theme.canvas.background}
+                    strokeWidth={4 / scale}
+                    strokeOpacity={active ? 1 : 0.82}
+                    paintOrder="stroke"
+                    style={{ pointerEvents: "none" }}
+                >
+                    {label}
+                </text>
+            ) : null}
         </g>
     );
 }

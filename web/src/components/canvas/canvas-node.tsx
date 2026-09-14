@@ -27,7 +27,6 @@ type CanvasNodeProps = {
     isConnecting: boolean;
     referenceSelectionState?: "target" | "disabled" | "available";
     showPanel: boolean;
-    showImageInfo: boolean;
     mentionReferences?: CanvasResourceReference[];
     pluginHost?: CanvasPluginHost;
     registryVersion?: number;
@@ -95,7 +94,6 @@ export const CanvasNode = React.memo(function CanvasNode({
     isConnecting,
     referenceSelectionState,
     showPanel,
-    showImageInfo,
     mentionReferences = [],
     pluginHost,
     renderPanel,
@@ -436,7 +434,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                     />
                 </div>
 
-                {showImageInfo && hasImageContent ? <ImageInfoBar node={data} /> : null}
+                {hasImageContent ? <ImageInfoBar node={data} /> : null}
 
                 {!isGroup && !hasImageContent && !hasVideoContent && !hasAudioContent ? <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12" style={{ background: `linear-gradient(to top, ${theme.canvas.background}66, transparent)` }} /> : null}
 
@@ -911,12 +909,10 @@ function ImageInfoBar({ node }: { node: CanvasNodeData }) {
     const width = Math.round(node.metadata?.naturalWidth || node.width);
     const height = Math.round(node.metadata?.naturalHeight || node.height);
     const size = formatBytes(node.metadata?.bytes || 0);
+    const parts = [node.title?.trim(), width && height ? `${width} x ${height}` : "", size].filter(Boolean);
     return (
-        <div className="pointer-events-none absolute bottom-3 right-3 z-40 max-w-[calc(100%-24px)]">
-            <span className="max-w-full truncate rounded-md bg-black/55 px-2 py-1 text-[11px] font-medium leading-none text-white backdrop-blur-sm">
-                {width} x {height}
-                {size ? ` · ${size}` : ""}
-            </span>
+        <div className="pointer-events-none absolute left-3 top-3 z-40 max-w-[calc(100%-24px)]">
+            <span className="max-w-full truncate rounded-md bg-black/55 px-2 py-1 text-[12px] font-medium leading-none text-white backdrop-blur-sm">{parts.join(" · ")}</span>
         </div>
     );
 }

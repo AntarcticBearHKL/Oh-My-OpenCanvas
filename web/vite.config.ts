@@ -55,6 +55,9 @@ function canvasServicePlugin(): Plugin {
 export default defineConfig({
     base: process.env.VITE_BASE || "/",
     plugins: [react(), localPluginsManifest(), canvasServicePlugin()],
+    worker: {
+        format: "es",
+    },
     resolve: {
         alias: {
             "@": resolve(webDir, "src"),

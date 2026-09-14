@@ -1,4 +1,4 @@
-import { App, Button, Form, Input, Modal, Progress, Select, Switch, Tabs } from "antd";
+import { App, Button, Form, Input, Modal, Progress, Select, Tabs } from "antd";
 import type { TFunction } from "i18next";
 import { Cloud, Pencil, Plus, RefreshCw, Trash2, Wifi } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -7,20 +7,14 @@ import { useTranslation } from "react-i18next";
 import { ModelPicker } from "@/components/model-picker";
 import { ChannelEditorDrawer } from "@/components/layout/channel-editor-drawer";
 import { ConfigPromptSources } from "@/components/layout/config-prompt-sources";
+import { ConfigLocalModels } from "@/components/layout/config-local-models";
 import { ConfigLocalStorage } from "@/components/layout/config-local-storage";
 import { VersionReleaseModal } from "@/components/layout/version-release-modal";
 import { changeAppLocale, type AppLocale } from "@/i18n";
 import { syncAppDataToWebdav, type AppSyncDomainKey, type AppSyncProgressEvent } from "@/services/app-sync";
 import { testWebdavConnection, WEBDAV_MANIFEST_FILE_NAME } from "@/services/webdav-sync";
-import { audioFormatOptions, audioVoiceOptions, normalizeAudioSpeedValue } from "@/lib/audio-generation";
 import { createModelChannel, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, type AiConfig, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
-
-type ModelGroup = {
-    capability: ModelCapability;
-    modelKey: "imageModel" | "videoModel" | "textModel" | "audioModel";
-    labelKey: string;
-};
 
 type WebdavDomainProgress = {
     stage: string;
@@ -28,13 +22,6 @@ type WebdavDomainProgress = {
     total?: number;
     status?: "active" | "success" | "exception";
 };
-
-const modelGroups: ModelGroup[] = [
-    { capability: "image", modelKey: "imageModel", labelKey: "config.preferences.defaultImageModel" },
-    { capability: "video", modelKey: "videoModel", labelKey: "config.preferences.defaultVideoModel" },
-    { capability: "text", modelKey: "textModel", labelKey: "config.preferences.defaultTextModel" },
-    { capability: "audio", modelKey: "audioModel", labelKey: "config.preferences.defaultAudioModel" },
-];
 
 const webdavDomainKeys: AppSyncDomainKey[] = ["canvas", "assets", "image-workbench", "video-workbench"];
 function createWebdavDomainProgress(): Record<AppSyncDomainKey, WebdavDomainProgress> {
@@ -213,9 +200,6 @@ export function AppConfigPanel({ initialTab = "channels" }: { initialTab?: Confi
                                             ]}
                                         />
                                     </Form.Item>
-                                    <Form.Item label={t("canvas.toolbar.imageInfo")} className="mb-0">
-                                        <Switch size="small" checked={config.showImageInfo} onChange={(checked) => updateConfig("showImageInfo", checked)} />
-                                    </Form.Item>
                                 </div>
                             </Form>
                         ),
@@ -225,13 +209,9 @@ export function AppConfigPanel({ initialTab = "channels" }: { initialTab?: Confi
                         label: t("config.tabs.models"),
                         children: (
                             <Form layout="vertical" requiredMark={false}>
-                                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                                    {modelGroups.map((group) => (
-                                        <Form.Item key={group.modelKey} label={t(group.labelKey)} className="mb-0">
-                                            <ModelPicker config={config} value={config[group.modelKey]} onChange={(model) => updateConfig(group.modelKey, model)} capability={group.capability} fullWidth />
-                                        </Form.Item>
-                                    ))}
-                                </div>
+                                <Form.Item label={t("config.preferences.defaultImageModel")} className="mb-0">
+                                    <ModelPicker config={config} value={config.imageModel} onChange={(model) => updateConfig("imageModel", model)} capability="image" fullWidth />
+                                </Form.Item>
                             </Form>
                         ),
                     },
@@ -240,43 +220,23 @@ export function AppConfigPanel({ initialTab = "channels" }: { initialTab?: Confi
                         label: t("config.tabs.generation"),
                         children: (
                             <Form layout="vertical" requiredMark={false}>
-                                <div className="grid gap-4 md:grid-cols-4">
-                                    <Form.Item label={t("config.preferences.canvasImageCount")} extra={t("config.preferences.canvasImageCountDescription")} className="mb-4">
-                                        <Input
-                                            type="number"
-                                            min={1}
-                                            max={15}
-                                            value={config.canvasImageCount}
-                                            onChange={(event) => updateConfig("canvasImageCount", event.target.value)}
-                                            onBlur={(event) => updateConfig("canvasImageCount", normalizeImageCount(event.target.value))}
-                                        />
-                                    </Form.Item>
-                                    <Form.Item label={t("config.preferences.audioVoice")} className="mb-4">
-                                        <Select value={config.audioVoice} options={audioVoiceOptions} onChange={(value) => updateConfig("audioVoice", value)} />
-                                    </Form.Item>
-                                    <Form.Item label={t("config.preferences.audioFormat")} className="mb-4">
-                                        <Select value={config.audioFormat} options={audioFormatOptions} onChange={(value) => updateConfig("audioFormat", value)} />
-                                    </Form.Item>
-                                    <Form.Item label={t("config.preferences.audioSpeed")} className="mb-4">
-                                        <Input
-                                            type="number"
-                                            min={0.25}
-                                            max={4}
-                                            step={0.05}
-                                            value={config.audioSpeed}
-                                            onChange={(event) => updateConfig("audioSpeed", event.target.value)}
-                                            onBlur={(event) => updateConfig("audioSpeed", normalizeAudioSpeedValue(event.target.value))}
-                                        />
-                                    </Form.Item>
-                                </div>
-                                <Form.Item label={t("config.preferences.audioInstructions")} className="mb-4">
-                                    <Input.TextArea rows={2} value={config.audioInstructions} placeholder={t("config.preferences.audioInstructionsPlaceholder")} onChange={(event) => updateConfig("audioInstructions", event.target.value)} />
-                                </Form.Item>
-                                <Form.Item label={t("config.preferences.systemPrompt")} className="mb-4">
-                                    <Input.TextArea rows={4} value={config.systemPrompt} placeholder={t("config.preferences.systemPromptPlaceholder")} onChange={(event) => updateConfig("systemPrompt", event.target.value)} />
+                                <Form.Item label={t("config.preferences.canvasImageCount")} extra={t("config.preferences.canvasImageCountDescription")} className="mb-0">
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        max={15}
+                                        value={config.canvasImageCount}
+                                        onChange={(event) => updateConfig("canvasImageCount", event.target.value)}
+                                        onBlur={(event) => updateConfig("canvasImageCount", normalizeImageCount(event.target.value))}
+                                    />
                                 </Form.Item>
                             </Form>
                         ),
+                    },
+                    {
+                        key: "local-models",
+                        label: t("config.tabs.localModels"),
+                        children: <ConfigLocalModels />,
                     },
                     {
                         key: "prompt-sources",

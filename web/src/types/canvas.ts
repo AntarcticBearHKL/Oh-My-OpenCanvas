@@ -108,6 +108,7 @@ export type CanvasConnection = {
     id: string;
     fromNodeId: string;
     toNodeId: string;
+    relation?: string; // Relationship label key under canvas.relations; when unset the label is derived from the node types.
 };
 
 type CanvasAssistantReference = {
