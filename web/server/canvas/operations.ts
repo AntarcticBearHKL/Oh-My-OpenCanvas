@@ -1,10 +1,10 @@
 import crypto from "node:crypto";
 
-import type { ToolName } from "./schemas.js";
-import { nextCanvasX } from "./tools.js";
-import type { CanvasNode, CanvasNodeType, CanvasSnapshot } from "./types.js";
+import type { ToolName } from "./schemas";
+import { nextCanvasX } from "./tools";
+import type { CanvasNode, CanvasNodeType, CanvasSnapshot } from "./types";
 
-export type CanvasToolRequest = { name: "canvas_apply_ops"; input: Record<string, unknown> };
+type CanvasToolRequest = { name: "canvas_apply_ops"; input: Record<string, unknown> };
 
 /** 将上层画布工具调用转换为前端可执行的批量操作。 */
 export function buildCanvasToolRequest(name: ToolName, input: Record<string, unknown>, state: CanvasSnapshot | null): CanvasToolRequest {
@@ -68,12 +68,6 @@ export function buildCanvasToolRequest(name: ToolName, input: Record<string, unk
         return applyOps([runGenerationOp(data.nodeId, generationMode(data.mode), data.prompt)]);
     }
     throw new Error(`未知工具：${name}`);
-}
-
-/** 按最大边限制计算附件图片节点尺寸，并保持原始比例。 */
-export function fitAttachmentNodeSize(width: number, height: number) {
-    const scale = Math.min(1, 640 / width, 640 / height);
-    return { width: width * scale, height: height * scale };
 }
 
 /** 创建统一的批量画布操作请求。 */

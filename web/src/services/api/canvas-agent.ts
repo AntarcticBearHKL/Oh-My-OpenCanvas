@@ -1,18 +1,16 @@
 import i18n from "@/i18n";
 import type { CanvasAgentSnapshot } from "@/lib/canvas/canvas-agent-ops";
 
-type AgentConfigResponse = { ok?: boolean; protocolVersion?: number; url?: string; token?: string; hasToken?: boolean };
-
-export class AgentApiError<T = unknown> extends Error {
+class AgentApiError<T = unknown> extends Error {
     constructor(readonly status: number, readonly response: T & { code?: string; error?: string; msg?: string }) {
         super(response.error || response.msg || i18n.t("agent.state.requestFailed"));
         this.name = "AgentApiError";
     }
 }
 
-export async function postState(endpoint: string, token: string, clientId: string, snapshot: CanvasAgentSnapshot | null) {
+export async function postState(endpoint: string, clientId: string, snapshot: CanvasAgentSnapshot | null) {
     try {
-        const response = await fetch(`${endpoint}/canvas/state?token=${encodeURIComponent(token)}&clientId=${encodeURIComponent(clientId)}`, {
+        const response = await fetch(`${endpoint}/canvas/state?clientId=${encodeURIComponent(clientId)}`, {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify(snapshot ? { ...snapshot, hasCanvas: true } : { hasCanvas: false }),
@@ -23,31 +21,19 @@ export async function postState(endpoint: string, token: string, clientId: strin
     }
 }
 
-export async function activateAgentClient(endpoint: string, token: string, clientId: string) {
+export async function activateAgentClient(endpoint: string, clientId: string) {
     try {
-        await fetch(`${endpoint}/canvas/activate?token=${encodeURIComponent(token)}&clientId=${encodeURIComponent(clientId)}`, { method: "POST" });
+        await fetch(`${endpoint}/canvas/activate?clientId=${encodeURIComponent(clientId)}`, { method: "POST" });
     } catch {}
 }
 
-export async function postToolResult(endpoint: string, token: string, clientId: string, body: { requestId: string; result?: unknown; error?: string }) {
-    await fetchAgentJson(endpoint, token, `/canvas/result?clientId=${encodeURIComponent(clientId)}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+export async function postToolResult(endpoint: string, clientId: string, body: { requestId: string; result?: unknown; error?: string }) {
+    await fetchAgentJson(endpoint, `/canvas/result?clientId=${encodeURIComponent(clientId)}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 }
 
-export async function fetchAgentJson<T>(endpoint: string, token: string, path: string, init?: RequestInit) {
-    const url = `${endpoint}${path}${path.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}`;
-    const res = await fetch(url, init);
+async function fetchAgentJson<T>(endpoint: string, path: string, init?: RequestInit) {
+    const res = await fetch(`${endpoint}${path}`, init);
     const data = (await res.json().catch(() => ({}))) as T & { error?: string; msg?: string };
     if (!res.ok) throw new AgentApiError(res.status, data);
     return data;
-}
-
-export async function discoverAgentConfig(endpoint: string) {
-    try {
-        const res = await fetch(`${endpoint}/config`);
-        if (!res.ok) return null;
-        const data = (await res.json()) as AgentConfigResponse;
-        return data.ok ? data : null;
-    } catch {
-        return null;
-    }
 }

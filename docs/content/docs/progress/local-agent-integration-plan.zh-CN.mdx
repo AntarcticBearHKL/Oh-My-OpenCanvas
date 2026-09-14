@@ -5,6 +5,8 @@ description: 规划通过本地 Canvas Agent、MCP 和侧边栏助手连接 Code
 
 # 本地 Agent 接入规划
 
+> 说明：本规划最初的形态是「本机 `canvas-mcp` + Codex / Claude Code 侧边栏」。最终实现已收敛为：画布 MCP 融合进前端应用，前端服务在同一端口 3000 上同时提供浏览器桥接与 `/mcp`，不再有独立包、Codex / Claude 对话或 token。以下内容保留为早期规划记录。
+
 本文档规划个人用户在访问线上画布网页时，如何连接自己电脑上的 Codex / Claude Code，并让 Agent 通过对话和工具调用操作当前画布。
 
 ## 目标
@@ -17,23 +19,23 @@ description: 规划通过本地 Canvas Agent、MCP 和侧边栏助手连接 Code
 
 ## 核心结论
 
-浏览器页面不能直接启动本地进程，也不应该直接控制本机 Codex / Claude Code。推荐增加一个用户本机运行的 `canvas-agent` 服务：
+浏览器页面不能直接启动本地进程，也不应该直接控制本机 Codex / Claude Code。推荐增加一个用户本机运行的 `canvas-mcp` 服务：
 
 ```txt
-线上画布网页 <-> 本机 canvas-agent <-> Codex / Claude Code
+线上画布网页 <-> 本机 canvas-mcp <-> Codex / Claude Code
                          |
                          +-> MCP Server
                          +-> 画布连接
 ```
 
-`canvas-agent` 是本地可信边界，负责启动或连接 Codex / Claude Code、暴露 MCP 工具、维护画布连接、转发侧边栏对话事件。
+`canvas-mcp` 是本地可信边界，负责启动或连接 Codex / Claude Code、暴露 MCP 工具、维护画布连接、转发侧边栏对话事件。
 
 ## 推荐目录
 
 后续实现时建议在项目根目录新增独立 npm 包：
 
 ```txt
-canvas-agent/
+canvas-mcp/
   package.json
   tsconfig.json
   src/
@@ -60,13 +62,13 @@ canvas-agent/
 MVP 阶段优先提供 `npx`：
 
 ```bash
-npx -y @basketikun/canvas-agent
+npx -y canvas-mcp
 ```
 
 在本仓库内开发调试时可直接运行：
 
 ```bash
-cd canvas-agent
+cd canvas-mcp
 npm install
 npm run build
 node dist/index.js
@@ -117,10 +119,10 @@ MCP 读取画布状态时默认返回摘要，不直接把完整图片、视频�
 
 ## MCP 工具设计
 
-`canvas-agent` 内置 MCP Server，让 Codex CLI 可以连接：
+`canvas-mcp` 内置 MCP Server，让 Codex CLI 可以连接：
 
 ```txt
-Codex CLI <-> canvas-agent MCP <-> 当前网页画布
+Codex CLI <-> canvas-mcp MCP <-> 当前网页画布
 ```
 
 建议首批 MCP 工具：
@@ -135,13 +137,13 @@ Codex CLI <-> canvas-agent MCP <-> 当前网页画布
 用户本机 Codex 配置示例：
 
 ```bash
-codex mcp add infinite-canvas -- npx -y @basketikun/canvas-agent@latest mcp
+codex mcp add infinite-canvas -- npx -y canvas-mcp@latest mcp
 ```
 
 本仓库调试时可使用，实际配置建议替换为本机绝对路径：
 
 ```bash
-codex mcp add infinite-canvas -- node /path/to/infinite-canvas/canvas-agent/dist/index.js mcp
+codex mcp add infinite-canvas -- node /path/to/infinite-canvas/canvas-mcp/dist/index.js mcp
 ```
 
 网页侧边栏助手另走 Canvas Agent 的对话通道。Canvas Agent 使用官方 `@openai/codex` CLI 的 `codex app-server --stdio` 启动并续用同一个 thread，启动时会注入 `infinite-canvas` MCP 配置并把 `default_tools_approval_mode` 设为 `approve`，避免 Codex 自己的 MCP 审批卡住侧边栏；真正修改画布前由网页侧边栏做二次确认。
@@ -150,11 +152,11 @@ codex mcp add infinite-canvas -- node /path/to/infinite-canvas/canvas-agent/dist
 
 ## 侧边栏助手设计
 
-侧边栏助手连接 `canvas-agent` 后，由 Canvas Agent 选择 Agent Adapter：
+侧边栏助手连接 `canvas-mcp` 后，由 Canvas Agent 选择 Agent Adapter：
 
 ```txt
-Sidebar -> canvas-agent -> Codex app-server stdio
-Sidebar -> canvas-agent -> Claude Code CLI / Claude Agent SDK
+Sidebar -> canvas-mcp -> Codex app-server stdio
+Sidebar -> canvas-mcp -> Claude Code CLI / Claude Agent SDK
 ```
 
 侧边栏优先展示 Codex app-server 原生结构化事件。前端只消费必要事件：
@@ -184,12 +186,12 @@ Claude 后续接入时再单独做 Claude Adapter；当前前端默认只展示 
 
 ## Claude Code 接入优先级
 
-Claude Code 侧当前 MVP 先调用本机 Claude Code CLI 的流式 JSON 输出，由 `canvas-agent` 统一转换事件和工具调用；后续可升级为 Claude Agent SDK。
+Claude Code 侧当前 MVP 先调用本机 Claude Code CLI 的流式 JSON 输出，由 `canvas-mcp` 统一转换事件和工具调用；后续可升级为 Claude Agent SDK。
 
 如果希望 Claude Code 也能操作当前画布，需要给 Claude Code 配置同一个 MCP：
 
 ```bash
-claude mcp add --scope user --transport stdio infinite-canvas -- npx -y @basketikun/canvas-agent@latest mcp
+claude mcp add --scope user --transport stdio infinite-canvas -- npx -y canvas-mcp@latest mcp
 ```
 
 Canvas Agent 调用 Claude Code 时默认允许 `mcp__infinite-canvas__*`，避免 print 模式被工具审批卡住；真正修改画布仍由网页侧边栏确认。
@@ -212,7 +214,7 @@ Canvas Agent 调用 Claude Code 时默认允许 `mcp__infinite-canvas__*`，避�
 
 ### 第一阶段：Codex 终端操作画布
 
-1. 新增 `canvas-agent/` npm 包。
+1. 新增 `canvas-mcp/` npm 包。
 2. Canvas Agent 提供 SSE/HTTP 连接，网页连接并注册当前画布。
 3. 前端新增 `canvasAgent` 控制层。
 4. Canvas Agent 内置 MCP Server。
@@ -240,7 +242,7 @@ Canvas Agent 调用 Claude Code 时默认允许 `mcp__infinite-canvas__*`，避�
 
 ## MVP 验收标准
 
-- 用户运行 `npx -y @basketikun/canvas-agent@latest` 后，线上画布能显示已连接。
+- 用户运行 `npx -y canvas-mcp@latest` 后，线上画布能显示已连接。
 - 用户在 Codex CLI 中可以创建文本节点、移动节点、连接节点。
 - 网页侧边栏能发送一条消息给本地 Codex，并展示流式回复。
 - 网页侧边栏默认只展示本地 Codex，并展示结构化回复。

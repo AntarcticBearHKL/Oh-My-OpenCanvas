@@ -1,5 +1,5 @@
-import { toolInputSchemas, toolNames, type ToolName } from "./schemas.js";
-import type { CanvasNode, CanvasSnapshot } from "./types.js";
+import { toolInputSchemas, toolNames, type ToolName } from "./schemas";
+import type { CanvasNode, CanvasSnapshot } from "./types";
 
 /** 判断传入名称是否为已注册的画布工具。 */
 export function isToolName(name: unknown): name is ToolName {

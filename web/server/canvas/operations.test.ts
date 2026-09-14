@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { buildCanvasToolRequest } from "./operations.js";
+import { buildCanvasToolRequest } from "./operations";
+
+type CanvasOp = { type: string; nodeType?: string; metadata?: { prompt?: unknown }; fromNodeId?: string; toNodeId?: string };
 
 function opsOf(name: Parameters<typeof buildCanvasToolRequest>[0], input: Record<string, unknown>) {
     const request = buildCanvasToolRequest(name, input, null);
-    return (request.input as { ops: Array<Record<string, any>> }).ops;
+    return (request.input as { ops: CanvasOp[] }).ops;
 }
 
 test("generation flow reuses referenced nodes when the prompt only mentions them", () => {

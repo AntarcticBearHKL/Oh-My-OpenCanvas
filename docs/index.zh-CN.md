@@ -41,4 +41,4 @@
 
 ## 原理说明
 
-- [本地 Codex 连接画布原理](/zh-CN/docs/development/local-codex-canvas)
+- [本地画布 MCP 连接画布原理](/zh-CN/docs/development/local-canvas-mcp)

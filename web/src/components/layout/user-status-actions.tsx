@@ -22,7 +22,7 @@ export function UserStatusActions({ showConfig = true, variant = "default" }: Us
     return (
         <div className="inline-flex shrink-0 items-center gap-1">
             {showConfig ? (
-                <button type="button" className={naturalIconClass} style={iconStyle} onClick={() => openConfigDialog(false)} aria-label={t("navigation.config")} title={t("navigation.config")}>
+                <button type="button" className={naturalIconClass} style={iconStyle} onClick={() => openConfigDialog()} aria-label={t("navigation.config")} title={t("navigation.config")}>
                     <Settings2 className="size-4" />
                 </button>
             ) : null}

@@ -17,7 +17,7 @@
 
 - [Local Development](/docs/development/local-development)
 - [Canvas Data Structure](/docs/development/canvas-data-structure)
-- [How the Local Codex Connection Works](/docs/development/local-codex-canvas)
+- [How the Local Canvas MCP Connection Works](/docs/development/local-canvas-mcp)
 
 ## Business
 

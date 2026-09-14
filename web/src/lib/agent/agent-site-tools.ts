@@ -10,9 +10,9 @@ import { useAssetStore } from "@/stores/use-asset-store";
 // Execute site-level Agent tools in the browser, including canvas lists, generation status, prompt search, and asset operations.
 // Their data lives locally in the browser through localforage and Zustand, so this module accesses the relevant stores directly.
 
-export const SITE_TOOL_NAMES = ["canvas_list_projects", "generation_get_status", "prompts_search", "assets_list", "assets_add"] as const;
+const SITE_TOOL_NAMES = ["canvas_list_projects", "generation_get_status", "prompts_search", "assets_list", "assets_add"] as const;
 
-export type SiteToolName = (typeof SITE_TOOL_NAMES)[number];
+type SiteToolName = (typeof SITE_TOOL_NAMES)[number];
 
 export function isSiteTool(name: string): name is SiteToolName {
     return (SITE_TOOL_NAMES as readonly string[]).includes(name);
@@ -21,24 +21,6 @@ export function isSiteTool(name: string): name is SiteToolName {
 function siteText(key: string, options?: Record<string, unknown>) {
     return i18n.t(`agent.siteTools.${key}`, options);
 }
-
-export const SITE_TOOL_LABELS: Record<SiteToolName, string> = {
-    get canvas_list_projects() {
-        return siteText("canvasList");
-    },
-    get generation_get_status() {
-        return siteText("generationStatus");
-    },
-    get prompts_search() {
-        return siteText("promptSearch");
-    },
-    get assets_list() {
-        return siteText("assetList");
-    },
-    get assets_add() {
-        return siteText("assetAdd");
-    },
-};
 
 type SiteToolInput = Record<string, unknown>;
 type SiteToolContext = { canvasSnapshot?: CanvasAgentSnapshot | null };
