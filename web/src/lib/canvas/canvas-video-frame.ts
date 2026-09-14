@@ -1,3 +1,5 @@
+import { createCanvasContext } from "@/lib/canvas/canvas-2d";
+
 export type VideoFramePosition = "first" | "last" | "current";
 
 export async function captureVideoFrame(source: string, position: VideoFramePosition, currentTime: number) {
@@ -22,10 +24,8 @@ export async function captureVideoFrame(source: string, position: VideoFramePosi
             await waitForVideo(video, "loadeddata");
         }
 
-        const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext("2d")!.drawImage(video, 0, 0);
+        const { canvas, context } = createCanvasContext(video.videoWidth, video.videoHeight);
+        context!.drawImage(video, 0, 0);
         return await new Promise<Blob>((resolve, reject) => canvas.toBlob((result) => (result ? resolve(result) : reject(new Error("Failed to capture video frame"))), "image/png"));
     } finally {
         video.removeAttribute("src");

@@ -34,7 +34,7 @@ export function CanvasProjectRow({ project }: { project: CanvasProject }) {
 
     return (
         <div
-            className="flex h-14 w-full cursor-pointer items-center gap-2 border-b border-stone-200/70 px-2 transition last:border-b-0 hover:bg-stone-100 dark:border-stone-800/70 dark:hover:bg-white/5"
+            className="flex h-14 w-full cursor-pointer items-center gap-2 border-b border-border px-2 transition last:border-b-0 hover:bg-black/5 dark:hover:bg-white/10"
             onClick={() => !editing && open()}
         >
             <input

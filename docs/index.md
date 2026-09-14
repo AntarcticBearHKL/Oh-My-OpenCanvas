@@ -1,4 +1,4 @@
-# Infinite Canvas Documentation Index
+# OpenCanvas Documentation Index
 
 ## Overview
 
@@ -37,5 +37,5 @@
 
 ## Notes
 
-- Canvas projects and My Assets are primarily stored in the browser. WebDAV can be configured for cross-device synchronization.
+- Canvas projects and My Assets are primarily stored in the browser; there is no built-in cloud sync.
 - The AI API key is stored in the browser, which sends requests directly to OpenAI-compatible endpoints.

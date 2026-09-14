@@ -6,6 +6,8 @@ import i18n from "@/i18n";
 export type UploadedImage = {
     url: string;
     storageKey?: string;
+    thumbnail?: string;
+    thumbnailKey?: string;
     width: number;
     height: number;
     bytes: number;
@@ -21,6 +23,8 @@ const IMAGE_REMOTE_LOAD_TIMEOUT_MS = 10 * 60_000;
 const IMAGE_DECODE_TIMEOUT_MS = 10_000;
 const IMAGE_RESPONSE_ERROR = "ImageResponseError";
 const IMAGE_TIMEOUT_ERROR = "ImageTimeoutError";
+const THUMBNAIL_MAX_EDGE = 512;
+const THUMBNAIL_QUALITY = 0.82;
 
 type ImageReadOptions = { signal?: AbortSignal };
 
@@ -49,12 +53,51 @@ async function storeImage(blob: Blob, options?: ImageReadOptions): Promise<Uploa
         await store.setItem(storageKey, blob);
         throwIfAborted(options?.signal);
         objectUrls.set(storageKey, url);
-        return { url, storageKey, width: meta.width, height: meta.height, bytes: blob.size, mimeType: blob.type.startsWith("image/") ? blob.type : "" };
+        const thumbnail = await storeThumbnail(storageKey, blob);
+        return { url, storageKey, thumbnail: thumbnail?.url, thumbnailKey: thumbnail?.key, width: meta.width, height: meta.height, bytes: blob.size, mimeType: blob.type.startsWith("image/") ? blob.type : "" };
     } catch (error) {
         URL.revokeObjectURL(url);
         await store.removeItem(storageKey).catch(() => undefined);
         throw error;
     }
+}
+
+function thumbnailStorageKey(storageKey: string) {
+    return `thumb:${storageKey.replace(/^image:/, "")}`;
+}
+
+async function storeThumbnail(storageKey: string, source: Blob) {
+    const key = thumbnailStorageKey(storageKey);
+    const thumbnail = await createThumbnail(source);
+    if (!thumbnail) return null;
+    await store.setItem(key, thumbnail);
+    const url = URL.createObjectURL(thumbnail);
+    objectUrls.set(key, url);
+    return { key, url };
+}
+
+async function createThumbnail(source: Blob) {
+    const bitmap = await createImageBitmap(source).catch(() => null);
+    if (!bitmap) return null;
+    const longEdge = Math.max(bitmap.width, bitmap.height);
+    const scale = longEdge > THUMBNAIL_MAX_EDGE ? THUMBNAIL_MAX_EDGE / longEdge : 1;
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) {
+        bitmap.close();
+        return null;
+    }
+    context.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+    return (await canvasToBlob(canvas, "image/webp", THUMBNAIL_QUALITY)) || (await canvasToBlob(canvas, "image/jpeg", 0.85));
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
+    return new Promise<Blob | null>((resolve) => canvas.toBlob((blob) => resolve(blob), type, quality));
 }
 
 async function fetchImageBlob(url: string, options?: ImageReadOptions) {
@@ -140,6 +183,35 @@ export async function resolveImageUrl(storageKey?: string, fallback = "") {
     return url;
 }
 
+const thumbnailJobs = new Map<string, Promise<string>>();
+
+export async function ensureThumbnailUrl(storageKey?: string, fallback = "") {
+    if (!storageKey) return fallback;
+    const key = thumbnailStorageKey(storageKey);
+    const cached = objectUrls.get(key);
+    if (cached) return cached;
+    const pending = thumbnailJobs.get(key);
+    if (pending) return pending;
+    const job = (async () => {
+        const existing = await store.getItem<Blob>(key);
+        if (existing) {
+            const url = URL.createObjectURL(existing);
+            objectUrls.set(key, url);
+            return url;
+        }
+        const source = await store.getItem<Blob>(storageKey);
+        if (!source) return fallback;
+        const thumbnail = await storeThumbnail(storageKey, source);
+        return thumbnail?.url || fallback;
+    })();
+    thumbnailJobs.set(key, job);
+    try {
+        return await job;
+    } finally {
+        thumbnailJobs.delete(key);
+    }
+}
+
 export async function getImageBlob(storageKey: string) {
     return store.getItem<Blob>(storageKey);
 }
@@ -178,9 +250,10 @@ export async function cleanupUnusedImages(usedData: unknown) {
             collectImageStorageKeys(value, usedKeys);
         }),
     ]);
+    const usedThumbKeys = new Set(Array.from(usedKeys, thumbnailStorageKey));
     const unused: string[] = [];
     await store.iterate((_value, key) => {
-        if (!usedKeys.has(key)) unused.push(key);
+        if (!usedKeys.has(key) && !usedThumbKeys.has(key)) unused.push(key);
     });
     await deleteStoredImages(unused);
 }

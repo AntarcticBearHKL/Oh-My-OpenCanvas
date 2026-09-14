@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { Brush, Camera, Copy, Eraser, Grid2x2, Lock, LockOpen, Maximize2, Scissors, Sparkles, ZoomIn } from "lucide-react";
+import { Brush, Camera, Copy, Eraser, Grid2x2, Lock, LockOpen, Scissors, ZoomIn } from "lucide-react";
 
 import type { CanvasNodeData } from "@/types/canvas";
 import i18n from "@/i18n";
 
-export type ImageNodeActionToolId = "resize" | "maskEdit" | "crop" | "removeBackground" | "split" | "upscale" | "superResolve" | "angle" | "view" | "duplicate";
+type ImageNodeActionToolId = "resize" | "maskEdit" | "crop" | "removeBackground" | "split" | "resolution" | "angle" | "duplicate";
 export type ImageQuickToolId = "info" | "delete" | "saveAsset" | "download" | ImageNodeActionToolId;
 
 type ImageToolHandlers = {
@@ -14,10 +14,8 @@ type ImageToolHandlers = {
     onCrop: (node: CanvasNodeData) => void;
     onRemoveBackground: (node: CanvasNodeData) => void;
     onSplit: (node: CanvasNodeData) => void;
-    onUpscale: (node: CanvasNodeData) => void;
-    onSuperResolve: (node: CanvasNodeData) => void;
+    onResolution: (node: CanvasNodeData) => void;
     onAngle: (node: CanvasNodeData) => void;
-    onViewImage: (node: CanvasNodeData) => void;
     onDuplicate: (node: CanvasNodeData) => void;
 };
 
@@ -36,7 +34,7 @@ type ImageQuickToolsConfig = {
     showLabels: boolean;
 };
 
-export const IMAGE_QUICK_TOOLS_STORAGE_KEY = "canvas-image-quick-tools-v10";
+export const IMAGE_QUICK_TOOLS_STORAGE_KEY = "canvas-image-quick-tools-v11";
 
 const defaultBaseToolIds: ImageQuickToolId[] = ["info", "delete", "saveAsset", "download"];
 
@@ -83,20 +81,12 @@ const imageToolDefinitions: ImageToolDefinition[] = [
         run: (node, handlers) => handlers.onSplit(node),
     },
     {
-        id: "upscale",
+        id: "resolution",
         defaultVisible: true,
-        label: () => i18n.t("canvas.imageTools.upscale"),
-        title: () => i18n.t("canvas.imageTools.upscaleTitle"),
+        label: () => i18n.t("canvas.imageTools.resolution"),
+        title: () => i18n.t("canvas.imageTools.resolutionTitle"),
         icon: () => <ZoomIn className="size-4" />,
-        run: (node, handlers) => handlers.onUpscale(node),
-    },
-    {
-        id: "superResolve",
-        defaultVisible: false,
-        label: () => i18n.t("canvas.imageTools.superResolve"),
-        title: () => i18n.t("canvas.imageTools.superResolveTitle"),
-        icon: () => <Sparkles className="size-4" />,
-        run: (node, handlers) => handlers.onSuperResolve(node),
+        run: (node, handlers) => handlers.onResolution(node),
     },
     {
         id: "angle",
@@ -105,14 +95,6 @@ const imageToolDefinitions: ImageToolDefinition[] = [
         title: () => i18n.t("canvas.imageTools.angleTitle"),
         icon: () => <Camera className="size-4" />,
         run: (node, handlers) => handlers.onAngle(node),
-    },
-    {
-        id: "view",
-        defaultVisible: true,
-        label: () => i18n.t("canvas.imageTools.view"),
-        title: () => i18n.t("canvas.imageTools.viewTitle"),
-        icon: () => <Maximize2 className="size-4" />,
-        run: (node, handlers) => handlers.onViewImage(node),
     },
     {
         id: "duplicate",

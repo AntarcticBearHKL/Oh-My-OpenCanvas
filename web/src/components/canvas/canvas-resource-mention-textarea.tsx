@@ -3,9 +3,9 @@ import type { CSSProperties, MouseEvent, PointerEvent, TextareaHTMLAttributes } 
 import { createPortal } from "react-dom";
 import { FileText, Image as ImageIcon, Music2, Video } from "lucide-react";
 
-import { canvasThemes } from "@/lib/canvas-theme";
+import { canvasThemes, frostedSurfaceClass } from "@/lib/canvas-theme";
+import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { isImeComposing, isPlainEnterKey } from "@/lib/keyboard-event";
-import { useThemeStore } from "@/stores/use-theme-store";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 
 type MentionState = {
@@ -23,7 +23,7 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
 };
 
 export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Props>(function CanvasResourceMentionTextarea({ value, references, onChange, onSubmit, onKeyDown, className, containerClassName, style, highlightLabels = true, ...props }, forwardedRef) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const overlayRef = useRef<HTMLDivElement | null>(null);
     const [mention, setMention] = useState<MentionState | null>(null);
@@ -244,7 +244,7 @@ function MentionMenu({ textarea, caretIndex, references, activeIndex, theme, onS
     return createPortal(
         <div
             data-canvas-resource-mention-menu="true"
-            className="fixed z-[120] max-h-56 w-64 overflow-y-auto rounded-xl border p-1 backdrop-blur-md"
+                className={`fixed z-[120] max-h-56 w-64 overflow-y-auto rounded-2xl border p-1 ${frostedSurfaceClass}`}
             style={{ left, top, background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
             onPointerDown={stopCanvasInteraction}
             onMouseDown={stopCanvasInteraction}

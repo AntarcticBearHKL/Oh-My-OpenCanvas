@@ -5,9 +5,9 @@ import { Image } from "antd";
 import { FileText, Image as ImageIcon, Music2, Video } from "lucide-react";
 
 import i18n from "@/i18n";
-import { canvasThemes } from "@/lib/canvas-theme";
+import { canvasThemes, frostedSurfaceClass } from "@/lib/canvas-theme";
+import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { isImeComposing, isPlainEnterKey } from "@/lib/keyboard-event";
-import { useThemeStore } from "@/stores/use-theme-store";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 
 type Props = {
@@ -32,7 +32,7 @@ type Token =
 // Prompt-panel contentEditable input: @ references embed thumbnail chips instead of plain label text.
 // Serialization converts chips back to reference labels so the generated value matches the former textarea semantics.
 export function CanvasPromptChipInput({ value, references, onChange, onSubmit, className, style, placeholder }: Props) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const editorRef = useRef<HTMLDivElement>(null);
     const composingRef = useRef(false);
     // Track the last value emitted to the parent. An identical focused value is this component's own echo,
@@ -225,7 +225,7 @@ function MentionMenu({ rect, references, activeIndex, theme, onSelect }: { rect:
     return createPortal(
         <div
             data-canvas-resource-mention-menu="true"
-            className="fixed z-[1100] max-h-56 w-64 overflow-y-auto rounded-xl border p-1 backdrop-blur-md"
+            className={`fixed z-[1100] max-h-56 w-64 overflow-y-auto rounded-2xl border p-1 ${frostedSurfaceClass}`}
             style={{ left, top, background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
             onPointerDown={stopCanvasInteraction}
             onMouseDown={stopCanvasInteraction}

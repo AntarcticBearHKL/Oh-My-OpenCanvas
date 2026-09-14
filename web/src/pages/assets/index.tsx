@@ -333,7 +333,7 @@ export default function AssetsPage() {
                             </Form.Item>
                         ) : (
                             <Form.Item label={t("assets.fields.imageContent")} required>
-                                <div className="rounded-lg border border-dashed border-stone-300 p-4 dark:border-stone-700">
+                                <div className="rounded-xl border border-dashed border-border p-4">
                                     <Button icon={<Upload className="size-4" />} onClick={() => imageInputRef.current?.click()}>
                                         {t("assets.selectImageFile")}
                                     </Button>
@@ -350,13 +350,13 @@ export default function AssetsPage() {
                             </Form.Item>
                         )}
                     </Form>
-                    <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 dark:border-stone-800 dark:bg-stone-950">
+                    <div className="rounded-2xl border border-border bg-card p-4">
                         <Typography.Text strong>{t("assets.preview")}</Typography.Text>
-                        <div className="mt-3 overflow-hidden rounded-lg border border-stone-200 bg-background dark:border-stone-800">
+                        <div className="mt-3 overflow-hidden rounded-xl border border-border bg-background">
                             {coverUrl || imageDraft?.dataUrl ? (
                                 <img src={coverUrl || imageDraft?.dataUrl} alt="" className="aspect-[4/3] w-full object-cover" />
                             ) : (
-                                <div className="flex aspect-[4/3] items-center justify-center bg-stone-100 p-5 text-center text-sm text-stone-500 dark:bg-stone-900">{content || t("assets.noCover")}</div>
+                                <div className="flex aspect-[4/3] items-center justify-center bg-muted p-5 text-center text-sm text-stone-500">{content || t("assets.noCover")}</div>
                             )}
                             <div className="p-4">
                                 <Typography.Text strong ellipsis className="block">
@@ -424,7 +424,7 @@ function AssetCard({ asset, onOpen, onEdit, onCopy, onDownload, onDelete }: { as
                     {cover ? (
                         <img src={cover} alt={asset.title} className="aspect-[4/3] w-full object-cover" />
                     ) : (
-                        <div className="flex aspect-[4/3] items-center justify-center bg-stone-100 p-5 text-center text-sm leading-6 text-stone-600 dark:bg-stone-900 dark:text-stone-300">{asset.kind === "text" ? asset.data.content : t("assets.noCover")}</div>
+                        <div className="flex aspect-[4/3] items-center justify-center bg-muted p-5 text-center text-sm leading-6 text-stone-600 dark:text-stone-300">{asset.kind === "text" ? asset.data.content : t("assets.noCover")}</div>
                     )}
                 </button>
             }
@@ -488,9 +488,9 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | nu
             {asset ? (
                 <div className="space-y-5">
                     {cover ? (
-                        <Image src={cover} alt={asset.title} className="rounded-lg" />
+                        <Image src={cover} alt={asset.title} className="rounded-xl" />
                     ) : (
-                        <div className="rounded-lg border border-stone-200 bg-stone-50 p-5 text-sm leading-6 text-stone-600 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">{asset.kind === "text" ? asset.data.content : t("assets.noCover")}</div>
+                        <div className="rounded-xl border border-border bg-card p-5 text-sm leading-6 text-stone-600 dark:text-stone-300">{asset.kind === "text" ? asset.data.content : t("assets.noCover")}</div>
                     )}
                     <div>
                         <Typography.Title level={4} className="!mb-2">
@@ -503,14 +503,14 @@ function AssetDrawer({ asset, onClose, onCopy, onDownload }: { asset: Asset | nu
                             ))}
                         </Space>
                     </div>
-                    <div className="rounded-lg border border-stone-200 p-4 dark:border-stone-800">
+                    <div className="rounded-xl border border-border p-4">
                         <Typography.Text type="secondary" className="block text-xs">
                             {t("assets.fields.textContent")}
                         </Typography.Text>
                         {asset.kind === "text" ? (
                             <Typography.Paragraph className="mt-2 whitespace-pre-wrap">{asset.data.content}</Typography.Paragraph>
                         ) : asset.kind === "video" ? (
-                            <video src={asset.data.url} controls className="mt-2 aspect-video w-full rounded-lg bg-black" />
+                            <video src={asset.data.url} controls className="mt-2 aspect-video w-full rounded-xl bg-black" />
                         ) : (
                             <Typography.Text className="mt-2 block">
                                 {asset.data.width}x{asset.data.height} · {formatBytes(asset.data.bytes)} · {asset.data.mimeType}

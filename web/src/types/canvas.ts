@@ -12,6 +12,7 @@ export type ViewportTransform = {
 export enum CanvasNodeType {
     Image = "image",
     Text = "text",
+    Prompt = "prompt",
     Config = "config",
     ImageGeneration = "image-generation",
     Video = "video",
@@ -23,7 +24,7 @@ export enum CanvasNodeType {
 // Node types are open strings: built-ins use CanvasNodeType and plugins use "<pluginId>:<name>".
 export type CanvasNodeTypeId = CanvasNodeType | (string & {});
 
-export type CanvasNodeStatus = "idle" | "success" | "loading" | "error";
+type CanvasNodeStatus = "idle" | "success" | "loading" | "error";
 export type CanvasGenerationMode = "text" | "image" | "video" | "audio";
 export type CanvasImageGenerationType = "generation" | "edit";
 
@@ -33,6 +34,8 @@ export type CanvasNodeImage = {
     errorDetails?: string;
     content: string;
     storageKey?: string;
+    thumbnail?: string;
+    thumbnailKey?: string;
     naturalWidth: number;
     naturalHeight: number;
     bytes: number;
@@ -80,6 +83,8 @@ export type CanvasNodeMetadata = {
     images?: CanvasNodeImage[];
     primaryImageId?: string;
     storageKey?: string;
+    thumbnail?: string;
+    thumbnailKey?: string;
     mimeType?: string;
     bytes?: number;
     durationMs?: number;
@@ -127,7 +132,7 @@ export type CanvasAssistantImage = {
     prompt: string;
 };
 
-export type CanvasAssistantMessage = {
+type CanvasAssistantMessage = {
     id: string;
     role: "user" | "assistant" | "system" | "tool" | "error";
     title?: string;

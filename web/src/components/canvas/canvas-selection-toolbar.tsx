@@ -1,12 +1,10 @@
-import type { ReactNode } from "react";
 import { Group, Ungroup } from "lucide-react";
-import { Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
-import { canvasThemes } from "@/lib/canvas-theme";
+import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { nodeBounds } from "@/lib/canvas/canvas-node-geometry";
-import { useThemeStore } from "@/stores/use-theme-store";
 import type { CanvasNodeData, ViewportTransform } from "@/types/canvas";
+import { canvasFloatingBarClass, canvasFloatingBarStyle, CanvasFloatingToolbarAction } from "./canvas-floating-toolbar";
 
 const SELECTION_PAD = 14;
 
@@ -28,7 +26,7 @@ export function CanvasSelectionToolbar({
     onUngroup: () => void;
 }) {
     const { t } = useTranslation();
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     if (nodes.length < 2) return null;
 
     const bounds = nodeBounds(nodes);
@@ -58,28 +56,16 @@ export function CanvasSelectionToolbar({
             </svg>
             {showActions ? (
                 <div
-                    className="absolute z-[70] flex h-12 -translate-x-1/2 -translate-y-full items-center overflow-visible rounded-[18px] border border-black/10 bg-white text-[15px] text-[#242529]"
-                    style={{ left: left + width / 2, top: top - 8 }}
+                    className={canvasFloatingBarClass}
+                    style={{ ...canvasFloatingBarStyle(theme), left: left + width / 2, top: top - 8 }}
                     onMouseDown={(event) => event.stopPropagation()}
                     onPointerDown={(event) => event.stopPropagation()}
                 >
-                    {canGroup ? <SelectionAction title={t("canvas.nodeToolbar.groupTitle")} label={t("canvas.nodeToolbar.group")} icon={<Group className="size-4" />} onClick={onGroup} /> : null}
-                    {canUngroup ? <SelectionAction title={t("canvas.nodeToolbar.ungroupTitle")} label={t("canvas.nodeToolbar.ungroup")} icon={<Ungroup className="size-4" />} onClick={onUngroup} /> : null}
+                    {canGroup ? <CanvasFloatingToolbarAction title={t("canvas.nodeToolbar.groupTitle")} label={t("canvas.nodeToolbar.group")} icon={<Group className="size-4" />} onClick={onGroup} /> : null}
+                    {canUngroup ? <CanvasFloatingToolbarAction title={t("canvas.nodeToolbar.ungroupTitle")} label={t("canvas.nodeToolbar.ungroup")} icon={<Ungroup className="size-4" />} onClick={onUngroup} /> : null}
                 </div>
             ) : null}
         </>
     );
 }
 
-function SelectionAction({ title, label, icon, onClick }: { title: string; label: string; icon: ReactNode; onClick: () => void }) {
-    return (
-        <Tooltip title={title} placement="top" mouseEnterDelay={0.2} color="#ffffff" styles={{ root: { color: "#242529", fontSize: 13, fontWeight: 500 } }}>
-            <button type="button" className="group relative flex h-12 items-center whitespace-nowrap px-1.5" onClick={onClick} aria-label={title}>
-                <span className="flex h-9 items-center gap-2 rounded-lg px-2.5 transition group-hover:bg-[#f0f0f1]">
-                    {icon}
-                    <span>{label}</span>
-                </span>
-            </button>
-        </Tooltip>
-    );
-}

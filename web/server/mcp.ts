@@ -6,7 +6,7 @@ import { INSTRUCTIONS, VERSION } from "./config";
 
 /** 创建绑定到共享画布会话的 MCP 服务实例。 */
 export function createCanvasMcpServer(session: CanvasSession) {
-    const server = new McpServer({ name: "canvas-mcp", version: VERSION }, { instructions: INSTRUCTIONS });
+    const server = new McpServer({ name: "opencanvas-mcp", version: VERSION }, { instructions: INSTRUCTIONS });
     toolNames.forEach((name) => registerCanvasTool(server, session, name));
     return server;
 }

@@ -6,7 +6,7 @@ import { nanoid } from "nanoid";
 import i18n from "@/i18n";
 import type { CanvasBackgroundMode } from "@/lib/canvas-theme";
 
-export type ApiCallFormat = "openai";
+type ApiCallFormat = "openai";
 export type ModelCapability = "image" | "video" | "text" | "audio";
 export type ReasoningEffort = "auto" | "low" | "medium" | "high" | "xhigh";
 
@@ -56,14 +56,7 @@ export type AiConfig = {
     canvasBackgroundMode: CanvasBackgroundMode;
 };
 
-export type WebdavSyncConfig = {
-    url: string;
-    username: string;
-    password: string;
-    directory: string;
-    lastSyncedAt: string;
-};
-export type ConfigTabKey = "channels" | "appearance" | "models" | "generation" | "local-models" | "prompt-sources" | "webdav" | "local-storage" | "about";
+export type ConfigTabKey = "channels" | "appearance" | "models" | "generation" | "local-models" | "prompt-sources" | "local-storage" | "about";
 
 type ChannelCredentialsImportResult = {
     status: "created" | "updated" | "missing-base-url" | "invalid-base-url";
@@ -105,23 +98,14 @@ export const defaultConfig: AiConfig = {
     canvasBackgroundMode: "dots",
 };
 
-const defaultWebdavSyncConfig: WebdavSyncConfig = {
-    url: "",
-    username: "",
-    password: "",
-    directory: "infinite-canvas",
-    lastSyncedAt: "",
-};
-
 type ConfigStore = {
     config: AiConfig;
-    webdav: WebdavSyncConfig;
     isConfigOpen: boolean;
     configTab: ConfigTabKey;
     updateConfig: <K extends keyof AiConfig>(key: K, value: AiConfig[K]) => void;
     importChannelCredentials: (input: { baseUrl?: string | null; apiKey?: string | null }) => ChannelCredentialsImportResult;
-    updateWebdavConfig: <K extends keyof WebdavSyncConfig>(key: K, value: WebdavSyncConfig[K]) => void;
     isAiConfigReady: (config: AiConfig, model: string) => boolean;
+    setConfigTab: (tab: ConfigTabKey) => void;
     openConfigDialog: (tab?: ConfigTabKey) => void;
     setConfigDialogOpen: (isOpen: boolean) => void;
 };
@@ -187,7 +171,6 @@ export const useConfigStore = create<ConfigStore>()(
     persist(
         (set, get) => ({
             config: defaultConfig,
-            webdav: defaultWebdavSyncConfig,
             isConfigOpen: false,
             configTab: "channels",
             updateConfig: (key, value) =>
@@ -203,31 +186,23 @@ export const useConfigStore = create<ConfigStore>()(
                 if (result.config !== currentConfig) set({ config: result.config });
                 return { status: result.status, channelName: result.channelName };
             },
-            updateWebdavConfig: (key, value) =>
-                set((state) => ({
-                    webdav: {
-                        ...state.webdav,
-                        [key]: value,
-                    },
-                })),
             isAiConfigReady: (config, model) => isAiConfigReady(config, model),
+            setConfigTab: (configTab) => set({ configTab }),
             openConfigDialog: (configTab = "channels") => set({ isConfigOpen: true, configTab }),
             setConfigDialogOpen: (isConfigOpen) => set({ isConfigOpen }),
         }),
         {
             name: CONFIG_STORE_KEY,
-            partialize: (state) => ({ config: state.config, webdav: state.webdav }),
+            partialize: (state) => ({ config: state.config }),
             merge: (persisted, current) => {
                 const persistedState = (persisted || {}) as Partial<ConfigStore>;
                 const persistedConfig = (persistedState.config || {}) as Partial<AiConfig>;
-                const persistedWebdav = (persistedState.webdav || {}) as Partial<WebdavSyncConfig>;
                 const config = { ...defaultConfig, ...persistedConfig };
                 if (!Array.isArray(persistedConfig.channels)) config.channels = [];
                 const channels = normalizeChannels(config);
                 const models = modelOptionsFromChannels(channels);
                 return {
                     ...current,
-                    webdav: { ...defaultWebdavSyncConfig, ...persistedWebdav },
                     config: {
                         ...config,
                         channelMode: "local",

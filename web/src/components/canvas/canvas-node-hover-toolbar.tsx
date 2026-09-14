@@ -1,20 +1,21 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Modal, Segmented, Tooltip } from "antd";
-import { BetweenHorizontalStart, BringToFront, Copy, Download, Ellipsis, FolderPlus, GalleryHorizontal, GalleryHorizontalEnd, Image as ImageIcon, Info, LayoutDashboard, MessageSquare, Minus, Music2, Plus, RefreshCw, SendToBack, Settings2, Trash2, Ungroup, Upload, Video } from "lucide-react";
+import { Modal, Segmented } from "antd";
+import { BetweenHorizontalStart, Copy, Download, FolderPlus, GalleryHorizontal, GalleryHorizontalEnd, Image as ImageIcon, Info, LayoutDashboard, Layers, MessageSquare, Minus, Music2, Plus, RefreshCw, Settings2, Tags, Trash2, Ungroup, Upload, Video } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { canvasThemes } from "@/lib/canvas-theme";
+import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { formatBytes, getDataUrlByteSize } from "@/lib/image-utils";
 import type { VideoFramePosition } from "@/lib/canvas/canvas-video-frame";
-import { useThemeStore } from "@/stores/use-theme-store";
 import { CanvasNodeType, type CanvasNodeData, type ViewportTransform } from "@/types/canvas";
 import type { CanvasNodeToolbarItem } from "@/types/canvas-plugin";
-import { ImageToolSettingsModal, type ImageToolbarSettingsTool } from "./canvas-image-toolbar-settings-modal";
+import { canvasFloatingBarClass, canvasFloatingBarStyle, CanvasFloatingToolbarAction } from "./canvas-floating-toolbar";
+import { CanvasNodeLayerPopover } from "./canvas-node-layer-popover";
 import { IMAGE_QUICK_TOOLS_STORAGE_KEY, buildImageToolbarTools, defaultImageQuickToolIds, readImageQuickToolsConfig, type ImageQuickToolId } from "./canvas-image-toolbar-tools";
 
 type CanvasNodeHoverToolbarProps = {
     node: CanvasNodeData | null;
+    nodes: CanvasNodeData[];
     viewport: ViewportTransform;
     onKeep: (nodeId: string) => void;
     onLeave: () => void;
@@ -30,16 +31,13 @@ type CanvasNodeHoverToolbarProps = {
     onCrop: (node: CanvasNodeData) => void;
     onRemoveBackground: (node: CanvasNodeData) => void;
     onSplit: (node: CanvasNodeData) => void;
-    onUpscale: (node: CanvasNodeData) => void;
-    onSuperResolve: (node: CanvasNodeData) => void;
+    onResolution: (node: CanvasNodeData) => void;
     onAngle: (node: CanvasNodeData) => void;
-    onViewImage: (node: CanvasNodeData) => void;
     onRetry: (node: CanvasNodeData) => void;
     onToggleFreeResize: (node: CanvasNodeData) => void;
     onDelete: (node: CanvasNodeData) => void;
     onDuplicate: (node: CanvasNodeData) => void;
-    onBringForward: (node: CanvasNodeData) => void;
-    onSendBackward: (node: CanvasNodeData) => void;
+    onMoveLayer: (nodeId: string, direction: "up" | "down") => void;
     onCaptureVideoFrame: (node: CanvasNodeData, position: VideoFramePosition) => void;
     onUngroup?: (node: CanvasNodeData) => void;
     onComposeBoard?: (node: CanvasNodeData) => void;
@@ -59,6 +57,7 @@ type ToolbarTool = {
 
 export function CanvasNodeHoverToolbar({
     node,
+    nodes,
     viewport,
     onKeep,
     onLeave,
@@ -74,16 +73,13 @@ export function CanvasNodeHoverToolbar({
     onCrop,
     onRemoveBackground,
     onSplit,
-    onUpscale,
-    onSuperResolve,
+    onResolution,
     onAngle,
-    onViewImage,
     onRetry,
     onToggleFreeResize,
     onDelete,
     onDuplicate,
-    onBringForward,
-    onSendBackward,
+    onMoveLayer,
     onCaptureVideoFrame,
     onUngroup,
     onComposeBoard,
@@ -91,10 +87,9 @@ export function CanvasNodeHoverToolbar({
 }: CanvasNodeHoverToolbarProps) {
     const [quickImageToolIds, setQuickImageToolIds] = useState<ImageQuickToolId[]>(defaultImageQuickToolIds);
     const [showImageToolLabels, setShowImageToolLabels] = useState(false);
-    const [draftImageToolIds, setDraftImageToolIds] = useState<ImageQuickToolId[]>(defaultImageQuickToolIds);
-    const [draftShowImageToolLabels, setDraftShowImageToolLabels] = useState(false);
-    const [imageToolSettingsOpen, setImageToolSettingsOpen] = useState(false);
+    const [layerOpen, setLayerOpen] = useState(false);
     const { t } = useTranslation();
+    const theme = useCanvasTheme();
 
     useEffect(() => {
         try {
@@ -110,12 +105,11 @@ export function CanvasNodeHoverToolbar({
     }, []);
 
     useEffect(() => {
-        setImageToolSettingsOpen(false);
+        setLayerOpen(false);
     }, [node?.id]);
 
     if (!node) return null;
 
-    const activeNode = node;
     const left = viewport.x + (node.position.x + node.width / 2) * viewport.k;
     const top = viewport.y + node.position.y * viewport.k - 14;
     const isImage = node.type === CanvasNodeType.Image;
@@ -130,17 +124,16 @@ export function CanvasNodeHoverToolbar({
     const canRetry = node.metadata?.status === "error" && !(isVideo && Boolean(node.metadata?.videoTaskId) && !hasVideo);
     const canQueryVideoTask = isVideo && Boolean(node.metadata?.videoTaskId) && !hasVideo && node.metadata?.status !== "loading";
     const quickImageToolIdSet = new Set(quickImageToolIds);
-    const imageTools = buildImageToolbarTools(node, { onUpload, onToggleFreeResize, onMaskEdit, onCrop, onRemoveBackground, onSplit, onUpscale, onSuperResolve, onAngle, onViewImage, onDuplicate });
+    const imageTools = buildImageToolbarTools(node, { onUpload, onToggleFreeResize, onMaskEdit, onCrop, onRemoveBackground, onSplit, onResolution, onAngle, onDuplicate });
 
-    function openImageToolSettings() {
-        onKeep(activeNode.id);
-        setDraftImageToolIds(quickImageToolIds);
-        setDraftShowImageToolLabels(showImageToolLabels);
-        setImageToolSettingsOpen(true);
+    function toggleImageToolLabels() {
+        const showLabels = !showImageToolLabels;
+        setShowImageToolLabels(showLabels);
+        window.localStorage.setItem(IMAGE_QUICK_TOOLS_STORAGE_KEY, JSON.stringify({ ids: quickImageToolIds, showLabels }));
     }
 
     const baseToolbarTools: ToolbarTool[] = [
-        { id: "info", title: t("canvas.nodeToolbar.infoTitle"), label: t("canvas.nodeToolbar.info"), icon: <Info className="size-4" />, onClick: () => onInfo(node) },
+        ...(hasImage ? [] : [{ id: "info", title: t("canvas.nodeToolbar.infoTitle"), label: t("canvas.nodeToolbar.info"), icon: <Info className="size-4" />, onClick: () => onInfo(node) }]),
         ...(node.type === CanvasNodeType.Group && onUngroup ? [{ id: "ungroup", title: t("canvas.nodeToolbar.ungroupTitle"), label: t("canvas.nodeToolbar.ungroup"), icon: <Ungroup className="size-4" />, onClick: () => onUngroup(node) }] : []),
         ...(hasImage ? [] : [{ id: "duplicate", title: t("canvas.nodeToolbar.duplicateTitle"), label: t("canvas.controls.duplicate"), icon: <Copy className="size-4" />, onClick: () => onDuplicate(node) }]),
         { id: "delete", title: t("canvas.nodeToolbar.removeTitle"), label: t("common.delete"), icon: <Trash2 className="size-4" />, onClick: () => onDelete(node), danger: true },
@@ -168,72 +161,36 @@ export function CanvasNodeHoverToolbar({
         ...(isAudio ? [{ id: "uploadAudio", title: t(hasAudio ? "canvas.nodeToolbar.replaceAudio" : "canvas.nodeToolbar.uploadAudio"), label: t(hasAudio ? "canvas.nodeToolbar.replaceAudio" : "canvas.nodeToolbar.uploadAudio"), icon: <Music2 className="size-4" />, onClick: () => onUpload(node) }] : []),
         ...(hasImage ? imageTools.map((tool) => ({ id: tool.id, title: tool.title, label: tool.label, icon: tool.icon, active: tool.active, onClick: tool.onClick })) : []),
     ];
-    const layerTools: ToolbarTool[] = isImage
-        ? [
-              { id: "layer-forward", title: t("canvas.nodeToolbar.bringForward"), label: t("canvas.nodeToolbar.bringForward"), icon: <BringToFront className="size-4" />, onClick: () => onBringForward(node) },
-              { id: "layer-backward", title: t("canvas.nodeToolbar.sendBackward"), label: t("canvas.nodeToolbar.sendBackward"), icon: <SendToBack className="size-4" />, onClick: () => onSendBackward(node) },
-          ]
-        : [];
-    const toolbarTools: ToolbarTool[] = [...(hasImage ? [...baseToolbarTools, ...nodeToolbarTools].filter((tool) => quickImageToolIdSet.has(tool.id as ImageQuickToolId)) : [...baseToolbarTools, ...nodeToolbarTools, ...extraTools]), ...layerTools];
-    const selectableImageToolbarTools = [...baseToolbarTools, ...nodeToolbarTools].filter((tool) => tool.id !== "retry") as ImageToolbarSettingsTool[];
-
-    const closeImageToolSettings = () => {
-        setImageToolSettingsOpen(false);
-        onLeave();
-    };
-
-    const setDraftImageToolVisible = (id: ImageQuickToolId, visible: boolean) => {
-        setDraftImageToolIds((current) => {
-            const selected = new Set(current);
-            if (visible) selected.add(id);
-            else selected.delete(id);
-            return selectableImageToolbarTools.filter((tool) => selected.has(tool.id)).map((tool) => tool.id);
-        });
-    };
-
-    const saveImageToolSettings = () => {
-        const config = { ids: draftImageToolIds, showLabels: draftShowImageToolLabels };
-        setQuickImageToolIds(config.ids);
-        setShowImageToolLabels(config.showLabels);
-        window.localStorage.setItem(IMAGE_QUICK_TOOLS_STORAGE_KEY, JSON.stringify(config));
-        closeImageToolSettings();
-    };
+    const toolbarTools: ToolbarTool[] = hasImage ? [...baseToolbarTools, ...nodeToolbarTools].filter((tool) => quickImageToolIdSet.has(tool.id as ImageQuickToolId)) : [...baseToolbarTools, ...nodeToolbarTools, ...extraTools];
 
     return (
-        <>
-            <div
-                className="absolute z-[70] flex h-12 -translate-x-1/2 -translate-y-full items-center overflow-visible rounded-[18px] border border-black/10 bg-white text-[15px] text-[#242529]"
-                style={{ left, top }}
-                onMouseEnter={() => onKeep(node.id)}
-                onMouseLeave={() => {
-                    if (!imageToolSettingsOpen) onLeave();
-                }}
-                onMouseDown={(event) => event.stopPropagation()}
-                onPointerDown={(event) => event.stopPropagation()}
-            >
-                {toolbarTools.map((tool) => (
-                    <ToolbarAction key={tool.id} {...tool} showLabel={isImage ? showImageToolLabels : !tool.iconOnly} />
-                ))}
-                {hasImage ? <ToolbarAction id="more" title={t("canvas.imageTools.configure")} label={t("canvas.imageTools.more")} icon={<Ellipsis className="size-4" />} active={imageToolSettingsOpen} onClick={openImageToolSettings} showLabel={showImageToolLabels} /> : null}
-            </div>
+        <div
+            className={canvasFloatingBarClass}
+            style={{ ...canvasFloatingBarStyle(theme), left, top }}
+            onMouseEnter={() => onKeep(node.id)}
+            onMouseLeave={() => {
+                setLayerOpen(false);
+                onLeave();
+            }}
+            onMouseDown={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+        >
+            {toolbarTools.map((tool) => (
+                <CanvasFloatingToolbarAction key={tool.id} {...tool} showLabel={isImage ? showImageToolLabels : !tool.iconOnly} />
+            ))}
             {hasImage ? (
-                <ImageToolSettingsModal
-                    open={imageToolSettingsOpen}
-                    tools={selectableImageToolbarTools}
-                    selectedIds={draftImageToolIds}
-                    showLabels={draftShowImageToolLabels}
-                    onToggle={setDraftImageToolVisible}
-                    onShowLabelsChange={setDraftShowImageToolLabels}
-                    onCancel={closeImageToolSettings}
-                    onSave={saveImageToolSettings}
-                />
+                <CanvasFloatingToolbarAction title={t("canvas.imageTools.showLabels")} label={t("canvas.imageTools.showLabels")} icon={<Tags className="size-4" />} active={showImageToolLabels} onClick={toggleImageToolLabels} showLabel={showImageToolLabels} />
             ) : null}
-        </>
+            {!isBoard ? (
+                <CanvasFloatingToolbarAction title={t("canvas.nodeToolbar.layers")} label={t("canvas.nodeToolbar.layers")} icon={<Layers className="size-4" />} active={layerOpen} onClick={() => setLayerOpen((value) => !value)} showLabel={isImage ? showImageToolLabels : true} />
+            ) : null}
+            {layerOpen ? <CanvasNodeLayerPopover node={node} nodes={nodes} onMove={(direction) => onMoveLayer(node.id, direction)} /> : null}
+        </div>
     );
 }
 
 export function CanvasNodeInfoModal({ node, open, onClose }: { node: CanvasNodeData | null; open: boolean; onClose: () => void }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const { t } = useTranslation();
     const [view, setView] = useState<"info" | "json">("info");
     const imageBytes = node?.type === CanvasNodeType.Image && node.metadata?.content ? getDataUrlByteSize(node.metadata.content) : 0;
@@ -301,20 +258,6 @@ export function CanvasNodeInfoModal({ node, open, onClose }: { node: CanvasNodeD
                 </div>
             ) : null}
         </Modal>
-    );
-}
-
-function ToolbarAction({ title, label, icon, onClick, showLabel, active = false, danger = false }: ToolbarTool & { showLabel: boolean }) {
-    const hasText = showLabel && Boolean(label);
-    return (
-        <Tooltip title={title} placement="top" mouseEnterDelay={0.2} color="#ffffff" styles={{ root: { color: "#242529", fontSize: 13, fontWeight: 500 } }}>
-            <button type="button" className={`group relative flex h-12 items-center whitespace-nowrap px-1.5 ${danger ? "text-[#ef4444]" : ""}`} onClick={onClick} aria-label={title}>
-                <span className={`flex h-9 items-center ${hasText ? "gap-2 px-2.5" : "justify-center px-2"} rounded-lg transition group-hover:bg-[#f0f0f1] ${active ? "bg-[#eeeeef]" : ""}`}>
-                    {icon}
-                    {hasText ? <span>{label}</span> : null}
-                </span>
-            </button>
-        </Tooltip>
     );
 }
 

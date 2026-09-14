@@ -1,10 +1,12 @@
 import { Alert, Button, Progress, Spin } from "antd";
 import type { TFunction } from "i18next";
-import { Database, HardDrive, Layers3, RefreshCw } from "lucide-react";
+import { ChevronRight, Database, Eraser, HardDrive, Layers3, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { readLocalStorageUsage, type LocalStorageUsage } from "@/services/local-storage-usage";
+import { useConfigStore } from "@/stores/use-config-store";
+import { useLocalModelStore } from "@/stores/use-local-model-store";
 
 const storeLabelKeys: Record<string, string> = {
     app_state: "appState",
@@ -18,6 +20,8 @@ const storeLabelKeys: Record<string, string> = {
 
 export function ConfigLocalStorage({ active }: { active: boolean }) {
     const { t } = useTranslation();
+    const setConfigTab = useConfigStore((state) => state.setConfigTab);
+    const backgroundRemoval = useLocalModelStore((state) => state.backgroundRemoval);
     const [usage, setUsage] = useState<LocalStorageUsage | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -73,6 +77,19 @@ export function ConfigLocalStorage({ active }: { active: boolean }) {
                             </div>
                             <Progress percent={percent} showInfo={false} />
                         </div>
+                        <button
+                            type="button"
+                            className="mt-4 flex w-full items-center gap-3 rounded-lg border border-stone-200 px-3 py-2.5 text-left transition hover:bg-stone-100/70 dark:border-stone-800 dark:hover:bg-stone-900/60"
+                            onClick={() => setConfigTab("local-models")}
+                        >
+                            <Eraser className="size-4 shrink-0 text-stone-500" />
+                            <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-medium">{t("config.localStorage.localModel")}</span>
+                                <span className="mt-0.5 block text-[11px] text-stone-500">{t("config.localStorage.localModelHint")}</span>
+                            </span>
+                            <span className="shrink-0 text-sm font-medium tabular-nums">{backgroundRemoval.status === "ready" ? t("config.localModels.size") : t(`config.localModels.status.${backgroundRemoval.status}`, { percent: backgroundRemoval.percent })}</span>
+                            <ChevronRight className="size-4 shrink-0 text-stone-400" />
+                        </button>
                     </>
                 ) : null}
             </section>

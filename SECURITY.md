@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-infinite-canvas is in active development. Security fixes are accepted for the
+OpenCanvas is in active development. Security fixes are accepted for the
 `main` branch and the latest tagged release. Older versions may be handled on a
 best-effort basis.
 
@@ -16,7 +16,7 @@ Preferred reporting channels:
 1. Use GitHub private vulnerability reporting or a GitHub Security Advisory for
    this repository, if available.
 2. If a private GitHub report is not available, email `1844025705@qq.com` with
-   the subject `[infinite-canvas security]`.
+   the subject `[OpenCanvas security]`.
 3. If neither private channel is available, open a public issue that asks for a
    private contact channel and does not include technical exploit details.
 
@@ -27,7 +27,7 @@ Please include:
 - Impact and attack scenario.
 - Any relevant logs, screenshots, or proof of concept, with secrets removed.
 - Whether the issue affects local-only usage, hosted deployments, browser
-  storage, WebDAV sync, AI provider configuration, or API proxy behavior.
+  storage, AI provider configuration, or API proxy behavior.
 
 ## Scope
 
@@ -52,7 +52,7 @@ Examples of in-scope reports:
 - Cross-site scripting or token exfiltration in the web app.
 - Exposure of locally stored API keys or synced canvas data caused by project
   code.
-- Unsafe file handling, import/export behavior, or WebDAV proxy behavior.
+- Unsafe file handling or import/export behavior.
 - Authentication, authorization, or access-control flaws in project-managed
   features.
 - Supply-chain issues that are exploitable through this repository's shipped

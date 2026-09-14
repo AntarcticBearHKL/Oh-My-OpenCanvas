@@ -1,3 +1,5 @@
+import { createCanvasContext } from "@/lib/canvas/canvas-2d";
+
 type ImageCropRect = {
     x: number;
     y: number;
@@ -8,6 +10,7 @@ type ImageCropRect = {
 export type ImageUpscaleAlgorithm = "nearest" | "bilinear" | "high";
 
 export const MAX_UPSCALE_LONG_EDGE = 4096;
+export const MIN_UPSCALE_LONG_EDGE = 64;
 
 export type ImageUpscaleParams = {
     targetLongEdge: number;
@@ -65,21 +68,18 @@ function buildSplitCuts(lines: number[] | undefined, size: number, count: number
 export async function upscaleDataUrl(dataUrl: string, params: ImageUpscaleParams) {
     const image = await loadImage(dataUrl);
     const { width, height } = resolveUpscaleSize(image.width, image.height, params.targetLongEdge);
-    return params.algorithm === "high" ? drawStepUpscale(image, width, height) : drawResize(image, image.width, image.height, width, height, params.algorithm);
+    return params.algorithm === "high" && width > image.width ? drawStepUpscale(image, width, height) : drawResize(image, image.width, image.height, width, height, params.algorithm);
 }
 
 export function resolveUpscaleSize(width: number, height: number, targetLongEdge: number) {
     const longEdge = Math.max(1, width, height);
-    const target = Math.min(MAX_UPSCALE_LONG_EDGE, Math.max(1, Math.round(targetLongEdge)));
+    const target = Math.min(MAX_UPSCALE_LONG_EDGE, Math.max(MIN_UPSCALE_LONG_EDGE, Math.round(targetLongEdge)));
     const scale = target / longEdge;
     return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
 }
 
 function drawCrop(image: HTMLImageElement, sx: number, sy: number, sw: number, sh: number) {
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, sw);
-    canvas.height = Math.max(1, sh);
-    const context = canvas.getContext("2d");
+    const { canvas, context } = createCanvasContext(Math.max(1, sw), Math.max(1, sh));
     if (!context) return image.src;
     context.drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
     return canvas.toDataURL("image/png");
@@ -107,10 +107,7 @@ function drawResize(source: CanvasImageSource, sourceWidth: number, sourceHeight
 }
 
 function drawResizeCanvas(source: CanvasImageSource, sourceWidth: number, sourceHeight: number, width: number, height: number, algorithm: ImageUpscaleAlgorithm) {
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d");
+    const { canvas, context } = createCanvasContext(width, height);
     if (!context) return canvas;
     context.imageSmoothingEnabled = algorithm !== "nearest";
     context.imageSmoothingQuality = algorithm === "bilinear" ? "medium" : "high";

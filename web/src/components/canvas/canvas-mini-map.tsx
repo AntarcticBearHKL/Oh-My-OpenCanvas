@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import { canvasThemes } from "@/lib/canvas-theme";
+import { useCanvasTheme } from "@/hooks/use-canvas-theme";
+import { frostedSurfaceClass } from "@/lib/canvas-theme";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
-import { useThemeStore } from "@/stores/use-theme-store";
 import { type CanvasNodeData, type ViewportTransform } from "@/types/canvas";
 
 export function Minimap({ nodes, viewport, viewportSize, onViewportChange }: { nodes: CanvasNodeData[]; viewport: ViewportTransform; viewportSize: { width: number; height: number }; onViewportChange: (viewport: ViewportTransform) => void }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const containerRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
     const width = 240;
@@ -96,7 +96,7 @@ export function Minimap({ nodes, viewport, viewportSize, onViewportChange }: { n
     };
 
     return (
-        <div className="absolute bottom-24 left-6 z-50 overflow-hidden rounded-lg border backdrop-blur-sm" style={{ width, height, background: theme.toolbar.panel, borderColor: theme.toolbar.border }}>
+        <div className={`absolute bottom-24 left-6 z-50 overflow-hidden rounded-2xl border ${frostedSurfaceClass}`} style={{ width, height, background: theme.toolbar.panel, borderColor: theme.toolbar.border }}>
             <div
                 ref={containerRef}
                 className="relative h-full w-full cursor-crosshair"

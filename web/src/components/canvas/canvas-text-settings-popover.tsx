@@ -5,8 +5,8 @@ import { Button, InputNumber } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { reasoningEffortLabel, TextSettingsPanel } from "@/components/text-settings-panel";
-import { canvasThemes } from "@/lib/canvas-theme";
-import { useThemeStore } from "@/stores/use-theme-store";
+import { canvasThemes, frostedSurfaceClass } from "@/lib/canvas-theme";
+import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import type { AiConfig, ReasoningEffort } from "@/stores/use-config-store";
 
 type CanvasTextSettingsPopoverProps = {
@@ -20,7 +20,7 @@ type CanvasTextSettingsPopoverProps = {
 
 export function CanvasTextSettingsPopover({ config, onConfigChange, count, onCountChange, buttonClassName, placement = "topLeft" }: CanvasTextSettingsPopoverProps) {
     const { t } = useTranslation();
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const buttonRef = useRef<HTMLSpanElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
     const [open, setOpen] = useState(false);
@@ -84,13 +84,14 @@ function TextSettingsPortal({ buttonRect, panelRef, placement, theme, config, co
         left: Math.max(margin, Math.min(window.innerWidth - width - margin, left)),
         ...(topPlacement ? { bottom: window.innerHeight - buttonRect.top + gap } : { top: buttonRect.bottom + gap }),
         background: theme.toolbar.panel,
-        borderRadius: 18,
+        border: `1px solid ${theme.toolbar.border}`,
+        borderRadius: 16,
         padding: 18,
         color: theme.node.text,
     } as const;
 
     return createPortal(
-        <div ref={panelRef} style={style} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+        <div ref={panelRef} className={frostedSurfaceClass} style={style} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
             <TextSettingsPanel config={config} onConfigChange={onConfigChange} theme={theme} />
             {onCountChange ? (
                 <div className="mt-4 space-y-2.5">

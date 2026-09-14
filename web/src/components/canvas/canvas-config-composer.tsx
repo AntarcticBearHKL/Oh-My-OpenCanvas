@@ -5,8 +5,8 @@ import { FileText, Group, Image as ImageIcon, Music2, Video, X } from "lucide-re
 import { useTranslation } from "react-i18next";
 
 import i18n from "@/i18n";
-import { canvasThemes } from "@/lib/canvas-theme";
-import { useThemeStore } from "@/stores/use-theme-store";
+import { canvasThemes, frostedSurfaceClass } from "@/lib/canvas-theme";
+import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import type { NodeGenerationInput } from "./canvas-node-generation";
 import { CanvasNodeReferenceBar } from "./canvas-node-reference-bar";
 import type { CanvasNodeData } from "@/types/canvas";
@@ -35,7 +35,7 @@ const CONFIG_REFERENCE_PATTERN = /@\[node:([^\]]+)\]/g;
 
 export function CanvasConfigComposer({ nodeId, nodes, value, inputs, connectedNodes = [], onChange, onClose, onDisconnectReference, onStartReferenceSelection }: CanvasConfigComposerProps) {
     const { t } = useTranslation();
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const editorRef = useRef<HTMLDivElement>(null);
     const composingRef = useRef(false);
     const [mention, setMention] = useState<MentionState | null>(null);
@@ -117,7 +117,7 @@ export function CanvasConfigComposer({ nodeId, nodes, value, inputs, connectedNo
     return (
         <div
             data-canvas-no-zoom
-            className="rounded-2xl border p-3 backdrop-blur"
+            className={`rounded-2xl border p-3 ${frostedSurfaceClass}`}
             style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
             onMouseDown={stopCanvasInteraction}
             onPointerDown={stopCanvasInteraction}
@@ -205,7 +205,7 @@ function MentionMenu({ inputs, allInputs, activeIndex, theme, onSelect }: { inpu
     };
 
     return (
-        <div className="absolute left-2 top-[calc(100%+6px)] z-[90] max-h-56 w-64 overflow-y-auto rounded-xl border p-1" style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border }}>
+        <div className={`absolute left-2 top-[calc(100%+6px)] z-[90] max-h-56 w-64 overflow-y-auto rounded-2xl border p-1 ${frostedSurfaceClass}`} style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border }}>
             {inputs.map((input, index) => (
                 <button
                     key={input.nodeId}

@@ -1,3 +1,4 @@
+import { createCanvasContext } from "@/lib/canvas/canvas-2d";
 import { nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
 import { readMediaDimensions } from "@/lib/media-size";
 import { resolveImageUrl } from "@/services/image-storage";
@@ -5,14 +6,14 @@ import { type CanvasNodeData } from "@/types/canvas";
 
 export type SmartCanvasResolution = "1k" | "2k" | "4k";
 
-export const SMART_CANVAS_DEFAULT_RATIO = "16:9";
-export const SMART_CANVAS_DEFAULT_RESOLUTION: SmartCanvasResolution = "2k";
-export const SMART_CANVAS_DEFAULT_BACKGROUND = "transparent";
-export const SMART_CANVAS_BASE_WIDTH = 640;
-export const SMART_CANVAS_BASE_HEIGHT = 360;
+const SMART_CANVAS_DEFAULT_RATIO = "16:9";
+const SMART_CANVAS_DEFAULT_RESOLUTION: SmartCanvasResolution = "2k";
+const SMART_CANVAS_DEFAULT_BACKGROUND = "transparent";
+const SMART_CANVAS_BASE_WIDTH = 640;
+const SMART_CANVAS_BASE_HEIGHT = 360;
 export const SMART_CANVAS_DEFAULT_FONT_SIZE = 32;
 
-export type SmartCanvasComposite = {
+type SmartCanvasComposite = {
     dataUrl: string;
     width: number;
     height: number;
@@ -34,7 +35,7 @@ export function smartCanvasTexts(board: CanvasNodeData) {
     return board.metadata?.boardTexts ?? [];
 }
 
-export function smartCanvasTargetSize(board: CanvasNodeData) {
+function smartCanvasTargetSize(board: CanvasNodeData) {
     return readMediaDimensions("", smartCanvasResolution(board), smartCanvasRatio(board));
 }
 
@@ -71,10 +72,7 @@ export async function composeSmartCanvas(board: CanvasNodeData, images: CanvasNo
     const target = smartCanvasTargetSize(board);
     const width = Math.max(1, target.width);
     const height = Math.max(1, target.height);
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d");
+    const { canvas, context } = createCanvasContext(width, height);
     if (!context) return { dataUrl: "", width, height };
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = "high";

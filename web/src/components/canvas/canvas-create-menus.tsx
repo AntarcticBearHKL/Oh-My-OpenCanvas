@@ -1,8 +1,8 @@
 import { ImageIcon, List, Music2, Settings2, Video } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { canvasThemes } from "@/lib/canvas-theme";
-import { useThemeStore } from "@/stores/use-theme-store";
+import { canvasThemes, frostedSurfaceClass } from "@/lib/canvas-theme";
+import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { CanvasNodeType, type ConnectionHandle, type Position } from "@/types/canvas";
 
 export type PendingConnectionCreate = {
@@ -19,13 +19,13 @@ export function ConnectionCreateMenu({
     onCreate: (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio) => void;
     onClose: () => void;
 }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const { t } = useTranslation();
     return (
         <div
-            className="absolute z-[120] w-[300px] rounded-[18px] border p-3 backdrop-blur"
+            className={`absolute z-[120] w-[300px] rounded-2xl border p-3 ${frostedSurfaceClass}`}
             data-connection-create-menu
-            style={{ left: pending.position.x, top: pending.position.y, background: theme.node.panel, borderColor: theme.node.stroke, color: theme.node.text }}
+            style={{ left: pending.position.x, top: pending.position.y, background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
             onMouseDown={(event) => event.stopPropagation()}
             onPointerDown={(event) => event.stopPropagation()}
         >

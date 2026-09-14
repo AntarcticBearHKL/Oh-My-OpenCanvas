@@ -1,5 +1,6 @@
 import { create } from "zustand";
 
+import { createCanvasContext } from "@/lib/canvas/canvas-2d";
 import { removeImageBackground } from "@/services/background-removal";
 
 const BACKGROUND_REMOVAL_READY_KEY = "canvas-bg-removal-ready";
@@ -9,6 +10,7 @@ type LocalModelStatus = "idle" | "downloading" | "ready" | "error";
 type LocalModelStore = {
     backgroundRemoval: { status: LocalModelStatus; percent: number };
     prepareBackgroundRemoval: (force?: boolean) => Promise<boolean>;
+    clearBackgroundRemovalModel: () => void;
 };
 
 let preparing: Promise<boolean> | null = null;
@@ -19,10 +21,7 @@ function initialBackgroundRemoval() {
 }
 
 async function warmUpBackgroundRemoval(onProgress: (percent: number) => void) {
-    const canvas = document.createElement("canvas");
-    canvas.width = 64;
-    canvas.height = 64;
-    const context = canvas.getContext("2d");
+    const { canvas, context } = createCanvasContext(64, 64);
     if (!context) throw new Error("Canvas 2D context is unavailable");
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, 64, 64);
@@ -59,5 +58,9 @@ export const useLocalModelStore = create<LocalModelStore>((set, get) => ({
                 preparing = null;
             });
         return preparing;
+    },
+    clearBackgroundRemovalModel: () => {
+        localStorage.removeItem(BACKGROUND_REMOVAL_READY_KEY);
+        set({ backgroundRemoval: { status: "idle", percent: 0 } });
     },
 }));

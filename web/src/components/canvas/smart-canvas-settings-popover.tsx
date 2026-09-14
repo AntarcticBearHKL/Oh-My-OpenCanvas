@@ -5,9 +5,9 @@ import { Button, ColorPicker, Segmented, Select } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { ImageSettingsTheme } from "@/components/image-settings-panel";
-import { canvasThemes } from "@/lib/canvas-theme";
+import { canvasThemes, frostedSurfaceClass } from "@/lib/canvas-theme";
+import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { mediaRatioOptions } from "@/lib/media-size";
-import { useThemeStore } from "@/stores/use-theme-store";
 import type { SmartCanvasResolution } from "@/lib/canvas/smart-canvas";
 
 type SmartCanvasSettingsPatch = {
@@ -32,7 +32,7 @@ const resolutionOptions: { label: string; value: SmartCanvasResolution }[] = [
 
 export function SmartCanvasSettingsPopover({ ratio, resolution, background, onChange }: SmartCanvasSettingsPopoverProps) {
     const { t } = useTranslation();
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const buttonRef = useRef<HTMLSpanElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
     const [open, setOpen] = useState(false);
@@ -109,14 +109,15 @@ function SmartCanvasSettingsPortal({
         top: buttonRect.bottom + gap,
         maxHeight: Math.max(260, window.innerHeight - buttonRect.bottom - margin * 2),
         background: theme.toolbar.panel,
-        borderRadius: 18,
+        border: `1px solid ${theme.toolbar.border}`,
+        borderRadius: 16,
         padding: 18,
         overflowY: "auto",
         color: theme.node.text,
     } as const;
 
     return createPortal(
-        <div ref={panelRef} className="canvas-smart-canvas-settings-popover" style={style} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
+        <div ref={panelRef} className={`canvas-smart-canvas-settings-popover ${frostedSurfaceClass}`} style={style} onPointerDown={(event) => event.stopPropagation()} onMouseDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()}>
             <ImageSettingsTheme theme={theme}>
                 <div className="space-y-4">
                     <div className="space-y-2.5">

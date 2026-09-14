@@ -1,6 +1,5 @@
 import { connectionRelationLabel } from "@/lib/canvas/canvas-connections";
-import { canvasThemes } from "@/lib/canvas-theme";
-import { useThemeStore } from "@/stores/use-theme-store";
+import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import type { CanvasConnection, CanvasNodeData, ConnectionHandle, Position } from "@/types/canvas";
 
 export function ConnectionPath({
@@ -18,7 +17,7 @@ export function ConnectionPath({
     onSelect: () => void;
     scale: number;
 }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const startX = from.position.x + from.width;
     const startY = from.position.y + from.height / 2;
     const endX = to.position.x;
@@ -73,7 +72,7 @@ export function ConnectionPath({
 }
 
 export function ActiveConnectionPath({ node, handle, mouseWorld, target }: { node?: CanvasNodeData; handle: ConnectionHandle; mouseWorld: Position; target?: CanvasNodeData }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     if (!node) return null;
 
     const startX = handle.handleType === "source" ? node.position.x + node.width : mouseWorld.x;

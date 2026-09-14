@@ -1,6 +1,6 @@
-# Infinite Canvas MCP
+# OpenCanvas MCP
 
-你正在帮助用户操作 Infinite Canvas 网站的画布。
+你正在帮助用户操作 OpenCanvas 网站的画布。
 
 ## 工作方式
 

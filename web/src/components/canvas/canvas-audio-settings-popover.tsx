@@ -5,8 +5,8 @@ import { Button } from "antd";
 
 import { AudioSettingsPanel } from "@/components/audio-settings-panel";
 import { audioFormatLabel, audioSpeedLabel, audioVoiceLabel } from "@/lib/audio-generation";
-import { canvasThemes } from "@/lib/canvas-theme";
-import { useThemeStore } from "@/stores/use-theme-store";
+import { canvasThemes, frostedSurfaceClass } from "@/lib/canvas-theme";
+import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import type { AiConfig } from "@/stores/use-config-store";
 
 export type CanvasAudioSettingKey = "audioVoice" | "audioFormat" | "audioSpeed" | "audioInstructions";
@@ -19,7 +19,7 @@ type CanvasAudioSettingsPopoverProps = {
 };
 
 export function CanvasAudioSettingsPopover({ config, onConfigChange, buttonClassName, placement = "topLeft" }: CanvasAudioSettingsPopoverProps) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const buttonRef = useRef<HTMLSpanElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
     const [open, setOpen] = useState(false);
@@ -91,7 +91,8 @@ function AudioSettingsPortal({
         left: Math.max(margin, Math.min(window.innerWidth - width - margin, left)),
         ...(topPlacement ? { bottom: window.innerHeight - buttonRect.top + gap, maxHeight: Math.max(260, buttonRect.top - margin * 2) } : { top: buttonRect.bottom + gap, maxHeight: Math.max(260, window.innerHeight - buttonRect.bottom - margin * 2) }),
         background: theme.toolbar.panel,
-        borderRadius: 18,
+        border: `1px solid ${theme.toolbar.border}`,
+        borderRadius: 16,
         padding: 18,
         overflowY: "auto",
         color: theme.node.text,
@@ -100,7 +101,7 @@ function AudioSettingsPortal({
     return createPortal(
         <div
             ref={panelRef}
-            className="canvas-image-settings-popover"
+            className={`canvas-image-settings-popover ${frostedSurfaceClass}`}
             style={style}
             onPointerDown={(event) => event.stopPropagation()}
             onMouseDown={(event) => event.stopPropagation()}

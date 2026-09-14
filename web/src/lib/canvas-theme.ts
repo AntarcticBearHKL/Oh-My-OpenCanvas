@@ -1,4 +1,4 @@
-export type CanvasColorTheme = "light" | "dark";
+type CanvasColorTheme = "light" | "dark";
 export type CanvasBackgroundMode = "dots" | "lines" | "blank";
 
 export const canvasThemes = {
@@ -22,8 +22,8 @@ export const canvasThemes = {
             faint: "#a8a29e",
         },
         toolbar: {
-            panel: "rgba(251,250,247,.96)",
-            border: "#d6d3ca",
+            panel: "rgba(251,250,247,.72)",
+            border: "rgba(28,25,23,.10)",
             item: "#57534e",
             itemHover: "#e7e5df",
             activeBg: "#e7e5df",
@@ -50,8 +50,8 @@ export const canvasThemes = {
             faint: "#78716c",
         },
         toolbar: {
-            panel: "rgba(31,29,26,.96)",
-            border: "#44403c",
+            panel: "rgba(31,29,26,.72)",
+            border: "rgba(255,255,255,.10)",
             item: "#d6d3d1",
             itemHover: "#292524",
             activeBg: "#3a3631",
@@ -61,3 +61,6 @@ export const canvasThemes = {
 } as const;
 
 export type CanvasTheme = (typeof canvasThemes)[CanvasColorTheme];
+
+export const frostedSurfaceClass = "backdrop-blur-xl backdrop-saturate-150";
+export const frostedSurfaceLargeClass = "backdrop-blur-2xl backdrop-saturate-150";

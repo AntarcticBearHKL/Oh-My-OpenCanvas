@@ -10,14 +10,14 @@ export type CanvasNodeResource = { kind: CanvasResourceKind; text?: string; url?
 
 // AI generation capabilities injected by the host, reusing its model and credential configuration.
 type GenerateOptions = { signal?: AbortSignal; references?: string[]; model?: string };
-export type GenerateImageOptions = GenerateOptions & { count?: number; size?: string };
-export type GenerateImageResult = { images: string[] };
-export type GenerateVideoOptions = GenerateOptions & { size?: string; seconds?: string };
-export type GenerateVideoResult = { url: string; mimeType: string; width?: number; height?: number; durationMs?: number };
-export type GenerateTextOptions = { signal?: AbortSignal; model?: string; system?: string; onDelta?: (text: string) => void };
-export type GenerateTextResult = { text: string };
-export type PluginModelCapability = "image" | "video" | "text" | "audio";
-export type ModelOption = { value: string; label: string };
+type GenerateImageOptions = GenerateOptions & { count?: number; size?: string };
+type GenerateImageResult = { images: string[] };
+type GenerateVideoOptions = GenerateOptions & { size?: string; seconds?: string };
+type GenerateVideoResult = { url: string; mimeType: string; width?: number; height?: number; durationMs?: number };
+type GenerateTextOptions = GenerateOptions & { signal?: AbortSignal; model?: string; system?: string; onDelta?: (text: string) => void };
+type GenerateTextResult = { text: string };
+type PluginModelCapability = "image" | "video" | "text" | "audio";
+type ModelOption = { value: string; label: string };
 
 export type CanvasPluginAi = {
     generateImage: (prompt: string, options?: GenerateImageOptions) => Promise<GenerateImageResult>;
@@ -91,7 +91,7 @@ export type CanvasPluginHost = {
 };
 
 // Configuration for reusing the host's built-in generation panel; see SDK CanvasBuiltinPanelConfig.
-export type CanvasBuiltinPanelConfig = {
+type CanvasBuiltinPanelConfig = {
     mode: "image" | "video" | "text" | "audio";
     promptPrefix?: string;
     writeBackToSelf?: boolean;

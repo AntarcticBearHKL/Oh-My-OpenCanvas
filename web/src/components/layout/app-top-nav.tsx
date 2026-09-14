@@ -6,6 +6,7 @@ import { navigationTools, type NavigationToolSlug } from "@/constant/navigation-
 import { AppConfigModal } from "@/components/layout/app-config-modal";
 import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
 import { UserStatusActions } from "@/components/layout/user-status-actions";
+import { frostedSurfaceClass } from "@/lib/canvas-theme";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -20,7 +21,7 @@ export function AppTopNav() {
     return (
         <>
             {!hideHeader ? (
-                <header className="sticky top-0 z-20 h-14 shrink-0 border-b border-stone-200 bg-background/90 backdrop-blur-xl dark:border-stone-800">
+                <header className={cn("sticky top-0 z-20 h-14 shrink-0 border-b border-black/10 bg-background/70 dark:border-white/10", frostedSurfaceClass)}>
                     <div className="flex h-full items-stretch justify-between gap-3 px-4 sm:gap-5">
                         <div className="flex min-w-0 items-center">
                             <Link to="/" className="flex h-full min-w-0 items-center gap-2 text-sm font-semibold leading-none tracking-tight text-stone-950 transition hover:text-stone-600 dark:text-stone-100 dark:hover:text-stone-300">

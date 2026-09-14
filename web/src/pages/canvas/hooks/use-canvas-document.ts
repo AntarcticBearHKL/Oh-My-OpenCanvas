@@ -45,7 +45,6 @@ type CanvasDocumentParams = {
     setExpandedBatchNodeIds: Dispatch<SetStateAction<Set<string>>>;
     setSelectionBox: Dispatch<SetStateAction<SelectionBox | null>>;
     setViewport: Dispatch<SetStateAction<ViewportTransform>>;
-    setClearConfirmOpen: Dispatch<SetStateAction<boolean>>;
 };
 
 /**
@@ -54,7 +53,7 @@ type CanvasDocumentParams = {
  * injected through params.
  */
 export function useCanvasDocument(params: CanvasDocumentParams) {
-    const { effectiveConfig, getCanvasCenter, nodesRef, connectionsRef, selectedNodeIdsRef, clipboardRef, referencePickerNodeId, referenceConnectedNodeIds, cleanupCanvasFiles, projectId, chatSessions, size, cancelPendingConnectionCreate, setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId, setHoveredNodeId, setToolbarNodeId, setInfoNodeId, setCropNodeId, setMaskEditNodeId, setAngleNodeId, setPreviewNodeId, setRunningNodeId, setReferencePickerNodeId, setExpandedBatchNodeIds, setSelectionBox, setViewport, setClearConfirmOpen } = params;
+    const { effectiveConfig, getCanvasCenter, nodesRef, connectionsRef, selectedNodeIdsRef, clipboardRef, referencePickerNodeId, referenceConnectedNodeIds, cleanupCanvasFiles, projectId, chatSessions, size, cancelPendingConnectionCreate, setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId, setHoveredNodeId, setToolbarNodeId, setInfoNodeId, setCropNodeId, setMaskEditNodeId, setAngleNodeId, setPreviewNodeId, setRunningNodeId, setReferencePickerNodeId, setExpandedBatchNodeIds, setSelectionBox, setViewport } = params;
     const createNode = useCallback(
         (type: CanvasNodeTypeId, position?: Position) => {
             const targetPosition = position || getCanvasCenter();
@@ -197,20 +196,6 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
         setDialogNodeId(null);
     }, [cancelPendingConnectionCreate]);
 
-    const clearCanvas = useCallback(() => {
-        setNodes([]);
-        setConnections([]);
-        setInfoNodeId(null);
-        setCropNodeId(null);
-        setMaskEditNodeId(null);
-        setAngleNodeId(null);
-        setPreviewNodeId(null);
-        setRunningNodeId(null);
-        deselectCanvas();
-        setClearConfirmOpen(false);
-        cleanupCanvasFiles({ projectId, nodes: [], chatSessions: [] });
-    }, [cleanupCanvasFiles, deselectCanvas, projectId]);
-
     const duplicateNode = useCallback((nodeId: string) => {
         const source = nodesRef.current.find((node) => node.id === nodeId);
         if (!source) return;
@@ -325,5 +310,5 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
         [size.height, size.width],
     );
 
-    return { createNode, deleteNodes, groupSelection, ungroupSelection, deleteConnection, disconnectNodeReference, startNodeReferenceSelection, exitNodeReferenceSelection, selectNodeReference, deselectCanvas, clearCanvas, duplicateNode, copySelectedNodes, pasteCopiedNodes, resetViewport, setZoomScale };
+    return { createNode, deleteNodes, groupSelection, ungroupSelection, deleteConnection, disconnectNodeReference, startNodeReferenceSelection, exitNodeReferenceSelection, selectNodeReference, deselectCanvas, duplicateNode, copySelectedNodes, pasteCopiedNodes, resetViewport, setZoomScale };
 }

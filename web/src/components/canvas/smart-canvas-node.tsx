@@ -2,10 +2,9 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { Frame, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { canvasThemes } from "@/lib/canvas-theme";
+import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { smartCanvasBackground, smartCanvasRatio, smartCanvasResolution, smartCanvasTexts } from "@/lib/canvas/smart-canvas";
 import { resolveImageUrl } from "@/services/image-storage";
-import { useThemeStore } from "@/stores/use-theme-store";
 import type { CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
 
 type SmartCanvasNodeContentProps = {
@@ -19,7 +18,7 @@ type BoardText = NonNullable<CanvasNodeMetadata["boardTexts"]>[number];
 const EMPTY_BOARD_IMAGES: CanvasNodeData[] = [];
 
 export function SmartCanvasNodeContent({ node, boardImages = EMPTY_BOARD_IMAGES, onBoardTextsChange }: SmartCanvasNodeContentProps) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
     const { t } = useTranslation();
     const urls = useResolvedBoardImageUrls(boardImages);
     const ratio = smartCanvasRatio(node);

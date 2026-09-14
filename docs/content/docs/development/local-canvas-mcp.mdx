@@ -36,7 +36,7 @@ MCP clients connect to the Streamable HTTP endpoint on the same port:
 POST http://127.0.0.1:3000/mcp
 ```
 
-The server creates one `McpServer` per initialized session and routes later requests by the `mcp-session-id` header. It advertises the `canvas-mcp` server name and exposes 29 canvas tools: site-level tools are forwarded to the browser, canvas read tools are answered from the latest snapshot, and the remaining canvas tools are translated into `canvas_apply_ops`.
+The server creates one `McpServer` per initialized session and routes later requests by the `mcp-session-id` header. It advertises the `opencanvas-mcp` server name and exposes 29 canvas tools: site-level tools are forwarded to the browser, canvas read tools are answered from the latest snapshot, and the remaining canvas tools are translated into `canvas_apply_ops`.
 
 ## Security boundary
 

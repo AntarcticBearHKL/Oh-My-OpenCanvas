@@ -1,9 +1,10 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
-import { Compass, Eraser, Focus, Hand, HelpCircle, Image as ImageIcon, LayoutDashboard, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
+import { Compass, Focus, Hand, HelpCircle, Image as ImageIcon, LayoutDashboard, MessageSquareText, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
 
-import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
+import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
+import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { getNodePluginId, listNodeDefinitions, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useTranslation } from "react-i18next";
@@ -19,6 +20,7 @@ export function CanvasToolbar({
     isMiniMapOpen,
     onAddImage,
     onAddImageGeneration,
+    onAddPrompt,
     onAddVideo,
     onAddAudio,
     onAddSmartCanvas,
@@ -26,7 +28,6 @@ export function CanvasToolbar({
     onUndo,
     onRedo,
     onDelete,
-    onClear,
     onCanvasToolChange,
     onScaleChange,
     onResetViewport,
@@ -40,6 +41,7 @@ export function CanvasToolbar({
     isMiniMapOpen: boolean;
     onAddImage: () => void;
     onAddImageGeneration: () => void;
+    onAddPrompt: () => void;
     onAddVideo: () => void;
     onAddAudio: () => void;
     onAddSmartCanvas: () => void;
@@ -47,7 +49,6 @@ export function CanvasToolbar({
     onUndo: () => void;
     onRedo: () => void;
     onDelete: () => void;
-    onClear: () => void;
     onCanvasToolChange: (tool: "select" | "pan") => void;
     onScaleChange: (scale: number) => void;
     onResetViewport: () => void;
@@ -97,7 +98,7 @@ export function CanvasToolbar({
     return (
         <div ref={rootRef} className="pointer-events-none absolute bottom-5 left-0 right-0 z-50 flex justify-center px-3">
             {tip ? <DockTip label={tip} x={tipX} theme={theme} /> : null}
-            <div ref={wrapRef} className="thin-scrollbar pointer-events-auto flex h-14 max-w-full items-center gap-1 overflow-x-auto rounded-xl border px-2 backdrop-blur [&>*]:shrink-0" style={dockStyle}>
+            <div ref={wrapRef} className={`thin-scrollbar pointer-events-auto flex h-14 max-w-full items-center gap-1 overflow-x-auto rounded-2xl border px-2 [&>*]:shrink-0 ${frostedSurfaceClass}`} style={dockStyle}>
                 <ToolbarButton id={`tool-${canvasTool}`} label={t(`canvas.toolbar.${canvasTool}`)} active hovered={hovered} activeStyle={activeStyle} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={() => onCanvasToolChange(canvasTool === "select" ? "pan" : "select")}>
                     {canvasTool === "select" ? <MousePointer2 className="size-4.5" /> : <Hand className="size-4.5" />}
                 </ToolbarButton>
@@ -113,6 +114,9 @@ export function CanvasToolbar({
                 </ToolbarButton>
                 <ToolbarButton id="tool-image-generation" label={t("canvas.nodeTypes.imageGeneration")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddImageGeneration}>
                     <Sparkles className="size-4.5" />
+                </ToolbarButton>
+                <ToolbarButton id="tool-prompt" label={t("canvas.nodeTypes.prompt")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddPrompt}>
+                    <MessageSquareText className="size-4.5" />
                 </ToolbarButton>
                 {SHOW_MEDIA_TOOLS ? (
                     <>
@@ -174,15 +178,11 @@ export function CanvasToolbar({
                         </ToolbarButton>
                     </>
                 ) : null}
-                <Divider theme={theme} />
-                <ToolbarButton id="tool-clear" label={t("canvas.toolbar.clear")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onClear} danger>
-                    <Eraser className="size-4.5" />
-                </ToolbarButton>
             </div>
 
             {extensionsOpen && extensionDefs.length ? (
                 <div
-                    className="thin-scrollbar pointer-events-auto absolute bottom-[72px] z-30 max-h-[50vh] w-[240px] -translate-x-1/2 overflow-y-auto rounded-xl border p-2 backdrop-blur"
+                    className={`thin-scrollbar pointer-events-auto absolute bottom-[72px] z-30 max-h-[50vh] w-[240px] -translate-x-1/2 overflow-y-auto rounded-2xl border p-2 ${frostedSurfaceClass}`}
                     style={{ left: extPanelX || "50%", background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.item }}
                 >
                     <div className="px-1.5 pb-1.5 text-[11px] font-medium opacity-50">{t("canvas.toolbar.extensions")}</div>
@@ -212,7 +212,7 @@ export function CanvasToolbar({
 
             {zoomOpen ? (
                 <div
-                    className="pointer-events-auto absolute bottom-[72px] z-30 w-[248px] -translate-x-1/2 rounded-xl border p-2.5 backdrop-blur"
+                    className={`pointer-events-auto absolute bottom-[72px] z-30 w-[248px] -translate-x-1/2 rounded-2xl border p-2.5 ${frostedSurfaceClass}`}
                     style={{ left: zoomPanelX || "50%", background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.item }}
                 >
                     <div className="flex items-center justify-between gap-3 px-1 pb-2">
@@ -297,7 +297,7 @@ function ToolbarButton({
     danger?: boolean;
     children: ReactNode;
 }) {
-    const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const theme = useCanvasTheme();
 
     return (
         <Button
@@ -365,13 +365,13 @@ function toolLabel(id: string, t: (key: string) => string) {
     if (id === "tool-redo") return t("canvas.redo");
     if (id === "tool-image") return t("canvas.toolbar.image");
     if (id === "tool-image-generation") return t("canvas.nodeTypes.imageGeneration");
+    if (id === "tool-prompt") return t("canvas.nodeTypes.prompt");
     if (id === "tool-video") return t("canvas.toolbar.video");
     if (id === "tool-audio") return t("canvas.toolbar.audio");
     if (id === "tool-smart-canvas") return t("canvas.nodeTypes.smartCanvas");
     if (id === "tool-extensions") return t("canvas.toolbar.extensions");
     if (id === "tool-zoom") return t("canvas.toolbar.zoom");
     if (id === "tool-delete") return t("canvas.deleteSelected");
-    if (id === "tool-clear") return t("canvas.toolbar.clear");
     return "";
 }
 

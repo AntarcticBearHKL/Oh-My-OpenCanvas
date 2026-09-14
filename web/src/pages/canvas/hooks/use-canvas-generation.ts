@@ -12,6 +12,7 @@ import { fitNodeSize, nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { buildNodeGenerationContext, buildNodeResponseMessages, hydrateNodeGenerationContext } from "@/components/canvas/canvas-node-generation";
 import { audioMetadata, buildAudioGenerationMetadata, buildImageGenerationMetadata, imageMetadata, videoMetadata } from "@/lib/canvas/canvas-node-factory";
+import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
 import { NODE_STATUS_ERROR, NODE_STATUS_IDLE, NODE_STATUS_LOADING, NODE_STATUS_SUCCESS, VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH } from "@/lib/canvas/canvas-node-constants";
 import { buildAngleLabel, buildAnglePrompt, buildGenerationConfig, findRetrySourceNode, generationReferenceUrls, getGenerationCount, hasResumableVideoTask, isGenerationCanceled, resolveMetadataReferences, sourceNodeReferenceImages } from "@/lib/canvas/canvas-generation-helpers";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
@@ -240,35 +241,19 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
             const references = [source, maskSource];
             const generationMetadata = buildImageGenerationMetadata("edit", generationConfig, 1, references);
             const childMetadata = payload.generate ? { prompt, status: NODE_STATUS_LOADING, ...generationMetadata } : { prompt };
-            setNodes((prev) => [
-                ...prev,
+            insertDerivedAsset(
                 {
-                    id: maskNodeId,
-                    type: CanvasNodeType.Image,
-                    title: t("canvas.projectPage.maskNodeTitle"),
-                    position: { x: node.position.x, y: node.position.y + node.height + 96 },
-                    width: node.width,
-                    height: node.height,
-                    metadata: imageMetadata(maskImage),
+                    source: node,
+                    children: [{ id: childId, title: userPrompt.slice(0, 32) || t("canvas.projectPage.maskResult"), size: { width: node.width, height: node.height }, metadata: childMetadata }],
+                    relation: "mask",
+                    extraNodes: [{ id: maskNodeId, type: CanvasNodeType.Image, title: t("canvas.projectPage.maskNodeTitle"), position: { x: node.position.x, y: node.position.y + node.height + 96 }, width: node.width, height: node.height, metadata: imageMetadata(maskImage) }],
+                    extraConnections: [{ id: nanoid(), fromNodeId: maskNodeId, toNodeId: childId, relation: "generation" }],
+                    select: "children",
+                    clearSelectedConnection: true,
+                    openDialog: childId,
                 },
-                {
-                    id: childId,
-                    type: CanvasNodeType.Image,
-                    title: userPrompt.slice(0, 32) || t("canvas.projectPage.maskResult"),
-                    position: { x: node.position.x + node.width + 96, y: node.position.y },
-                    width: node.width,
-                    height: node.height,
-                    metadata: childMetadata,
-                },
-            ]);
-            setConnections((prev) => [
-                ...prev,
-                { id: nanoid(), fromNodeId: node.id, toNodeId: childId, relation: "mask" },
-                { id: nanoid(), fromNodeId: maskNodeId, toNodeId: childId, relation: "generation" },
-            ]);
-            setSelectedNodeIds(new Set([childId]));
-            setSelectedConnectionId(null);
-            setDialogNodeId(childId);
+                { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+            );
             if (!payload.generate) return;
             setRunningNodeId(childId);
             const controller = startGenerationRequest(childId, node.id, childId);
@@ -307,21 +292,16 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
             ]);
             setAngleNodeId(null);
             setRunningNodeId(childId);
-            setNodes((prev) => [
-                ...prev,
+            insertDerivedAsset(
                 {
-                    id: childId,
-                    type: CanvasNodeType.Image,
-                    title,
-                    position: { x: node.position.x + node.width + 96, y: node.position.y },
-                    width: imageConfig.width,
-                    height: imageConfig.height,
-                    metadata: { prompt, status: NODE_STATUS_LOADING, ...generationMetadata },
+                    source: node,
+                    children: [{ id: childId, title, size: imageConfig, metadata: { prompt, status: NODE_STATUS_LOADING, ...generationMetadata } }],
+                    relation: "generation",
+                    select: "children",
+                    openDialog: childId,
                 },
-            ]);
-            setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: node.id, toNodeId: childId, relation: "generation" }]);
-            setSelectedNodeIds(new Set([childId]));
-            setDialogNodeId(childId);
+                { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+            );
             const controller = startGenerationRequest(childId, node.id, childId);
             try {
                 const image = await requestEdit(
@@ -500,7 +480,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                                     : await requestGeneration({ ...generationConfig, count: "1" }, effectivePrompt, { signal: controller.signal }).then((items) => items[0]);
                                 const uploaded = await uploadImage(image.dataUrl, { signal: controller.signal });
                                 const imageSize = fitNodeSize(uploaded.width, uploaded.height, imageConfig.width, imageConfig.height);
-                                const item: CanvasNodeImage = { id: imageId, status: NODE_STATUS_SUCCESS, content: uploaded.url, storageKey: uploaded.storageKey, naturalWidth: uploaded.width, naturalHeight: uploaded.height, bytes: uploaded.bytes, mimeType: uploaded.mimeType };
+                                const item: CanvasNodeImage = { id: imageId, status: NODE_STATUS_SUCCESS, content: uploaded.url, storageKey: uploaded.storageKey, thumbnail: uploaded.thumbnail, thumbnailKey: uploaded.thumbnailKey, naturalWidth: uploaded.width, naturalHeight: uploaded.height, bytes: uploaded.bytes, mimeType: uploaded.mimeType };
                                 setNodes((prev) =>
                                     prev.map((node) => {
                                         if (node.id !== rootId) return node;
@@ -870,6 +850,8 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                     status: NODE_STATUS_SUCCESS,
                     content: uploadedImage.url,
                     storageKey: uploadedImage.storageKey,
+                    thumbnail: uploadedImage.thumbnail,
+                    thumbnailKey: uploadedImage.thumbnailKey,
                     naturalWidth: uploadedImage.width,
                     naturalHeight: uploadedImage.height,
                     bytes: uploadedImage.bytes,

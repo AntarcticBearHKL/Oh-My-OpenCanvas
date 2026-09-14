@@ -116,8 +116,8 @@ export default function CanvasPage() {
 
     return (
         <main className="flex h-full min-h-0 bg-background text-stone-800 dark:text-stone-100">
-            <aside className="flex w-60 shrink-0 flex-col border-r border-stone-200 dark:border-stone-800">
-                <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-stone-200 px-4 dark:border-stone-800">
+            <aside className="flex w-60 shrink-0 flex-col border-r border-border">
+                <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-4">
                     <p className="text-xs font-semibold uppercase tracking-widest text-stone-400 dark:text-stone-500" style={{ margin: 0 }}>{t("canvas.library")}</p>
                     <Button type="text" size="small" shape="circle" icon={<Plus className="size-4" />} disabled={!hydrated} onClick={addGroup} aria-label={t("canvas.group.create")} title={t("canvas.group.create")} />
                 </div>
@@ -125,7 +125,7 @@ export default function CanvasPage() {
                     {groups.map((group) => (
                         <div key={group.id}>
                             {editingGroupId === group.id ? (
-                                <div className="flex h-9 items-center gap-1 rounded-lg bg-stone-100 px-2 dark:bg-white/5">
+                                <div className="flex h-9 items-center gap-1 rounded-xl bg-muted px-2">
                                     <Input
                                         size="small"
                                         className="min-w-0 flex-1"
@@ -141,7 +141,7 @@ export default function CanvasPage() {
                                     <Button type="text" size="small" shape="circle" icon={<X className="size-3.5" />} onClick={() => setEditingGroupId(null)} aria-label={t("common.cancel")} title={t("common.cancel")} />
                                 </div>
                             ) : (
-                                <div className={`group flex h-9 items-center rounded-lg px-2 transition ${selectedGroupId === group.id ? "bg-stone-200/80 dark:bg-white/10" : "hover:bg-stone-100 dark:hover:bg-white/5"}`}>
+                                <div className={`group flex h-9 items-center rounded-xl px-2 transition ${selectedGroupId === group.id ? "bg-black/10 dark:bg-white/10" : "hover:bg-black/5 dark:hover:bg-white/10"}`}>
                                     <button
                                         type="button"
                                         onClick={() => setSelectedGroupId(group.id)}
@@ -173,7 +173,7 @@ export default function CanvasPage() {
             </aside>
 
             <section className="flex min-w-0 flex-1 flex-col">
-                <header className="shrink-0 border-b border-stone-200 dark:border-stone-800">
+                <header className="shrink-0 border-b border-border">
                     <div className="flex min-h-14 w-full flex-wrap items-center justify-between gap-3 px-4 py-2">
                         <div className="flex min-w-0 items-center gap-2">
                             <h1 className="truncate text-base font-semibold text-stone-950 dark:text-stone-100" style={{ margin: 0 }}>{selectedGroup?.name ?? t("canvas.group.none")}</h1>
@@ -218,7 +218,7 @@ export default function CanvasPage() {
                             </Empty>
                         </div>
                     ) : groupProjects.length ? (
-                        <div className="overflow-hidden rounded-xl ring-1 ring-stone-200/70 dark:ring-stone-800/70">
+                        <div className="overflow-hidden rounded-2xl ring-1 ring-border">
                             {groupProjects.map((project) => (
                                 <CanvasProjectRow key={project.id} project={project} />
                             ))}
