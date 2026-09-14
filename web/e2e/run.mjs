@@ -47,6 +47,24 @@ const LIB_ASSERTIONS = `(async () => {
     ok("snap no match keeps delta", missed.dx === 10 && missed.dy === 10 && missed.guides.x.length === 0, JSON.stringify(missed));
     ok("center inside", geo.nodeCenterInside(image("i", 100, 100, { x: 50, y: 50 }), board) === true);
 
+    const align = await import("/src/lib/canvas/alignment.ts");
+    const trio = [
+        { id: "a", type: "image", title: "a", position: { x: 100, y: 50 }, width: 100, height: 100, metadata: {} },
+        { id: "b", type: "image", title: "b", position: { x: 300, y: 400 }, width: 50, height: 50, metadata: {} },
+        { id: "c", type: "image", title: "c", position: { x: 600, y: 200 }, width: 200, height: 20, metadata: {} },
+    ];
+    const sel = new Set(["a", "b", "c"]);
+    const topAligned = align.alignNodes(trio, sel, "top");
+    ok("align top", topAligned.get("a").y === 50 && topAligned.get("b").y === 50 && topAligned.get("c").y === 50, JSON.stringify([...topAligned]));
+    const rightAligned = align.alignNodes(trio, sel, "right");
+    ok("align right", rightAligned.get("a").x === 700 && rightAligned.get("c").x === 600, JSON.stringify([...rightAligned]));
+    const centreY = align.alignNodes(trio, sel, "center-y");
+    ok("align center-y", centreY.get("b").y === 225 && centreY.get("c").y === 240, JSON.stringify([...centreY]));
+    const spreadX = align.alignNodes(trio, sel, "distribute-x");
+    ok("distribute-x equal gaps", spreadX.get("a").x === 100 && spreadX.get("b").x === 375 && spreadX.get("c").x === 600, JSON.stringify([...spreadX]));
+    ok("align needs two", align.alignNodes(trio, new Set(["a"]), "left").size === 0);
+    ok("distribute needs three", align.alignNodes(trio, new Set(["a", "b"]), "distribute-y").size === 0);
+
     return results;
 })()`;
 
