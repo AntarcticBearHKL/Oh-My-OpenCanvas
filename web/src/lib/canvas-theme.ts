@@ -22,6 +22,8 @@ export const canvasThemes = {
             faint: "#a8a29e",
             primary: "#e0cbb0",
             primaryText: "#4a3a2a",
+            ready: "#3f9d6a",
+            blocked: "#d05a4a",
         },
         toolbar: {
             panel: "rgba(251,250,247,.72)",
@@ -52,6 +54,8 @@ export const canvasThemes = {
             faint: "#78716c",
             primary: "#c9ac8b",
             primaryText: "#2a2118",
+            ready: "#63c58c",
+            blocked: "#e07a6b",
         },
         toolbar: {
             panel: "rgba(31,29,26,.72)",

@@ -19,6 +19,7 @@ import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData, type Ca
 type CanvasConfigNodePanelProps = {
     node: CanvasNodeData;
     isRunning: boolean;
+    isPromptDropTarget: boolean;
     inputSummary: { textCount: number; imageCount: number; videoCount: number; audioCount: number };
     onConfigChange: (nodeId: string, patch: Partial<CanvasNodeMetadata>) => void;
     onGenerate: (nodeId: string) => void;
@@ -30,17 +31,18 @@ type CanvasConfigNodePanelProps = {
 const IMAGE_GEN_DESIGN_WIDTH = 412;
 const IMAGE_GEN_DESIGN_HEIGHT = 608;
 
-export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigChange, onGenerate, onReplay, onStop, onComposerToggle }: CanvasConfigNodePanelProps) {
+export function CanvasConfigNodePanel({ node, isRunning, isPromptDropTarget, inputSummary, onConfigChange, onGenerate, onReplay, onStop, onComposerToggle }: CanvasConfigNodePanelProps) {
     const { t } = useTranslation();
     const globalConfig = useEffectiveConfig();
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const theme = useCanvasTheme();
     const mode = node.metadata?.generationMode || "image";
     const isImageGenerationNode = node.type === CanvasNodeType.ImageGeneration;
+    const hasBoundPrompt = Boolean(node.metadata?.promptNodeId);
     const config = buildNodeConfig(globalConfig, node, mode);
     const hasAnyInput = Boolean(inputSummary.textCount || inputSummary.imageCount || inputSummary.videoCount || inputSummary.audioCount);
     const hasComposerContent = Boolean((node.metadata?.composerContent ?? node.metadata?.prompt ?? "").trim());
-    const canGenerate = hasComposerContent || (mode === "audio" ? inputSummary.textCount > 0 : hasAnyInput);
+    const canGenerate = isImageGenerationNode ? hasBoundPrompt : hasComposerContent || (mode === "audio" ? inputSummary.textCount > 0 : hasAnyInput);
     const canReplay = mode === "image" && typeof node.metadata?.seed === "number";
     const matrixVariantCount = buildMatrixVariants(node.metadata?.matrix).length;
     const [matrixOpen, setMatrixOpen] = useState(false);
@@ -210,6 +212,18 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                         </span>
                     </Button>
                 </div>
+                {isImageGenerationNode ? (
+                    <div
+                        className="mt-2 flex items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-colors duration-200 motion-reduce:transition-none"
+                        style={{ borderColor: isPromptDropTarget ? theme.node.ready : theme.node.faint, borderStyle: isPromptDropTarget ? "solid" : "dashed" }}
+                    >
+                        <span className="size-2 shrink-0 rounded-full transition-colors duration-200 motion-reduce:transition-none" style={{ background: hasBoundPrompt ? theme.node.ready : theme.node.blocked }} />
+                        <MessageSquare className="size-3.5 shrink-0" style={{ color: isPromptDropTarget ? theme.node.ready : theme.node.muted }} />
+                        <span className="min-w-0 flex-1 truncate text-[11px]" style={{ color: isPromptDropTarget ? theme.node.ready : theme.node.muted }}>
+                            {hasBoundPrompt ? t("canvas.configNode.promptBound") : t("canvas.configNode.promptSlot")}
+                        </span>
+                    </div>
+                ) : null}
                 <CanvasGenerationMatrixDialog
                     open={matrixOpen}
                     matrix={node.metadata?.matrix}

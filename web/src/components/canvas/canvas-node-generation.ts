@@ -31,8 +31,21 @@ type NodeGenerationResourceInput = {
 export type NodeGenerationInput = NodeGenerationResourceInput;
 
 export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[], prompt: string): NodeGenerationContext {
-    const inputs = buildNodeGenerationInputs(nodeId, nodes, connections);
     const sourceNode = nodes.find((node) => node.id === nodeId);
+    if (sourceNode?.type === CanvasNodeType.ImageGeneration) {
+        const boundPrompt = boundPromptText(sourceNode, nodes);
+        return {
+            prompt: [prompt, boundPrompt].filter(Boolean).join("\n\n"),
+            referenceImages: [],
+            referenceVideos: [],
+            referenceAudios: [],
+            textCount: boundPrompt ? 1 : 0,
+            imageCount: 0,
+            videoCount: 0,
+            audioCount: 0,
+        };
+    }
+    const inputs = buildNodeGenerationInputs(nodeId, nodes, connections);
     if (sourceNode?.type === CanvasNodeType.Config && Boolean(sourceNode.metadata?.composerContent?.trim())) {
         return buildComposerGenerationContext(inputs, prompt);
     }
@@ -119,7 +132,21 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
 }
 
 export function buildNodeGenerationInputs(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[]): NodeGenerationInput[] {
+    const sourceNode = nodes.find((node) => node.id === nodeId);
+    if (sourceNode?.type === CanvasNodeType.ImageGeneration) {
+        const bound = boundPromptNode(sourceNode, nodes);
+        return bound ? readNodeGenerationResource(bound) : [];
+    }
     return getGenerationResourceNodes(nodeId, nodes, connections).flatMap(readNodeGenerationResource);
+}
+
+function boundPromptNode(node: CanvasNodeData, nodes: CanvasNodeData[]) {
+    if (!node.metadata?.promptNodeId) return undefined;
+    return nodes.find((item) => item.id === node.metadata?.promptNodeId && item.type === CanvasNodeType.Prompt);
+}
+
+function boundPromptText(node: CanvasNodeData, nodes: CanvasNodeData[]) {
+    return boundPromptNode(node, nodes)?.metadata?.prompt?.trim() || "";
 }
 
 function flattenGenerationInputs(inputs: NodeGenerationInput[]) {

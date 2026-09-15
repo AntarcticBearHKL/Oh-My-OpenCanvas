@@ -335,6 +335,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
         async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, replaySeed?: number, variant?: GenerationMatrixVariant, options?: { deferRunningState?: boolean }) => {
             if (variant?.prompt) prompt = variant.prompt;
             const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
+            if (sourceNode?.type === CanvasNodeType.ImageGeneration && !nodesRef.current.find((node) => node.id === sourceNode.metadata?.promptNodeId && node.type === CanvasNodeType.Prompt)?.metadata?.prompt?.trim()) return;
             const generationConfig = { ...buildGenerationConfig(effectiveConfig, sourceNode, mode), ...(variant?.size ? { size: variant.size } : {}), ...(variant?.count ? { count: String(variant.count) } : {}) };
             if (!isAiConfigReady(generationConfig, generationConfig.model)) {
                 openConfigDialog();
