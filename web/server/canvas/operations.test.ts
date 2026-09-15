@@ -112,39 +112,6 @@ test("distribute nodes equalises gaps and stays a no-op under three", () => {
     assert.deepEqual(opsWithState("canvas_align_nodes", { ids: ["a", "b"], mode: "distribute-y" }, state), []);
 });
 
-test("group nodes wraps members in a group node and selects it", () => {
-    const state = canvas([node("a", "image", 100, 50), node("b", "image", 300, 400, 50, 50)]);
-    const ops = opsWithState("canvas_group_nodes", { ids: ["a", "b"], title: "组" }, state);
-    const group = ops.find((op) => op.type === "add_node");
-    assert.match(String(group?.id), /^group-/);
-    assert.equal(group?.nodeType, "group");
-    assert.equal(group?.title, "组");
-    assert.deepEqual(group?.position, { x: 76, y: -2 });
-    assert.equal(group?.width, 298);
-    assert.equal(group?.height, 476);
-    assert.deepEqual(
-        ops.filter((op) => op.type === "update_node").map((op) => [op.id, op.metadata?.groupId]),
-        [["a", group?.id], ["b", group?.id]],
-    );
-    assert.deepEqual(ops[ops.length - 1], { type: "select_nodes", ids: [String(group?.id)] });
-    assert.deepEqual(opsWithState("canvas_group_nodes", { ids: ["a", "missing"] }, state), []);
-});
-
-test("ungroup nodes clears groupId and deletes emptied group nodes", () => {
-    const state = canvas([node("g1", "group", 76, -2, 298, 476), node("a", "image", 100, 50, 100, 100, { groupId: "g1" }), node("b", "image", 300, 400, 50, 50, { groupId: "g1" }), node("g2", "group", 0, 0), node("c", "image", 20, 20, 10, 10, { groupId: "g2" })]);
-    const expected = [
-        { type: "update_node", id: "a", metadata: { groupId: null } },
-        { type: "update_node", id: "b", metadata: { groupId: null } },
-        { type: "delete_node", ids: ["g1"] },
-    ];
-    assert.deepEqual(opsWithState("canvas_ungroup_nodes", { ids: ["a", "b"] }, state), expected);
-    assert.deepEqual(opsWithState("canvas_ungroup_nodes", { ids: ["g1"] }, state), expected);
-    assert.deepEqual(opsWithState("canvas_ungroup_nodes", { ids: ["c"] }, state), [
-        { type: "update_node", id: "c", metadata: { groupId: null } },
-        { type: "delete_node", ids: ["g2"] },
-    ]);
-});
-
 test("duplicate node copies the source with an offset and selects the copy", () => {
     const source = node("src", "text", 10, 20, 340, 240, { content: "hi", locked: true });
     const ops = opsWithState("canvas_duplicate_node", { id: "src" }, canvas([source]));

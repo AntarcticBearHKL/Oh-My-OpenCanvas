@@ -101,16 +101,8 @@ const LIB_ASSERTIONS = `(async () => {
     ok("grid defers to guides", guideBeatsGrid.dx === 200 && guideBeatsGrid.guides.x[0] === 300, JSON.stringify(guideBeatsGrid));
     ok("grid off by default", geo.snapDragToGuides([{ id: "d", x: 7, y: 9 }], [dragged], 3, 3, 0).dx === 3);
 
-    const frame = { id: "f", type: "frame", title: "f", position: { x: 0, y: 0 }, width: 400, height: 300, metadata: {} };
     const inside = image("in", 100, 100, { x: 150, y: 100 });
     const outside = image("out", 100, 100, { x: 900, y: 900 });
-    ok("frame is container", geo.isContainerNode(frame) === true && geo.isContainerNode(dragged) === false);
-    ok("drop adopts into frame", geo.findGroupDropTarget(new Set(["in"]), [frame, inside, outside])?.id === "f");
-    ok("frame never nests", geo.findGroupDropTarget(new Set(["f"]), [frame, inside]) === null && geo.findContainingGroupId(frame, [frame, inside]) === undefined);
-    const nested = geo.snapNodesIntoGroup(new Set(["in"]), [frame, inside, outside], frame).find((node) => node.id === "in");
-    ok("snap into frame keeps position and sets groupId", nested.metadata.groupId === "f" && nested.position.x === 150 && nested.position.y === 100, JSON.stringify(nested));
-    ok("containing frame resolves", geo.findContainingGroupId(inside, [frame, inside]) === "f" && geo.findContainingGroupId(outside, [frame, outside]) === undefined);
-    ok("frame rejects connections as target", geo.normalizeConnection("in", "f", [frame, inside], "source") === null && geo.normalizeConnection("f", "in", [frame, inside], "source").fromNodeId === "f");
 
     const boardA = { id: "ba", type: "smart-canvas", title: "A", position: { x: 0, y: 0 }, width: 640, height: 360, metadata: {} };
     const boardB = { id: "bb", type: "smart-canvas", title: "B", position: { x: 80, y: 60 }, width: 200, height: 150, metadata: { boardId: "ba" } };
@@ -123,13 +115,13 @@ const LIB_ASSERTIONS = `(async () => {
     ok("board drop accepts board", geo.findBoardDropTarget(new Set(["bb"]), [boardA, boardB])?.id === "ba");
     ok("board drop rejects self", geo.findBoardDropTarget(new Set(["bb"]), [boardB]) === null);
     ok("board drop rejects descendant cycle", geo.findBoardDropTarget(new Set(["ba"]), boardTree) === null);
-    ok("board drop rejects non-board target", geo.findBoardDropTarget(new Set(["bimg"]), [frame, image("bimg", 100, 100, { x: 40, y: 40 })]) === null);
+    ok("board drop rejects non-board target", geo.findBoardDropTarget(new Set(["bimg"]), [image("plain", 50, 50, { x: 0, y: 0 }), image("bimg", 100, 100, { x: 40, y: 40 })]) === null);
 
     ok("locked flag predicate", geo.isNodeLocked({ ...dragged, metadata: { locked: true } }) === true && geo.isNodeLocked(dragged) === false);
     ok("hidden flag predicate", geo.isNodeHidden({ ...dragged, metadata: { hidden: true } }) === true && geo.isNodeHidden(dragged) === false);
     const textNode = { id: "txt", type: "text", title: "txt", position: { x: 0, y: 0 }, width: 100, height: 100, metadata: {} };
-    const nodeList = [frame, inside, outside, textNode];
-    ok("type filter all", geo.filterNodesByType(nodeList, "all").length === 4);
+    const nodeList = [inside, outside, textNode];
+    ok("type filter all", geo.filterNodesByType(nodeList, "all").length === 3);
     ok("type filter image", geo.filterNodesByType(nodeList, "image").map((node) => node.id).join(",") === "in,out");
     ok("type filter unknown", geo.filterNodesByType(nodeList, "video").length === 0);
     ok("bulk rename single", geo.bulkRenameTitles(["a"], " 名字 ").get("a") === "名字");
@@ -263,12 +255,12 @@ const LIB_ASSERTIONS = `(async () => {
     ok("text style offers font family stacks", typography.TEXT_FONT_FAMILIES.length >= 4 && typography.TEXT_FONT_FAMILIES.every((item) => item.label && item.value && !item.value.includes(";")), JSON.stringify(typography.TEXT_FONT_FAMILIES));
 
     const agentOps = await import("/src/lib/canvas/canvas-agent-ops.ts");
-    const flaggedNode = { id: "flag", type: "image", title: "flag", position: { x: 0, y: 0 }, width: 100, height: 100, metadata: { groupId: "g1", status: "idle" } };
+    const flaggedNode = { id: "flag", type: "image", title: "flag", position: { x: 0, y: 0 }, width: 100, height: 100, metadata: { fontSize: 12, status: "idle" } };
     const clearedNode = agentOps.applyCanvasAgentOps(
         { projectId: "p", title: "p", nodes: [flaggedNode], connections: [], selectedNodeIds: [], viewport: { x: 0, y: 0, k: 1 } },
-        [{ type: "update_node", id: "flag", metadata: { groupId: null, status: "idle" } }],
+        [{ type: "update_node", id: "flag", metadata: { fontSize: null, status: "idle" } }],
     );
-    ok("agent update_node drops explicit null metadata keys", clearedNode.nodes[0].metadata.groupId === undefined && !("groupId" in clearedNode.nodes[0].metadata) && clearedNode.nodes[0].metadata.status === "idle", JSON.stringify(clearedNode.nodes[0].metadata));
+    ok("agent update_node drops explicit null metadata keys", clearedNode.nodes[0].metadata.fontSize === undefined && !("fontSize" in clearedNode.nodes[0].metadata) && clearedNode.nodes[0].metadata.status === "idle", JSON.stringify(clearedNode.nodes[0].metadata));
 
     const permissions = await import("/src/lib/canvas/agent-permissions.ts");
     const allowedOps = [{ type: "add_node" }, { type: "delete_node", id: "n1" }];

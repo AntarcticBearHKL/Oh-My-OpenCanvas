@@ -3,7 +3,7 @@ import { useCallback, useEffect, type Dispatch, type MutableRefObject, type SetS
 import { nanoid } from "nanoid";
 import { getGenerationCount } from "@/lib/canvas/canvas-generation-helpers";
 import { createCanvasNode } from "@/lib/canvas/canvas-node-factory";
-import { applyGroupSelection, applyUngroupSelection, collectGroupMemberNodes, getGroupWrapRect, isContainerNode, isNodeLocked } from "@/lib/canvas/canvas-node-geometry";
+import { isNodeLocked } from "@/lib/canvas/canvas-node-geometry";
 import { isCanvasReferenceNode } from "@/lib/canvas/canvas-resource-references";
 import { getNodeDefinition, isBuiltinNodeType as isBuiltinType } from "@/lib/canvas/node-registry";
 import type { AiConfig } from "@/stores/use-config-store";
@@ -80,7 +80,7 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
                   ? Boolean(definition.autoOpenPanel)
                   : definition?.useBuiltinPanel
                     ? true
-                    : isBuiltinType(type) && type !== CanvasNodeType.Text && type !== CanvasNodeType.Audio && type !== CanvasNodeType.Group && type !== CanvasNodeType.Frame && type !== CanvasNodeType.Image && type !== CanvasNodeType.Output;
+                    : isBuiltinType(type) && type !== CanvasNodeType.Text && type !== CanvasNodeType.Audio && type !== CanvasNodeType.Image && type !== CanvasNodeType.Output;
             if (wantsPanel) setDialogNodeId(newNode.id);
         },
         [effectiveConfig.canvasImageCount, effectiveConfig.count, effectiveConfig.imageModel, effectiveConfig.model, effectiveConfig.size, getCanvasCenter],
@@ -94,14 +94,7 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
                 return !node || !isNodeLocked(node);
             }));
             if (!allIds.size) return;
-            setNodes((prev) => {
-                const next = prev.filter((node) => !allIds.has(node.id));
-                return next.map((node) => {
-                    const groupId = node.metadata?.groupId;
-                    if (groupId && allIds.has(groupId)) return { ...node, metadata: { ...node.metadata, groupId: undefined } };
-                    return node;
-                });
-            });
+            setNodes((prev) => prev.filter((node) => !allIds.has(node.id)));
             setConnections((prev) => prev.filter((conn) => !allIds.has(conn.fromNodeId) && !allIds.has(conn.toNodeId)));
             setSelectedNodeIds(new Set());
             setSelectedConnectionId(null);
@@ -120,33 +113,6 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
         },
         [chatSessions, cleanupCanvasFiles, projectId],
     );
-
-    const groupSelection = useCallback(() => {
-        const selectedIds = selectedNodeIdsRef.current;
-        const members = collectGroupMemberNodes(selectedIds, nodesRef.current);
-        if (members.length < 2) return;
-        const rect = getGroupWrapRect(members);
-        const created = createCanvasNode(CanvasNodeType.Group, { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 });
-        const result = applyGroupSelection(selectedIds, nodesRef.current, connectionsRef.current, { ...created, position: { x: rect.x, y: rect.y }, width: rect.width, height: rect.height });
-        if (!result) return;
-        setNodes(result.nodes);
-        setConnections(result.connections);
-        setSelectedNodeIds(new Set(result.selectedIds));
-        setSelectedConnectionId(null);
-        setToolbarNodeId(result.selectedIds[0] || null);
-        setDialogNodeId(null);
-    }, []);
-
-    const ungroupSelection = useCallback((ids?: Set<string>) => {
-        const result = applyUngroupSelection(ids || selectedNodeIdsRef.current, nodesRef.current, connectionsRef.current);
-        if (!result) return;
-        setNodes(result.nodes);
-        setConnections(result.connections);
-        setSelectedNodeIds(new Set(result.selectedIds));
-        setSelectedConnectionId(null);
-        setToolbarNodeId(result.selectedIds.length === 1 ? result.selectedIds[0] : null);
-        setDialogNodeId(null);
-    }, []);
 
     const deleteConnection = useCallback((connectionId: string) => {
         setConnections((prev) => prev.filter((conn) => conn.id !== connectionId));
@@ -174,7 +140,7 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
     const selectNodeReference = useCallback((fromNodeId: string) => {
         if (!referencePickerNodeId || referenceConnectedNodeIds.has(fromNodeId)) return;
         const source = nodesRef.current.find((node) => node.id === fromNodeId);
-        if (!source || !isCanvasReferenceNode(source, nodesRef.current)) return;
+        if (!source || !isCanvasReferenceNode(source)) return;
         setConnections((prev) => [...prev, { id: nanoid(), fromNodeId, toNodeId: referencePickerNodeId }]);
     }, [referenceConnectedNodeIds, referencePickerNodeId]);
 
@@ -215,7 +181,7 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
         setNodes((prev) => [...prev, next]);
         setSelectedNodeIds(new Set([id]));
         setSelectedConnectionId(null);
-        if (!isContainerNode(next)) setDialogNodeId(id);
+        setDialogNodeId(id);
     }, []);
 
     const copySelectedNodes = useCallback(() => {
@@ -270,12 +236,6 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
             };
         });
 
-        const pastedNodes = nextNodes.map((node) => {
-            const groupId = node.metadata?.groupId;
-            if (!groupId) return node;
-            return { ...node, metadata: { ...node.metadata, groupId: idMap.get(groupId) } };
-        });
-
         const nextConnections = clipboard.connections.flatMap((connection, index) => {
             const fromNodeId = idMap.get(connection.fromNodeId);
             const toNodeId = idMap.get(connection.toNodeId);
@@ -290,11 +250,11 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
             ];
         });
 
-        setNodes((prev) => [...prev, ...pastedNodes]);
+        setNodes((prev) => [...prev, ...nextNodes]);
         setConnections((prev) => [...prev, ...nextConnections]);
-        setSelectedNodeIds(new Set(pastedNodes.map((node) => node.id)));
+        setSelectedNodeIds(new Set(nextNodes.map((node) => node.id)));
         setSelectedConnectionId(null);
-        setDialogNodeId(pastedNodes[0] && isContainerNode(pastedNodes[0]) ? null : pastedNodes[0]?.id || null);
+        setDialogNodeId(nextNodes[0]?.id || null);
         return true;
     }, [getCanvasCenter]);
 
@@ -314,5 +274,5 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
         [size.height, size.width],
     );
 
-    return { createNode, deleteNodes, groupSelection, ungroupSelection, deleteConnection, disconnectNodeReference, startNodeReferenceSelection, exitNodeReferenceSelection, selectNodeReference, deselectCanvas, duplicateNode, copySelectedNodes, pasteCopiedNodes, resetViewport, setZoomScale };
+    return { createNode, deleteNodes, deleteConnection, disconnectNodeReference, startNodeReferenceSelection, exitNodeReferenceSelection, selectNodeReference, deselectCanvas, duplicateNode, copySelectedNodes, pasteCopiedNodes, resetViewport, setZoomScale };
 }

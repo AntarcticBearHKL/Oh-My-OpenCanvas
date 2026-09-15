@@ -1,4 +1,4 @@
-import { FileText, Frame, Group, Image as ImageIcon, LayoutDashboard, MessageSquareText, Music2, Radio, Settings2, Sparkles, Video } from "lucide-react";
+import { FileText, Image as ImageIcon, LayoutDashboard, MessageSquareText, Music2, Radio, Settings2, Sparkles, Video } from "lucide-react";
 
 import i18n from "@/i18n";
 
@@ -28,8 +28,6 @@ const BUILTIN_DEFINITIONS: CanvasNodeDefinition[] = [
     { type: CanvasNodeType.Audio, title: i18n.t("assets.kinds.audio"), icon: <Music2 className={iconClass} />, minimapColor: "#a855f7", resource: builtinResource },
     { type: CanvasNodeType.Config, title: i18n.t("canvas.configNode.title"), icon: <Settings2 className={iconClass} />, minimapColor: "#60a5fa", hasSourceHandle: false },
     { type: CanvasNodeType.ImageGeneration, title: i18n.t("canvas.nodeTypes.imageGeneration"), icon: <Sparkles className={iconClass} />, minimapColor: "#f472b6", hasSourceHandle: false, useBuiltinPanel: { mode: "image" } as const },
-    { type: CanvasNodeType.Group, title: i18n.t("canvas.node.group"), icon: <Group className={iconClass} />, minimapColor: "#94a3b8" },
-    { type: CanvasNodeType.Frame, title: i18n.t("canvas.nodeTypes.frame"), icon: <Frame className={iconClass} />, minimapColor: "#94a3b8", hasSourceHandle: false },
     { type: CanvasNodeType.SmartCanvas, title: i18n.t("canvas.nodeTypes.smartCanvas"), icon: <LayoutDashboard className={iconClass} />, minimapColor: "#14b8a6", keepAspectRatio: () => true },
     { type: CanvasNodeType.Output, title: i18n.t("canvas.nodeTypes.output"), icon: <Radio className={iconClass} />, minimapColor: "#0ea5e9", hasSourceHandle: false },
 ].map((def) => {

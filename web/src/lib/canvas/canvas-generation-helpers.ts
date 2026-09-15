@@ -84,7 +84,7 @@ export function getGenerationCount(count: string) {
 }
 
 export function getInputSummary(inputs: NodeGenerationInput[]) {
-    const resources = [...new Map(inputs.flatMap((input) => (input.type === "group" ? input.children : [input])).map((input) => [input.nodeId, input])).values()];
+    const resources = [...new Map(inputs.map((input) => [input.nodeId, input])).values()];
     return {
         textCount: resources.filter((input) => input.type === "text").length,
         imageCount: resources.filter((input) => input.type === "image").length,

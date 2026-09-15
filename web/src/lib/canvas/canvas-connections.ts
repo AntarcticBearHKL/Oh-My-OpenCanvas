@@ -4,7 +4,6 @@ import type { CanvasConnection, CanvasNodeData } from "@/types/canvas";
 
 const SOURCE_RELATIONS: Record<string, string> = {
     [CanvasNodeType.SmartCanvas]: "composite",
-    [CanvasNodeType.Group]: "group",
     [CanvasNodeType.Text]: "prompt",
     [CanvasNodeType.Prompt]: "prompt",
     [CanvasNodeType.Video]: "video-reference",

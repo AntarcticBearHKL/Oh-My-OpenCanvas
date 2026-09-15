@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
-import { Compass, Focus, Frame, Hand, HelpCircle, Image as ImageIcon, LayoutDashboard, ListTree, MessageSquareText, MousePointer2, Music2, Puzzle, Radio, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
+import { Compass, Focus, Hand, HelpCircle, Image as ImageIcon, LayoutDashboard, ListTree, MessageSquareText, MousePointer2, Music2, Puzzle, Radio, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -23,7 +23,6 @@ export function CanvasToolbar({
     onAddPrompt,
     onAddVideo,
     onAddAudio,
-    onAddFrame,
     onAddSmartCanvas,
     onAddOutput,
     onAddExtensionNode,
@@ -48,7 +47,6 @@ export function CanvasToolbar({
     onAddPrompt: () => void;
     onAddVideo: () => void;
     onAddAudio: () => void;
-    onAddFrame: () => void;
     onAddSmartCanvas: () => void;
     onAddOutput: () => void;
     onAddExtensionNode: (type: string) => void;
@@ -136,9 +134,6 @@ export function CanvasToolbar({
                         </ToolbarButton>
                     </>
                 ) : null}
-                <ToolbarButton id="tool-frame" label={t("canvas.nodeTypes.frame")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddFrame}>
-                    <Frame className="size-4.5" />
-                </ToolbarButton>
                 <ToolbarButton id="tool-smart-canvas" label={t("canvas.nodeTypes.smartCanvas")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddSmartCanvas}>
                     <LayoutDashboard className="size-4.5" />
                 </ToolbarButton>
@@ -287,8 +282,6 @@ export function CanvasToolbar({
                     <Shortcut label={t("canvas.shortcut.drag")} value={t("canvas.shortcut.boxSelect")} />
                     <Shortcut label={`Shift / Cmd + ${t("canvas.shortcut.click")}`} value={t("canvas.shortcut.addSelection")} />
                     <Shortcut label="Ctrl / Cmd + C / V" value={t("canvas.shortcut.copyPasteNodes")} />
-                    <Shortcut label="Ctrl / Cmd + G" value={t("canvas.shortcut.group")} />
-                    <Shortcut label="Ctrl / Cmd + Shift + G" value={t("canvas.shortcut.ungroup")} />
                     <Shortcut label="Delete / Backspace" value={t("canvas.shortcut.delete")} />
                 </div>
             </Modal>
@@ -396,7 +389,6 @@ function toolLabel(id: string, t: (key: string) => string) {
     if (id === "tool-prompt") return t("canvas.nodeTypes.prompt");
     if (id === "tool-video") return t("canvas.toolbar.video");
     if (id === "tool-audio") return t("canvas.toolbar.audio");
-    if (id === "tool-frame") return t("canvas.nodeTypes.frame");
     if (id === "tool-smart-canvas") return t("canvas.nodeTypes.smartCanvas");
     if (id === "tool-output") return t("canvas.nodeTypes.output");
     if (id === "tool-extensions") return t("canvas.toolbar.extensions");

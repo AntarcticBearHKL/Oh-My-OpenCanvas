@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { frostedSurfaceClass } from "@/lib/canvas-theme";
-import { filterNodesByType, isContainerNode, isNodeHidden, isNodeLocked } from "@/lib/canvas/canvas-node-geometry";
+import { filterNodesByType, isNodeHidden, isNodeLocked } from "@/lib/canvas/canvas-node-geometry";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 
@@ -170,6 +170,6 @@ export function CanvasNodeListPanel({ node, nodes, onMove, onToggleFlag, onBulkR
 
 function moveTargetIndex(nodes: CanvasNodeData[], index: number, step: 1 | -1) {
     let target = index + step;
-    while (target >= 0 && target < nodes.length && (isContainerNode(nodes[target]) || nodes[target].type === CanvasNodeType.SmartCanvas)) target += step;
+    while (target >= 0 && target < nodes.length && nodes[target].type === CanvasNodeType.SmartCanvas) target += step;
     return target >= 0 && target < nodes.length ? target : null;
 }

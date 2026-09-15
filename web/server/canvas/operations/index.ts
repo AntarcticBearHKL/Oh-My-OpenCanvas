@@ -1,7 +1,6 @@
 import type { ToolName } from "../schemas";
 import type { CanvasSnapshot } from "../types";
 import { autoGenerate, createConfigNode, createGenerationFlow, createImagePromptFlow, runGeneration } from "./flows";
-import { groupNodes, ungroupNodes } from "./group";
 import { bulkRename, createNode, createTextNode, createTextNodes, deleteNodes, duplicateNode, moveNodes, resizeNode, setNodeFlags, updateNode, updateNodeText } from "./nodes";
 import type { CanvasToolHandler, CanvasToolRequest } from "./shared";
 import { alignNodes } from "./transform";
@@ -25,8 +24,6 @@ const handlers: Partial<Record<ToolName, CanvasToolHandler>> = {
     canvas_set_node_flags: setNodeFlags,
     canvas_bulk_rename: bulkRename,
     canvas_align_nodes: alignNodes,
-    canvas_group_nodes: groupNodes,
-    canvas_ungroup_nodes: ungroupNodes,
     canvas_duplicate_node: duplicateNode,
     canvas_delete_nodes: deleteNodes,
     canvas_connect_nodes: connectNodes,

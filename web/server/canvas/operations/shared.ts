@@ -70,10 +70,6 @@ export function findNode(state: CanvasSnapshot | null, id: string): CanvasNode |
     return (state?.nodes || []).find((node) => node.id === id);
 }
 
-export function isContainerNodeType(type: string) {
-    return type === "group" || type === "frame";
-}
-
 /** 移除对象中未设置的生成参数。 */
 export function cleanRecord(value: Record<string, unknown>) {
     return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined && item !== ""));

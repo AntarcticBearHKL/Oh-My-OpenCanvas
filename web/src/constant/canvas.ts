@@ -18,8 +18,6 @@ export const NODE_DEFAULT_SIZE = {
     [CanvasNodeType.ImageGeneration]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.imageGeneration"); } },
     [CanvasNodeType.Video]: { width: 420, height: 236, get title() { return i18n.t("canvas.nodeTypes.video"); } },
     [CanvasNodeType.Audio]: { width: 340, height: 120, get title() { return i18n.t("canvas.nodeTypes.audio"); } },
-    [CanvasNodeType.Group]: { width: 760, height: 480, get title() { return i18n.t("canvas.nodeTypes.group"); } },
-    [CanvasNodeType.Frame]: { width: 760, height: 480, get title() { return i18n.t("canvas.nodeTypes.frame"); } },
     [CanvasNodeType.SmartCanvas]: { width: 640, height: 360, get title() { return i18n.t("canvas.nodeTypes.smartCanvas"); } },
     [CanvasNodeType.Output]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.output"); } },
 } satisfies Record<CanvasNodeType, { width: number; height: number; title: string }>;
@@ -52,14 +50,6 @@ export const NODE_SPECS = {
     [CanvasNodeType.Audio]: {
         width: 340, height: 120, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.Audio].title; },
         metadata: { content: "", status: "idle" },
-    },
-    [CanvasNodeType.Group]: {
-        width: 760, height: 480, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.Group].title; },
-        metadata: { status: "idle" },
-    },
-    [CanvasNodeType.Frame]: {
-        width: 760, height: 480, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.Frame].title; },
-        metadata: { status: "idle" },
     },
     [CanvasNodeType.SmartCanvas]: {
         width: 640, height: 360, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.SmartCanvas].title; },

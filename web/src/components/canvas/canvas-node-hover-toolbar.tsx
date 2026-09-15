@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Modal, Segmented } from "antd";
-import { BetweenHorizontalStart, Copy, Download, FolderPlus, GalleryHorizontal, GalleryHorizontalEnd, Image as ImageIcon, Info, LayoutDashboard, Layers, MessageSquare, Minus, Music2, Plus, RefreshCw, Settings2, Tags, Trash2, Ungroup, Upload, Video } from "lucide-react";
+import { BetweenHorizontalStart, Copy, Download, FolderPlus, GalleryHorizontal, GalleryHorizontalEnd, Image as ImageIcon, Info, LayoutDashboard, Layers, MessageSquare, Minus, Music2, Plus, RefreshCw, Settings2, Tags, Trash2, Upload, Video } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -46,7 +46,6 @@ type CanvasNodeHoverToolbarProps = {
     onBulkRename: (ids: string[], title: string) => void;
     onCaptureVideoFrame: (node: CanvasNodeData, position: VideoFramePosition) => void;
     onTextStyleChange?: (nodeId: string, patch: Partial<CanvasNodeMetadata>) => void;
-    onUngroup?: (node: CanvasNodeData) => void;
     onComposeBoard?: (node: CanvasNodeData) => void;
     extraTools?: CanvasNodeToolbarItem[];
 };
@@ -94,7 +93,6 @@ export function CanvasNodeHoverToolbar({
     onBulkRename,
     onCaptureVideoFrame,
     onTextStyleChange,
-    onUngroup,
     onComposeBoard,
     extraTools = [],
 }: CanvasNodeHoverToolbarProps) {
@@ -147,7 +145,6 @@ export function CanvasNodeHoverToolbar({
 
     const baseToolbarTools: ToolbarTool[] = [
         ...(hasImage ? [] : [{ id: "info", title: t("canvas.nodeToolbar.infoTitle"), label: t("canvas.nodeToolbar.info"), icon: <Info className="size-4" />, onClick: () => onInfo(node) }]),
-        ...(node.type === CanvasNodeType.Group && onUngroup ? [{ id: "ungroup", title: t("canvas.nodeToolbar.ungroupTitle"), label: t("canvas.nodeToolbar.ungroup"), icon: <Ungroup className="size-4" />, onClick: () => onUngroup(node) }] : []),
         ...(hasImage ? [] : [{ id: "duplicate", title: t("canvas.nodeToolbar.duplicateTitle"), label: t("canvas.controls.duplicate"), icon: <Copy className="size-4" />, onClick: () => onDuplicate(node) }]),
         { id: "delete", title: t("canvas.nodeToolbar.removeTitle"), label: t("common.delete"), icon: <Trash2 className="size-4" />, onClick: () => onDelete(node), danger: true },
     ];
@@ -250,7 +247,7 @@ export function CanvasNodeInfoModal({ node, open, onClose }: { node: CanvasNodeD
                         <div className="thin-scrollbar h-full space-y-3 overflow-auto pr-1">
                             <InfoRow label="ID" value={node.id} />
                             <InfoRow label={t("canvas.nodeToolbar.name")} value={node.title || t("canvas.node.untitled")} />
-                            <InfoRow label={t("canvas.nodeToolbar.type")} value={node.type === CanvasNodeType.Group ? t("canvas.node.group") : node.type === CanvasNodeType.Config ? t("canvas.configNode.title") : [CanvasNodeType.Image, CanvasNodeType.Video, CanvasNodeType.Audio, CanvasNodeType.Text].includes(node.type as CanvasNodeType) ? t(`assets.kinds.${node.type}`) : getNodeDefinition(node.type)?.title || node.type} />
+                            <InfoRow label={t("canvas.nodeToolbar.type")} value={node.type === CanvasNodeType.Config ? t("canvas.configNode.title") : [CanvasNodeType.Image, CanvasNodeType.Video, CanvasNodeType.Audio, CanvasNodeType.Text].includes(node.type as CanvasNodeType) ? t(`assets.kinds.${node.type}`) : getNodeDefinition(node.type)?.title || node.type} />
                             <InfoRow label={t("canvas.nodeToolbar.size")} value={`${Math.round(node.width)} x ${Math.round(node.height)}`} />
                             <InfoRow label={t("canvas.nodeToolbar.position")} value={`${Math.round(node.position.x)}, ${Math.round(node.position.y)}`} />
                             <InfoRow label={t("canvas.nodeToolbar.status")} value={node.metadata?.status || "idle"} />

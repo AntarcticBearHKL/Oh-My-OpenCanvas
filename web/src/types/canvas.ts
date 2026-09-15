@@ -20,8 +20,6 @@ export enum CanvasNodeType {
     ImageGeneration = "image-generation",
     Video = "video",
     Audio = "audio",
-    Group = "group",
-    Frame = "frame",
     SmartCanvas = "smart-canvas",
     Output = "output",
 }
@@ -112,7 +110,6 @@ export type CanvasNodeMetadata = {
     durationMs?: number;
     videoTaskId?: string;
     videoTaskProvider?: "openai" | "plugin";
-    groupId?: string;
     boardRatio?: string; // Smart Canvas board aspect ratio, e.g. "16:9"; defaults to "16:9".
     boardResolution?: "1k" | "2k" | "4k"; // Smart Canvas composite resolution tier; defaults to "2k".
     boardId?: string; // Set on an IMAGE node to mark it as placed on that Smart Canvas board.

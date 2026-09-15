@@ -4,7 +4,7 @@ import { imageReferenceLabel } from "@/lib/image-reference-prompt";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "@/types/canvas";
-import { getGenerationResourceNodes, getGroupResourceNodes } from "@/lib/canvas/canvas-resource-references";
+import { getGenerationResourceNodes } from "@/lib/canvas/canvas-resource-references";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 
 type NodeGenerationContext = {
@@ -28,14 +28,7 @@ type NodeGenerationResourceInput = {
     audio?: ReferenceAudio;
 };
 
-type NodeGenerationGroupInput = {
-    nodeId: string;
-    type: "group";
-    title: string;
-    children: NodeGenerationResourceInput[];
-};
-
-export type NodeGenerationInput = NodeGenerationResourceInput | NodeGenerationGroupInput;
+export type NodeGenerationInput = NodeGenerationResourceInput;
 
 export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[], prompt: string): NodeGenerationContext {
     const inputs = buildNodeGenerationInputs(nodeId, nodes, connections);
@@ -79,7 +72,7 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
         nextPrompt += prompt.slice(lastIndex, match.index);
         const input = inputByNodeId.get(match[1]);
         if (input) {
-            const labels = flattenGenerationInputs([input]).map((resource) => {
+            const labels = [input].map((resource) => {
                 let label = labelByNodeId.get(resource.nodeId);
                 if (!label) {
                     label = generationLabel(resource.type, counts[resource.type]++);
@@ -126,18 +119,11 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
 }
 
 export function buildNodeGenerationInputs(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[]): NodeGenerationInput[] {
-    return getGenerationResourceNodes(nodeId, nodes, connections).flatMap((node): NodeGenerationInput[] => {
-        if (node.type === CanvasNodeType.Group) {
-            const children = getGroupResourceNodes(node.id, nodes).flatMap(readNodeGenerationResource);
-            return children.length ? [{ nodeId: node.id, type: "group", title: node.title, children }] : [];
-        }
-        return readNodeGenerationResource(node);
-    });
+    return getGenerationResourceNodes(nodeId, nodes, connections).flatMap(readNodeGenerationResource);
 }
 
 function flattenGenerationInputs(inputs: NodeGenerationInput[]) {
-    const resources = inputs.flatMap((input) => (input.type === "group" ? input.children : [input]));
-    return [...new Map(resources.map((input) => [input.nodeId, input])).values()];
+    return [...new Map(inputs.map((input) => [input.nodeId, input])).values()];
 }
 
 function readNodeGenerationResource(node: CanvasNodeData): NodeGenerationResourceInput[] {
