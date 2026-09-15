@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 
 import { usePromptList } from "@/components/prompts/use-prompt-list";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
-import { frostedSurfaceClass } from "@/lib/canvas-theme";
 import { ALL_PROMPTS_OPTION, type Prompt } from "@/services/api/prompts";
 import type { CanvasNodeData } from "@/types/canvas";
 
@@ -15,28 +14,29 @@ export function PromptNodePanel({ node, onContentChange }: { node: CanvasNodeDat
     const [pickerOpen, setPickerOpen] = useState(false);
 
     return (
-        <div
-            data-canvas-no-zoom
-            className={`rounded-2xl border p-3 ${frostedSurfaceClass}`}
-            style={{ background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
-            onMouseDown={(event) => event.stopPropagation()}
-            onPointerDown={(event) => event.stopPropagation()}
-            onWheel={(event) => event.stopPropagation()}
-        >
-            <button
-                type="button"
-                className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-medium transition hover:bg-black/5 dark:hover:bg-card/10"
-                style={{ color: theme.node.text }}
-                onClick={() => setPickerOpen(true)}
-            >
-                <Library className="size-3.5" />
-                {t("canvas.promptNode.pick")}
-            </button>
+        <div className="flex h-full w-full cursor-move flex-col px-3 pb-3 pt-7 text-sm" style={{ color: theme.node.text }}>
+            <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="shrink-0 text-sm font-semibold">{t("canvas.nodeTypes.prompt")}</div>
+                <button
+                    type="button"
+                    className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 text-[11px] transition hover:bg-black/5 dark:hover:bg-white/10"
+                    style={{ color: theme.node.text }}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={() => setPickerOpen(true)}
+                >
+                    <Library className="size-3.5" />
+                    {t("canvas.promptNode.pick")}
+                </button>
+            </div>
             <textarea
                 value={node.metadata?.prompt || ""}
                 placeholder={t("canvas.promptNode.placeholder")}
-                className="thin-scrollbar mt-1 h-40 w-full cursor-text resize-none rounded-xl px-3 py-2 text-sm leading-5 outline-none"
+                className="thin-scrollbar min-h-0 w-full flex-1 cursor-text resize-none rounded-xl px-2 py-1.5 text-sm leading-6 outline-none"
                 style={{ background: "transparent", color: theme.node.text }}
+                onMouseDown={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+                onWheel={(event) => event.stopPropagation()}
                 onChange={(event) => onContentChange(node.id, event.target.value)}
             />
             <PromptLibraryPicker open={pickerOpen} onSelect={(item) => (onContentChange(node.id, item.prompt), setPickerOpen(false))} onClose={() => setPickerOpen(false)} />

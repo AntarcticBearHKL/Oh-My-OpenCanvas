@@ -1751,7 +1751,7 @@ function InfiniteCanvasPage() {
     );
     const renderNodePanel = useCallback(
         (panelNode: CanvasNodeData) =>
-            panelNode.type === CanvasNodeType.Image || panelNode.type === CanvasNodeType.Output ? null : getNodeDefinition(panelNode.type)?.Panel ? (
+            panelNode.type === CanvasNodeType.Image || panelNode.type === CanvasNodeType.Output || panelNode.type === CanvasNodeType.Prompt ? null : getNodeDefinition(panelNode.type)?.Panel ? (
                 renderPluginPanel(panelNode)
             ) : panelNode.type === CanvasNodeType.Config ? (
                 <CanvasConfigComposer
@@ -1765,8 +1765,6 @@ function InfiniteCanvasPage() {
                     onDisconnectReference={disconnectNodeReference}
                     onStartReferenceSelection={startNodeReferenceSelection}
                 />
-            ) : panelNode.type === CanvasNodeType.Prompt ? (
-                <PromptNodePanel node={panelNode} onContentChange={handleNodeContentChange} />
             ) : panelNode.type === CanvasNodeType.SmartCanvas ? (
                 <div className="flex items-center gap-2" style={{ color: theme.node.text }}>
                     <SmartCanvasSettingsPopover ratio={panelNode.metadata?.boardRatio || "16:9"} resolution={panelNode.metadata?.boardResolution || "2k"} background={smartCanvasBackground(panelNode)} onChange={(patch) => handleSmartCanvasChange(panelNode.id, patch)} />
@@ -1833,7 +1831,9 @@ function InfiniteCanvasPage() {
     );
 
     const renderNodeContentPanel = useCallback(
-        (contentNode: CanvasNodeData) => (
+        (contentNode: CanvasNodeData) => {
+            if (contentNode.type === CanvasNodeType.Prompt) return <PromptNodePanel node={contentNode} onContentChange={handleNodeContentChange} />;
+            return (
             <CanvasConfigNodePanel
                 node={contentNode}
                 isRunning={runningNodeId === contentNode.id}
@@ -1847,8 +1847,9 @@ function InfiniteCanvasPage() {
                     void handleGenerateMatrix(nodeId, target?.metadata?.generationMode || "image", target?.metadata?.composerContent ?? target?.metadata?.prompt ?? "");
                 }}
             />
-        ),
-        [configInputsById, confirmStopGeneration, handleConfigNodeChange, handleGenerateMatrix, handleReplayNode, runningNodeId],
+            );
+        },
+        [configInputsById, confirmStopGeneration, handleConfigNodeChange, handleGenerateMatrix, handleNodeContentChange, handleReplayNode, runningNodeId],
     );
 
     if (!projectLoaded) return <CanvasRefreshShell />;
@@ -1924,7 +1925,7 @@ function InfiniteCanvasPage() {
                             isConnectionTarget={connectionTargetNodeId === node.id}
                             isConnecting={Boolean(connectingParams)}
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node, nodes) ? "disabled" : "available"}
-                            showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
+                            showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.Prompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             groupChildCount={groupChildCountById.get(node.id) || 0}
                             isGroupDropTarget={dropTargetGroupId === node.id}
                             boardLayers={boardRenderLayersById.get(node.id)}
