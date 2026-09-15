@@ -1891,13 +1891,15 @@ function InfiniteCanvasPage() {
                                 const from = nodeById.get(connection.fromNodeId);
                                 const to = nodeById.get(connection.toNodeId);
                                 if (!from || !to) return null;
+                                const fromPreview = dragPreview?.get(from.id);
+                                const toPreview = dragPreview?.get(to.id);
 
                                 return (
                                     <ConnectionPath
                                         key={connection.id}
                                         connection={connection}
-                                        from={from}
-                                        to={to}
+                                        from={fromPreview ? { ...from, position: fromPreview } : from}
+                                        to={toPreview ? { ...to, position: toPreview } : to}
                                         active={selectedConnectionId === connection.id || relatedHighlight.connectionIds.has(connection.id)}
                                         scale={viewport.k}
                                         onSelect={() => {
