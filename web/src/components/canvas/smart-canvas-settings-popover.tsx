@@ -63,7 +63,7 @@ export function SmartCanvasSettingsPopover({ ratio, resolution, background, onCh
     return (
         <>
             <span ref={buttonRef} className="inline-flex min-w-0">
-                <Button size="small" type="text" className="!h-8 !max-w-[180px] !justify-start !rounded-full !px-2.5" style={{ background: theme.node.fill, color: theme.node.text }} icon={<Settings2 className="size-3.5" />} onClick={() => setOpen(!open)}>
+                <Button size="small" type="text" className="!h-8 !max-w-[180px] !justify-start !rounded-full !px-2.5 hover:bg-black/5 dark:hover:bg-white/10" style={{ color: theme.node.text }} icon={<Settings2 className="size-3.5" />} onClick={() => setOpen(!open)}>
                     <span className="truncate">
                         {ratio} · {resolution.toUpperCase()}
                     </span>

@@ -311,7 +311,7 @@ function AssetCard({ asset, theme, onInsert, onRemove }: { asset: Asset; theme: 
                 event.dataTransfer.setData("application/x-infinite-canvas-asset", JSON.stringify(buildInsertPayload(asset)));
             }}
             className="group relative aspect-square cursor-grab overflow-hidden rounded-xl border transition duration-200 hover:-translate-y-0.5 active:cursor-grabbing"
-            style={{ borderColor: theme.node.stroke, background: theme.node.panel }}
+            style={{ borderColor: theme.toolbar.border, background: theme.toolbar.panel }}
         >
             <AssetCover asset={asset} />
             <div className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 transition duration-200 group-hover:opacity-100">

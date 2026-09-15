@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react";
 import { ChevronRight, Copy, Download, Group, Image as ImageIcon, Info, LayoutDashboard, Lock, Music2, Puzzle, Radio, RefreshCw, Sparkles, Star, Trash2, Video } from "lucide-react";
 
-import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
+import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
 import { ensureThumbnailUrl } from "@/services/image-storage";
@@ -176,6 +176,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const contentInteractive = locked ? false : !supportsInteractionToggle || forceInteractive || !data.metadata?.content ? true : Boolean(data.metadata?.interactive);
     // Transparent nodes such as SVGs blend into the canvas while retaining outlines for selected or related states.
     const transparentBg = Boolean(definition?.transparentBackground);
+    const frostedCard = !isContainer && !hasImageContent && !hasVideoContent && !transparentBg;
     const isActive = isConnectionTarget || isSelected || isFocusRelated;
     const imageBorderColor = isActive ? selectionBlue : isRelated ? theme.node.muted : "transparent";
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -390,10 +391,10 @@ export const CanvasNode = React.memo(function CanvasNode({
             )}
 
             <div
-                className="relative h-full w-full overflow-visible rounded-3xl border-2"
+                className={`relative h-full w-full overflow-visible rounded-3xl border-2 ${frostedCard ? frostedSurfaceClass : ""}`}
                 style={{
-                    background: isGroup || hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.node.panel,
-                    borderColor: isContainer ? (isGroupDropTarget || isActive ? selectionBlue : theme.node.stroke) : hasImageContent ? imageBorderColor : isBoard && isGroupDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : transparentBg ? "transparent" : theme.node.stroke,
+                    background: isGroup || hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.toolbar.panel,
+                    borderColor: isContainer ? (isGroupDropTarget || isActive ? selectionBlue : theme.toolbar.border) : hasImageContent ? imageBorderColor : isBoard && isGroupDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : transparentBg ? "transparent" : theme.toolbar.border,
                     borderStyle: isGroup ? "dashed" : "solid",
                     outline: (isBoard || isFrame) && isGroupDropTarget ? `2px solid ${selectionBlue}66` : isPlacedOnBoard ? `2px dashed ${selectionBlue}88` : undefined,
                     outlineOffset: ((isBoard || isFrame) && isGroupDropTarget) || isPlacedOnBoard ? 2 : undefined,
@@ -436,7 +437,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                     className={`relative flex h-full w-full items-center justify-center rounded-[inherit] ${isBatchRoot ? "overflow-visible" : "overflow-hidden"}`}
                     style={
                         {
-                            background: isContainer || hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.node.panel,
+                            background: isContainer || hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.toolbar.panel,
                             pointerEvents: contentInteractive ? undefined : "none",
                         } as React.CSSProperties
                     }
@@ -691,7 +692,7 @@ function ExpandedTextCard({ node, text, index, onSetPrimary }: { node: CanvasNod
                     top: y,
                     width: node.width,
                     height: node.height,
-                    background: theme.node.panel,
+                    background: theme.toolbar.panel,
                     borderColor: theme.node.stroke,
                     "--batch-from-x": `${-x}px`,
                     "--batch-from-y": `${-y}px`,
@@ -725,7 +726,7 @@ function TextSlotStatus({ text }: { text: CanvasNodeText }) {
     const failed = text.status === "error";
     const loading = text.status === "loading";
     return (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ background: theme.node.fill, color: failed ? theme.node.text : theme.node.activeStroke }}>
+        <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ color: failed ? theme.node.text : theme.node.activeStroke }}>
             {failed ? <span className="text-xs leading-5">{text.errorDetails || t("canvas.node.failed")}</span> : loading ? <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} /> : <span className="text-xs">{t("apiErrors.noContent")}</span>}
             {loading ? <span className="text-[10px] tracking-[0.2em]">{t("canvas.node.generating")}</span> : null}
         </div>
@@ -754,7 +755,7 @@ function EmptyImageContent({ theme }: NodeContentRendererProps) {
     const { t } = useTranslation();
     return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3" style={{ color: theme.node.placeholder }}>
-            <div className="flex size-14 items-center justify-center rounded-2xl" style={{ background: theme.toolbar.activeBg }}>
+            <div className="flex size-14 items-center justify-center rounded-2xl">
                 <ImageIcon className="size-6 opacity-30" />
             </div>
             <span className="text-[10px] tracking-[0.18em] opacity-50">{t("canvas.node.emptyImage")}</span>
@@ -765,7 +766,7 @@ function EmptyImageContent({ theme }: NodeContentRendererProps) {
 function ImageGenerationContent({ theme }: NodeContentRendererProps) {
     const { t } = useTranslation();
     return (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-2.5 rounded-[inherit] border border-dashed px-6 text-center" style={{ background: theme.node.panel, borderColor: theme.node.stroke }}>
+        <div className="flex h-full w-full flex-col items-center justify-center gap-2.5 rounded-[inherit] border border-dashed px-6 text-center" style={{ borderColor: theme.node.stroke }}>
             <Sparkles className="size-6" style={{ color: theme.node.activeStroke }} />
             <span className="text-sm font-medium" style={{ color: theme.node.text }}>{t("canvas.nodeTypes.imageGeneration")}</span>
             <span className="text-[11px]" style={{ color: theme.node.placeholder }}>{t("canvas.node.imageGenerationHint")}</span>
@@ -815,7 +816,7 @@ function AudioNodeContent({ node, theme }: NodeContentRendererProps) {
             </div>
         );
     return (
-        <div className="flex h-full w-full flex-col justify-center gap-3 px-4" style={{ background: theme.node.fill, color: theme.node.text }}>
+        <div className="flex h-full w-full flex-col justify-center gap-3 px-4" style={{ color: theme.node.text }}>
             <div className="flex min-w-0 items-center gap-2 text-sm opacity-70">
                 <Music2 className="size-4 shrink-0" />
                 <span className="truncate">{t("canvas.node.audio")}</span>
@@ -846,7 +847,7 @@ function OutputContent({ theme, outputSource, isDefaultOutput, defaultOutputTitl
                 {content && source?.type === CanvasNodeType.Image ? (
                     <CanvasImage content={content} storageKey={source.metadata?.storageKey} thumbnail={source.metadata?.thumbnail} alt={describeOutputSource(source)} className="pointer-events-none block h-full w-full select-none object-contain" />
                 ) : content && source?.type === CanvasNodeType.Video ? (
-                    <video src={content} muted controls className="h-full w-full rounded-[18px] object-contain" style={{ background: theme.node.panel }} data-canvas-no-zoom />
+                    <video src={content} muted controls className="h-full w-full rounded-[18px] object-contain" data-canvas-no-zoom />
                 ) : content && source?.type === CanvasNodeType.Audio ? (
                     <div className="flex h-full w-full flex-col justify-center gap-3 px-2" style={{ color: theme.node.text }}>
                         <div className="flex items-center gap-2 text-xs opacity-70">
@@ -1030,7 +1031,7 @@ function ImageSlotStatus({ image }: { image?: CanvasNodeImage }) {
     const { t } = useTranslation();
     const failed = image?.status === "error";
     return (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ background: theme.node.fill, color: failed ? theme.node.text : theme.node.activeStroke }}>
+        <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ color: failed ? theme.node.text : theme.node.activeStroke }}>
             {failed ? <span className="text-xs leading-5">{image.errorDetails || t("canvas.node.failed")}</span> : <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} />}
             {!failed ? <span className="text-[10px] tracking-[0.2em]">{t("canvas.node.generating")}</span> : null}
         </div>
@@ -1081,7 +1082,7 @@ function BatchFrame({ batchCount, batchExpanded, children }: { batchCount: numbe
                             className="absolute rounded-[inherit] border transition-all duration-300 group-hover/batch:translate-x-1"
                             style={{
                                 inset: 0,
-                                background: `linear-gradient(135deg, ${theme.node.panel}, ${theme.node.fill})`,
+                                background: `linear-gradient(135deg, ${theme.toolbar.panel}, ${theme.node.fill})`,
                                 borderColor: theme.node.stroke,
                                 opacity: batchExpanded ? 0 : 1,
                                 transform: `translate(${10 + index * 6}px, ${4 + index * 3}px) rotate(${1.5 + index}deg)`,

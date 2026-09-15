@@ -53,13 +53,11 @@ function ConnectionCreateOption({ theme, icon, title, description, onClick }: { 
     return (
         <button
             type="button"
-            className="flex h-16 w-full cursor-pointer items-center gap-3 rounded-2xl px-3 text-left transition"
+            className="flex h-16 w-full cursor-pointer items-center gap-3 rounded-2xl px-3 text-left transition hover:bg-black/5 dark:hover:bg-white/10"
             style={{ color: theme.node.text }}
             onClick={onClick}
-            onMouseEnter={(event) => (event.currentTarget.style.background = theme.node.fill)}
-            onMouseLeave={(event) => (event.currentTarget.style.background = "transparent")}
         >
-            <span className="grid size-11 shrink-0 place-items-center rounded-xl" style={{ background: theme.node.fill, color: theme.node.muted }}>
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl" style={{ color: theme.node.muted }}>
                 {icon}
             </span>
             <span className="min-w-0 flex-1">
