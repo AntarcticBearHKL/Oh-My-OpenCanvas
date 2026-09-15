@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { Brush, Camera, Copy, Eraser, Grid2x2, Lock, LockOpen, ScanSearch, Scissors, ZoomIn } from "lucide-react";
+import { Brush, Camera, Copy, Eraser, Grid2x2, Lock, LockOpen, ScanSearch, ScanText, Scissors, ZoomIn } from "lucide-react";
 
 import type { CanvasNodeData } from "@/types/canvas";
 import i18n from "@/i18n";
 
-type ImageNodeActionToolId = "resize" | "maskEdit" | "crop" | "removeBackground" | "split" | "resolution" | "analyze" | "angle" | "duplicate";
+type ImageNodeActionToolId = "resize" | "maskEdit" | "crop" | "removeBackground" | "split" | "resolution" | "analyze" | "ocr" | "angle" | "duplicate";
 export type ImageQuickToolId = "info" | "delete" | "saveAsset" | "download" | ImageNodeActionToolId;
 
 type ImageToolHandlers = {
@@ -16,6 +16,7 @@ type ImageToolHandlers = {
     onSplit: (node: CanvasNodeData) => void;
     onResolution: (node: CanvasNodeData) => void;
     onAnalyze: (node: CanvasNodeData) => void;
+    onOcr: (node: CanvasNodeData) => void;
     onAngle: (node: CanvasNodeData) => void;
     onDuplicate: (node: CanvasNodeData) => void;
 };
@@ -35,7 +36,7 @@ type ImageQuickToolsConfig = {
     showLabels: boolean;
 };
 
-export const IMAGE_QUICK_TOOLS_STORAGE_KEY = "canvas-image-quick-tools-v12";
+export const IMAGE_QUICK_TOOLS_STORAGE_KEY = "canvas-image-quick-tools-v13";
 
 const defaultBaseToolIds: ImageQuickToolId[] = ["info", "delete", "saveAsset", "download"];
 
@@ -96,6 +97,14 @@ const imageToolDefinitions: ImageToolDefinition[] = [
         title: () => i18n.t("canvas.imageTools.analyzeTitle"),
         icon: () => <ScanSearch className="size-4" />,
         run: (node, handlers) => handlers.onAnalyze(node),
+    },
+    {
+        id: "ocr",
+        defaultVisible: true,
+        label: () => i18n.t("canvas.imageTools.ocr"),
+        title: () => i18n.t("canvas.imageTools.ocrTitle"),
+        icon: () => <ScanText className="size-4" />,
+        run: (node, handlers) => handlers.onOcr(node),
     },
     {
         id: "angle",

@@ -9,6 +9,7 @@ import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type Canvas
 
 type DerivedAssetChild = {
     id?: string;
+    type?: CanvasNodeType;
     image?: UploadedImage;
     title: string;
     size?: { width: number; height: number };
@@ -38,10 +39,11 @@ type DerivedAssetState = {
 export function insertDerivedAsset(spec: DerivedAssetSpec, state: DerivedAssetState): CanvasNodeData[] {
     const { source, children, relation, extraNodes = [], extraConnections = [], select, clearSelectedConnection = false, openDialog } = spec;
     const childNodes = children.map((child): CanvasNodeData => {
-        const size = child.size ?? (child.image ? fitNodeSize(child.image.width, child.image.height) : NODE_DEFAULT_SIZE[CanvasNodeType.Image]);
+        const type = child.type ?? CanvasNodeType.Image;
+        const size = child.size ?? (child.image ? fitNodeSize(child.image.width, child.image.height) : NODE_DEFAULT_SIZE[type]);
         return {
             id: child.id ?? nanoid(),
-            type: CanvasNodeType.Image,
+            type,
             title: child.title,
             position: child.position ?? { x: source.position.x + source.width + 96, y: source.position.y },
             width: size.width,

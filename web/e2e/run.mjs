@@ -345,6 +345,14 @@ const LIB_ASSERTIONS = `(async () => {
     const cropInside = algorithms.resolveSmartCropArea(64, 48, 1.5, { x: 50, y: 40, width: 40, height: 30 });
     ok("smart crop keeps the box inside the image", cropInside.x + cropInside.width <= 64 && cropInside.y + cropInside.height <= 48 && cropInside.width >= 1 && cropInside.height >= 1, JSON.stringify(cropInside));
 
+    const ocr = await import("/src/lib/canvas/canvas-ocr.ts");
+    ok("ocr trims surrounding whitespace", ocr.normaliseOcrText("  hello \\n\\n") === "hello", JSON.stringify(ocr.normaliseOcrText("  hello \\n\\n")));
+    ok("ocr strips wrapping code fences", ocr.normaliseOcrText("\`\`\`text\\nline 1\\nline 2\\n\`\`\`") === "line 1\\nline 2", JSON.stringify(ocr.normaliseOcrText("\`\`\`text\\nline 1\\nline 2\\n\`\`\`")));
+    ok("ocr strips trailing whitespace per line", ocr.normaliseOcrText("a  \\nb\\t\\nc") === "a\\nb\\nc", JSON.stringify(ocr.normaliseOcrText("a  \\nb\\t\\nc")));
+    ok("ocr keeps inner blank lines and spacing", ocr.normaliseOcrText("a b\\n\\nc") === "a b\\n\\nc", JSON.stringify(ocr.normaliseOcrText("a b\\n\\nc")));
+    ok("ocr normalises blank input", ocr.normaliseOcrText("   ") === "", JSON.stringify(ocr.normaliseOcrText("   ")));
+    ok("ocr exposes extractImageText", typeof ocr.extractImageText === "function");
+
     const modelStore = await import("/src/stores/use-local-model-store.ts");
     const localModels = modelStore.listLocalModels();
     ok("local model registry lists background-removal", localModels.some((model) => model.id === "background-removal"), JSON.stringify(localModels.map((model) => model.id)));

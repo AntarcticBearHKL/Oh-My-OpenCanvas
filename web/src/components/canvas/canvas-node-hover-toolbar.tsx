@@ -34,6 +34,7 @@ type CanvasNodeHoverToolbarProps = {
     onSplit: (node: CanvasNodeData) => void;
     onResolution: (node: CanvasNodeData) => void;
     onAnalyze: (node: CanvasNodeData) => void;
+    onOcr: (node: CanvasNodeData) => void;
     onAngle: (node: CanvasNodeData) => void;
     onRetry: (node: CanvasNodeData) => void;
     onToggleFreeResize: (node: CanvasNodeData) => void;
@@ -80,6 +81,7 @@ export function CanvasNodeHoverToolbar({
     onSplit,
     onResolution,
     onAnalyze,
+    onOcr,
     onAngle,
     onRetry,
     onToggleFreeResize,
@@ -133,7 +135,7 @@ export function CanvasNodeHoverToolbar({
     const canRetry = node.metadata?.status === "error" && !(isVideo && Boolean(node.metadata?.videoTaskId) && !hasVideo);
     const canQueryVideoTask = isVideo && Boolean(node.metadata?.videoTaskId) && !hasVideo && node.metadata?.status !== "loading";
     const quickImageToolIdSet = new Set(quickImageToolIds);
-    const imageTools = buildImageToolbarTools(node, { onUpload, onToggleFreeResize, onMaskEdit, onCrop, onRemoveBackground, onSplit, onResolution, onAnalyze, onAngle, onDuplicate });
+    const imageTools = buildImageToolbarTools(node, { onUpload, onToggleFreeResize, onMaskEdit, onCrop, onRemoveBackground, onSplit, onResolution, onAnalyze, onOcr, onAngle, onDuplicate });
 
     function toggleImageToolLabels() {
         const showLabels = !showImageToolLabels;

@@ -59,6 +59,7 @@ import { NODE_STATUS_SUCCESS, VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH } from
 import { buildNodeMentionReferences, getGroupResourceNodes, isCanvasReferenceNode, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { applyNodeConfigPatch, createCanvasNode } from "@/lib/canvas/canvas-node-factory";
 import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
+import { extractImageText, ocrPrompt } from "@/lib/canvas/canvas-ocr";
 import { arrangeBoardImages, BOARD_LAYOUT_TEMPLATES, boardLayerImageIds, composeSmartCanvas, moveBoardLayer, orderBoardImages, SMART_CANVAS_DEFAULT_FONT_SIZE, smartCanvasBackground, smartCanvasSizeForRatio, smartCanvasTexts, type BoardLayoutTemplate } from "@/lib/canvas/smart-canvas";
 import { CANVAS_GRID_SIZE, bulkRenameTitles, canGroupSelectedNodes, canUngroupSelectedNodes, findBoardDropTarget, findContainingGroupId, findGroupDropTarget, getConnectionTargetAnchor, isContainerNode, isNodeHidden, isNodeLocked, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides, snapNodesIntoGroup } from "@/lib/canvas/canvas-node-geometry";
 import {
@@ -1585,6 +1586,36 @@ function InfiniteCanvasPage() {
         }
     }, [effectiveConfig, isAiConfigReady, message, t]);
 
+    const ocrImageNode = useCallback(async (node: CanvasNodeData) => {
+        if (!node.metadata?.content) return;
+        const textConfig = buildGenerationConfig(effectiveConfig, node, "text");
+        if (!isAiConfigReady(textConfig, textConfig.model)) {
+            openConfigDialog();
+            return;
+        }
+        const key = `ocr-${node.id}`;
+        message.loading({ content: t("canvas.imageTools.ocrRunning"), key, duration: 0 });
+        const controller = new AbortController();
+        try {
+            const text = await extractImageText(textConfig, { id: node.id, name: `${node.title || node.id}.png`, type: node.metadata.mimeType || "image/png", dataUrl: node.metadata.content, storageKey: node.metadata.storageKey }, { signal: controller.signal });
+            insertDerivedAsset(
+                {
+                    source: node,
+                    children: [{ type: CanvasNodeType.Text, title: text.slice(0, 32) || t("canvas.imageTools.ocrResult"), metadata: { content: text, prompt: ocrPrompt(), status: "success" } }],
+                    select: "children",
+                },
+                { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+            );
+            message.success({ content: t("canvas.imageTools.ocrResult"), key });
+        } catch (error) {
+            if (controller.signal.aborted) {
+                message.destroy(key);
+                return;
+            }
+            message.error({ content: error instanceof Error ? error.message : t("canvas.imageTools.ocrFailed"), key });
+        }
+    }, [effectiveConfig, isAiConfigReady, message, openConfigDialog, t]);
+
     const handleResolutionConfirm = useCallback(
         (node: CanvasNodeData, payload: CanvasImageResolutionPayload) => {
             if (payload.kind === "ai") void aiUpscaleImageNode(node, payload.prompt);
@@ -1954,6 +1985,7 @@ function InfiniteCanvasPage() {
                     onSplit={(node) => setSplitNodeId(node.id)}
                     onResolution={(node) => setResolutionNodeId(node.id)}
                     onAnalyze={(node) => setAnalyzeNodeId(node.id)}
+                    onOcr={(node) => void ocrImageNode(node)}
                     onAngle={(node) => setAngleNodeId(node.id)}
                     onRetry={(node) => void handleRetryNode(node)}
                     onToggleFreeResize={(node) => toggleNodeFreeResize(node.id)}
