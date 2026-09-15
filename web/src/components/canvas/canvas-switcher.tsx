@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Button, Input } from "antd";
-import { Plus, Search } from "lucide-react";
+import { Input } from "antd";
+import { Folder, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -14,7 +14,6 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
     const { id: currentId } = useParams();
     const projects = useCanvasStore((state) => state.projects);
     const groups = useCanvasStore((state) => state.groups);
-    const createProject = useCanvasStore((state) => state.createProject);
     const [keyword, setKeyword] = useState("");
 
     const current = projects.find((project) => project.id === currentId) || null;
@@ -30,20 +29,13 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
         <div className="flex h-full min-h-0 flex-col gap-2 px-3 pb-3">
             <div className="flex items-center gap-1.5">
                 <Input size="small" allowClear prefix={<Search className="size-3.5 opacity-60" />} placeholder={t("canvas.switcher.search")} value={keyword} onChange={(event) => setKeyword(event.target.value)} />
-                <Button
-                    size="small"
-                    type="text"
-                    className="!h-7 !w-7 !min-w-7 shrink-0 !p-0"
-                    style={{ color: theme.node.text }}
-                    icon={<Plus className="size-4" />}
-                    title={t("canvas.switcher.new")}
-                    aria-label={t("canvas.switcher.new")}
-                    onClick={() => navigate(`/canvas/${createProject(t("canvas.defaultTitle", { count: projects.length + 1 }), groupId)}`)}
-                />
             </div>
             {groupName ? (
-                <div className="truncate text-[11px]" style={{ color: theme.node.muted }}>
-                    {t("canvas.switcher.group", { name: groupName })}
+                <div className="mt-1 flex items-center gap-1.5 border-t px-2 pt-2.5" style={{ borderColor: theme.toolbar.border }}>
+                    <Folder className="size-3.5 shrink-0 opacity-70" style={{ color: theme.node.muted }} />
+                    <span className="min-w-0 flex-1 truncate text-[11px] font-medium" style={{ color: theme.node.label }}>
+                        {groupName}
+                    </span>
                 </div>
             ) : null}
             <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
