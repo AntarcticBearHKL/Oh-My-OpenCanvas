@@ -204,6 +204,7 @@ function InfiniteCanvasPage() {
     const [isMiniMapOpen, setIsMiniMapOpen] = useState(false);
     const [assetPickerOpen, setAssetPickerOpen] = useState(false);
     const [projectLoaded, setProjectLoaded] = useState(false);
+    const loadedOnceRef = useRef(false);
     const [toolbarNodeId, setToolbarNodeId] = useState<string | null>(null);
     const [nodeImageSettingsOpen, setNodeImageSettingsOpen] = useState(false);
     const [dialogNodeId, setDialogNodeId] = useState<string | null>(null);
@@ -304,6 +305,10 @@ function InfiniteCanvasPage() {
 
     useEffect(() => {
         if (!hydrated) return;
+        if (loadedOnceRef.current) {
+            setNodes([]);
+            setConnections([]);
+        }
         setProjectLoaded(false);
         const project = openProject(projectId);
         if (!project) {
@@ -320,6 +325,7 @@ function InfiniteCanvasPage() {
             setActiveChatId(project.activeChatId || null);
             setViewport(project.viewport);
             resetHistory({ nodes: restoredNodes, connections: project.connections, chatSessions: restoredSessions, activeChatId: project.activeChatId || null });
+            loadedOnceRef.current = true;
             setProjectLoaded(true);
         };
         void restore();
@@ -1889,7 +1895,7 @@ function InfiniteCanvasPage() {
         [configInputsById, confirmStopGeneration, handleConfigNodeChange, handleGenerateMatrix, handleNodeContentChange, handleReplayNode, insertFolderFile, runningNodeId],
     );
 
-    if (!projectLoaded) return <CanvasRefreshShell />;
+    if (!projectLoaded && !loadedOnceRef.current) return <CanvasRefreshShell />;
 
     const guideBounds = snapGuides.x.length || snapGuides.y.length ? nodeBounds(nodes) : null;
     const guideSpan = guideBounds ? { left: guideBounds.left - 400, top: guideBounds.top - 400, right: guideBounds.right + 400, bottom: guideBounds.bottom + 400 } : null;
