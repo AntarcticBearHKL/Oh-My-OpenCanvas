@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
-import { Compass, Focus, Hand, HelpCircle, Image as ImageIcon, LayoutDashboard, MessageSquareText, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
+import { Compass, Focus, Frame, Hand, HelpCircle, Image as ImageIcon, LayoutDashboard, MessageSquareText, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -23,6 +23,7 @@ export function CanvasToolbar({
     onAddPrompt,
     onAddVideo,
     onAddAudio,
+    onAddFrame,
     onAddSmartCanvas,
     onAddExtensionNode,
     onUndo,
@@ -44,6 +45,7 @@ export function CanvasToolbar({
     onAddPrompt: () => void;
     onAddVideo: () => void;
     onAddAudio: () => void;
+    onAddFrame: () => void;
     onAddSmartCanvas: () => void;
     onAddExtensionNode: (type: string) => void;
     onUndo: () => void;
@@ -128,6 +130,9 @@ export function CanvasToolbar({
                         </ToolbarButton>
                     </>
                 ) : null}
+                <ToolbarButton id="tool-frame" label={t("canvas.nodeTypes.frame")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddFrame}>
+                    <Frame className="size-4.5" />
+                </ToolbarButton>
                 <ToolbarButton id="tool-smart-canvas" label={t("canvas.nodeTypes.smartCanvas")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddSmartCanvas}>
                     <LayoutDashboard className="size-4.5" />
                 </ToolbarButton>
@@ -368,6 +373,7 @@ function toolLabel(id: string, t: (key: string) => string) {
     if (id === "tool-prompt") return t("canvas.nodeTypes.prompt");
     if (id === "tool-video") return t("canvas.toolbar.video");
     if (id === "tool-audio") return t("canvas.toolbar.audio");
+    if (id === "tool-frame") return t("canvas.nodeTypes.frame");
     if (id === "tool-smart-canvas") return t("canvas.nodeTypes.smartCanvas");
     if (id === "tool-extensions") return t("canvas.toolbar.extensions");
     if (id === "tool-zoom") return t("canvas.toolbar.zoom");

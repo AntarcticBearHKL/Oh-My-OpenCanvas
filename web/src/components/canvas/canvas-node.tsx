@@ -145,6 +145,8 @@ export const CanvasNode = React.memo(function CanvasNode({
     const hasVideoContent = data.type === CanvasNodeType.Video && Boolean(data.metadata?.content);
     const hasAudioContent = data.type === CanvasNodeType.Audio && Boolean(data.metadata?.content);
     const isGroup = data.type === CanvasNodeType.Group;
+    const isFrame = data.type === CanvasNodeType.Frame;
+    const isContainer = isGroup || isFrame;
     const isBoard = data.type === CanvasNodeType.SmartCanvas;
     const isPlacedOnBoard = data.type === CanvasNodeType.Image && Boolean(data.metadata?.boardId);
     const batchCount = data.type === CanvasNodeType.Image ? data.metadata?.images?.length || 0 : data.type === CanvasNodeType.Text ? data.metadata?.texts?.length || 0 : 0;
@@ -312,7 +314,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     return (
         <div
             data-node-id={data.id}
-            className={`node-element absolute flex select-none flex-col transition-shadow duration-200 ${isGroup || isBoard ? "z-[5]" : isSelected ? "z-50" : "z-10"} ${referenceSelectionState === "available" ? "cursor-pointer" : referenceSelectionState ? "cursor-not-allowed" : ""}`}
+            className={`node-element absolute flex select-none flex-col transition-shadow duration-200 ${isContainer || isBoard ? "z-[5]" : isSelected ? "z-50" : "z-10"} ${referenceSelectionState === "available" ? "cursor-pointer" : referenceSelectionState ? "cursor-not-allowed" : ""}`}
             style={{
                 transform: `translate(${renderedPosition.x}px, ${renderedPosition.y}px)`,
                 width: data.width,
@@ -332,7 +334,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 if (!referenceSelectionState) onSelectCapture?.(event, data.id);
             }}
         >
-            {!referenceSelectionState && !hasImageContent && (isSelected || hovered || isEditingTitle) && (
+            {!referenceSelectionState && !hasImageContent && (isFrame || isSelected || hovered || isEditingTitle) && (
                 <div className="absolute left-3 top-[-28px] z-[65] max-w-[calc(100%-24px)]" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                     {isEditingTitle ? (
                         <input
@@ -371,11 +373,11 @@ export const CanvasNode = React.memo(function CanvasNode({
             <div
                 className="relative h-full w-full overflow-visible rounded-3xl border-2"
                 style={{
-                    background: isGroup ? "transparent" : hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.node.fill,
-                    borderColor: isGroup ? (isGroupDropTarget || isActive ? selectionBlue : theme.node.stroke) : hasImageContent ? imageBorderColor : isBoard && isGroupDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : transparentBg ? "transparent" : theme.node.stroke,
+                    background: isFrame ? theme.node.panel : isGroup ? "transparent" : hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.node.fill,
+                    borderColor: isContainer ? (isGroupDropTarget || isActive ? selectionBlue : theme.node.stroke) : hasImageContent ? imageBorderColor : isBoard && isGroupDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : transparentBg ? "transparent" : theme.node.stroke,
                     borderStyle: isGroup ? "dashed" : "solid",
-                    outline: isBoard && isGroupDropTarget ? `2px solid ${selectionBlue}66` : isPlacedOnBoard ? `2px dashed ${selectionBlue}88` : undefined,
-                    outlineOffset: (isBoard && isGroupDropTarget) || isPlacedOnBoard ? 2 : undefined,
+                    outline: (isBoard || isFrame) && isGroupDropTarget ? `2px solid ${selectionBlue}66` : isPlacedOnBoard ? `2px dashed ${selectionBlue}88` : undefined,
+                    outlineOffset: ((isBoard || isFrame) && isGroupDropTarget) || isPlacedOnBoard ? 2 : undefined,
                     boxShadow: isGroupDropTarget && isGroup ? `0 0 0 2px ${selectionBlue}66, inset 0 0 0 999px ${selectionBlue}10` : isActive ? `0 0 0 1px ${selectionBlue}55` : isRelated ? `0 0 0 1px ${theme.node.muted}55` : undefined,
                 }}
                 onMouseDown={(event) => {
@@ -414,7 +416,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                     className={`relative flex h-full w-full items-center justify-center rounded-[inherit] ${isBatchRoot ? "overflow-visible" : "overflow-hidden"}`}
                     style={
                         {
-                            background: isGroup ? "transparent" : hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.node.fill,
+                            background: isContainer ? "transparent" : hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.node.fill,
                             pointerEvents: contentInteractive ? undefined : "none",
                         } as React.CSSProperties
                     }
@@ -450,7 +452,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                     <ImageInfoBar node={data} onInfo={onInfo} />
                 ) : null}
 
-                {!isGroup && !hasImageContent && !hasVideoContent && !hasAudioContent ? <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12" style={{ background: `linear-gradient(to top, ${theme.canvas.background}66, transparent)` }} /> : null}
+                {!isContainer && !hasImageContent && !hasVideoContent && !hasAudioContent ? <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12" style={{ background: `linear-gradient(to top, ${theme.canvas.background}66, transparent)` }} /> : null}
 
                 {referenceSelectionState && (referenceSelectionState !== "available" || hovered) ? (
                     <div className="pointer-events-none absolute inset-0 z-[60] grid place-items-center rounded-[inherit]" style={{ background: `color-mix(in srgb, ${theme.canvas.background} ${referenceSelectionState === "target" ? 78 : referenceSelectionState === "disabled" ? 60 : 34}%, transparent)`, boxShadow: referenceSelectionState === "available" ? `inset 0 0 0 2px ${selectionBlue}` : undefined }}>
@@ -465,10 +467,10 @@ export const CanvasNode = React.memo(function CanvasNode({
                 {!referenceSelectionState && !isGroup ? <ResizeGrip active={hovered || isSelected} onMouseDown={handleResizeMouseDown} /> : null}
             </div>
 
-            {!referenceSelectionState && !isGroup ? <ConnectionHandleDot side="left" visible={hovered || isSelected || isConnecting} onMouseDown={(event) => onConnectStart(event, data.id, "target")} /> : null}
+            {!referenceSelectionState && !isContainer ? <ConnectionHandleDot side="left" visible={hovered || isSelected || isConnecting} onMouseDown={(event) => onConnectStart(event, data.id, "target")} /> : null}
             {!referenceSelectionState && (definition?.hasSourceHandle ?? true) && data.type !== CanvasNodeType.Config ? <ConnectionHandleDot side="right" visible={hovered || isSelected || isConnecting} onMouseDown={(event) => onConnectStart(event, data.id, "source")} /> : null}
 
-            {showPanel && !isGroup && renderPanel ? <div className="absolute left-1/2 top-full z-[70] w-[600px] -translate-x-1/2 pt-4">{renderPanel(data)}</div> : null}
+            {showPanel && !isContainer && renderPanel ? <div className="absolute left-1/2 top-full z-[70] w-[600px] -translate-x-1/2 pt-4">{renderPanel(data)}</div> : null}
         </div>
     );
 });
@@ -501,6 +503,7 @@ const nodeContentRenderers = {
     [CanvasNodeType.Video]: VideoNodeContent,
     [CanvasNodeType.Audio]: AudioNodeContent,
     [CanvasNodeType.Group]: GroupNodeContent,
+    [CanvasNodeType.Frame]: FrameNodeContent,
     [CanvasNodeType.SmartCanvas]: SmartCanvasNodeContent,
 } satisfies Record<CanvasNodeType, (props: NodeContentRendererProps) => ReactNode>;
 
@@ -517,6 +520,10 @@ function GroupNodeContent({ node, theme, groupChildCount }: NodeContentRendererP
             </div>
         </div>
     );
+}
+
+function FrameNodeContent() {
+    return null;
 }
 
 function LoadingContent({ theme }: Pick<NodeContentRendererProps, "theme">) {

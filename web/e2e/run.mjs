@@ -52,6 +52,17 @@ const LIB_ASSERTIONS = `(async () => {
     ok("grid defers to guides", guideBeatsGrid.dx === 200 && guideBeatsGrid.guides.x[0] === 300, JSON.stringify(guideBeatsGrid));
     ok("grid off by default", geo.snapDragToGuides([{ id: "d", x: 7, y: 9 }], [dragged], 3, 3, 0).dx === 3);
 
+    const frame = { id: "f", type: "frame", title: "f", position: { x: 0, y: 0 }, width: 400, height: 300, metadata: {} };
+    const inside = image("in", 100, 100, { x: 150, y: 100 });
+    const outside = image("out", 100, 100, { x: 900, y: 900 });
+    ok("frame is container", geo.isContainerNode(frame) === true && geo.isContainerNode(dragged) === false);
+    ok("drop adopts into frame", geo.findGroupDropTarget(new Set(["in"]), [frame, inside, outside])?.id === "f");
+    ok("frame never nests", geo.findGroupDropTarget(new Set(["f"]), [frame, inside]) === null && geo.findContainingGroupId(frame, [frame, inside]) === undefined);
+    const nested = geo.snapNodesIntoGroup(new Set(["in"]), [frame, inside, outside], frame).find((node) => node.id === "in");
+    ok("snap into frame keeps position and sets groupId", nested.metadata.groupId === "f" && nested.position.x === 150 && nested.position.y === 100, JSON.stringify(nested));
+    ok("containing frame resolves", geo.findContainingGroupId(inside, [frame, inside]) === "f" && geo.findContainingGroupId(outside, [frame, outside]) === undefined);
+    ok("frame rejects connections as target", geo.normalizeConnection("in", "f", [frame, inside], "source") === null && geo.normalizeConnection("f", "in", [frame, inside], "source").fromNodeId === "f");
+
     const align = await import("/src/lib/canvas/alignment.ts");
     const trio = [
         { id: "a", type: "image", title: "a", position: { x: 100, y: 50 }, width: 100, height: 100, metadata: {} },

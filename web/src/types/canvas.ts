@@ -18,6 +18,7 @@ export enum CanvasNodeType {
     Video = "video",
     Audio = "audio",
     Group = "group",
+    Frame = "frame",
     SmartCanvas = "smart-canvas",
 }
 

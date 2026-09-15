@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { frostedSurfaceClass } from "@/lib/canvas-theme";
+import { isContainerNode } from "@/lib/canvas/canvas-node-geometry";
 import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
 
 export function CanvasNodeLayerPopover({ node, nodes, onMove }: { node: CanvasNodeData; nodes: CanvasNodeData[]; onMove: (direction: "up" | "down") => void }) {
@@ -56,6 +57,6 @@ export function CanvasNodeLayerPopover({ node, nodes, onMove }: { node: CanvasNo
 
 function moveTargetIndex(nodes: CanvasNodeData[], index: number, step: 1 | -1) {
     let target = index + step;
-    while (target >= 0 && target < nodes.length && (nodes[target].type === CanvasNodeType.Group || nodes[target].type === CanvasNodeType.SmartCanvas)) target += step;
+    while (target >= 0 && target < nodes.length && (isContainerNode(nodes[target]) || nodes[target].type === CanvasNodeType.SmartCanvas)) target += step;
     return target >= 0 && target < nodes.length ? target : null;
 }

@@ -3,7 +3,7 @@ import { useCallback, useEffect, type Dispatch, type MutableRefObject, type SetS
 import { nanoid } from "nanoid";
 import { getGenerationCount } from "@/lib/canvas/canvas-generation-helpers";
 import { createCanvasNode } from "@/lib/canvas/canvas-node-factory";
-import { applyGroupSelection, applyUngroupSelection, collectGroupMemberNodes, getGroupWrapRect } from "@/lib/canvas/canvas-node-geometry";
+import { applyGroupSelection, applyUngroupSelection, collectGroupMemberNodes, getGroupWrapRect, isContainerNode } from "@/lib/canvas/canvas-node-geometry";
 import { isCanvasReferenceNode } from "@/lib/canvas/canvas-resource-references";
 import { getNodeDefinition, isBuiltinNodeType as isBuiltinType } from "@/lib/canvas/node-registry";
 import type { AiConfig } from "@/stores/use-config-store";
@@ -80,7 +80,7 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
                   ? Boolean(definition.autoOpenPanel)
                   : definition?.useBuiltinPanel
                     ? true
-                    : isBuiltinType(type) && type !== CanvasNodeType.Text && type !== CanvasNodeType.Audio && type !== CanvasNodeType.Group && type !== CanvasNodeType.Image;
+                    : isBuiltinType(type) && type !== CanvasNodeType.Text && type !== CanvasNodeType.Audio && type !== CanvasNodeType.Group && type !== CanvasNodeType.Frame && type !== CanvasNodeType.Image;
             if (wantsPanel) setDialogNodeId(newNode.id);
         },
         [effectiveConfig.canvasImageCount, effectiveConfig.count, effectiveConfig.imageModel, effectiveConfig.model, effectiveConfig.size, getCanvasCenter],
@@ -211,7 +211,7 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
         setNodes((prev) => [...prev, next]);
         setSelectedNodeIds(new Set([id]));
         setSelectedConnectionId(null);
-        if (next.type !== CanvasNodeType.Group) setDialogNodeId(id);
+        if (!isContainerNode(next)) setDialogNodeId(id);
     }, []);
 
     const copySelectedNodes = useCallback(() => {
@@ -290,7 +290,7 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
         setConnections((prev) => [...prev, ...nextConnections]);
         setSelectedNodeIds(new Set(pastedNodes.map((node) => node.id)));
         setSelectedConnectionId(null);
-        setDialogNodeId(pastedNodes[0]?.type === CanvasNodeType.Group ? null : pastedNodes[0]?.id || null);
+        setDialogNodeId(pastedNodes[0] && isContainerNode(pastedNodes[0]) ? null : pastedNodes[0]?.id || null);
         return true;
     }, [getCanvasCenter]);
 

@@ -35,7 +35,7 @@ export function snapDragToGuides(initialNodes: { id: string; x: number; y: numbe
     let snapX: { diff: number; line: number } | null = null;
     let snapY: { diff: number; line: number } | null = null;
     for (const node of nodes) {
-        if (movedIds.has(node.id) || node.type === CanvasNodeType.Group) continue;
+        if (movedIds.has(node.id) || isContainerNode(node)) continue;
         for (const line of [node.position.x, node.position.x + node.width / 2, node.position.x + node.width]) {
             for (const value of draggedX) {
                 const diff = line - value;
@@ -59,13 +59,17 @@ export function nodeCenterInside(node: CanvasNodeData, rect: CanvasNodeData) {
     return centerX >= rect.position.x && centerX <= rect.position.x + rect.width && centerY >= rect.position.y && centerY <= rect.position.y + rect.height;
 }
 
+export function isContainerNode(node: CanvasNodeData) {
+    return node.type === CanvasNodeType.Group || node.type === CanvasNodeType.Frame;
+}
+
 export function findGroupDropTarget(movedIds: Set<string>, nodes: CanvasNodeData[]) {
-    if (nodes.some((node) => movedIds.has(node.id) && node.type === CanvasNodeType.Group)) return null;
-    const movingNodes = nodes.filter((node) => movedIds.has(node.id) && node.type !== CanvasNodeType.Group);
+    if (nodes.some((node) => movedIds.has(node.id) && isContainerNode(node))) return null;
+    const movingNodes = nodes.filter((node) => movedIds.has(node.id) && !isContainerNode(node));
     if (!movingNodes.length) return null;
     return (
         [...nodes].reverse().find((group) => {
-            if (group.type !== CanvasNodeType.Group || movedIds.has(group.id)) return false;
+            if (!isContainerNode(group) || movedIds.has(group.id)) return false;
             return movingNodes.some((node) => {
                 const centerX = node.position.x + node.width / 2;
                 const centerY = node.position.y + node.height / 2;
@@ -87,7 +91,7 @@ export function findBoardDropTarget(movedIds: Set<string>, nodes: CanvasNodeData
 }
 
 export function snapNodesIntoGroup(movedIds: Set<string>, nodes: CanvasNodeData[], group: CanvasNodeData) {
-    const movingNodes = nodes.filter((node) => movedIds.has(node.id) && node.type !== CanvasNodeType.Group);
+    const movingNodes = nodes.filter((node) => movedIds.has(node.id) && !isContainerNode(node));
     if (!movingNodes.length) return nodes;
     const pad = 24;
     const bounds = nodeBounds(movingNodes);
@@ -98,7 +102,7 @@ export function snapNodesIntoGroup(movedIds: Set<string>, nodes: CanvasNodeData[
     const dx = bounds.right - bounds.left > right - left ? left - bounds.left : bounds.left < left ? left - bounds.left : bounds.right > right ? right - bounds.right : 0;
     const dy = bounds.bottom - bounds.top > bottom - top ? top - bounds.top : bounds.top < top ? top - bounds.top : bounds.bottom > bottom ? bottom - bounds.bottom : 0;
     return nodes.map((node) => {
-        if (!movedIds.has(node.id) || node.type === CanvasNodeType.Group) return node;
+        if (!movedIds.has(node.id) || isContainerNode(node)) return node;
         return { ...node, position: { x: node.position.x + dx, y: node.position.y + dy }, metadata: { ...node.metadata, groupId: group.id } };
     });
 }
@@ -183,7 +187,7 @@ export function findContainingGroupId(node: CanvasNodeData, nodes: CanvasNodeDat
     return (
         [...nodes]
             .reverse()
-            .find((group) => group.type === CanvasNodeType.Group && group.id !== node.id && centerX >= group.position.x && centerX <= group.position.x + group.width && centerY >= group.position.y && centerY <= group.position.y + group.height)?.id ||
+            .find((group) => isContainerNode(group) && group.id !== node.id && centerX >= group.position.x && centerX <= group.position.x + group.width && centerY >= group.position.y && centerY <= group.position.y + group.height)?.id ||
         undefined
     );
 }
@@ -200,7 +204,7 @@ export function normalizeConnection(firstNodeId: string, secondNodeId: string, n
     const second = nodes.find((node) => node.id === secondNodeId);
     if (!first || !second || first.id === second.id) return null;
     const isGenerationSink = (type: CanvasNodeTypeId) => type === CanvasNodeType.Config || type === CanvasNodeType.ImageGeneration;
-    if (second.type === CanvasNodeType.Group) return null;
+    if (isContainerNode(second)) return null;
     if (isGenerationSink(first.type) && isGenerationSink(second.type)) return null;
     if (isGenerationSink(second.type)) return { fromNodeId: first.id, toNodeId: second.id };
     if (isGenerationSink(first.type) && firstHandleType === "target") return { fromNodeId: second.id, toNodeId: first.id };

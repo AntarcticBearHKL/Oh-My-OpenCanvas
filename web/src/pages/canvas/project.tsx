@@ -57,7 +57,7 @@ import { buildNodeMentionReferences, getGroupResourceNodes, isCanvasReferenceNod
 import { applyNodeConfigPatch, createCanvasNode } from "@/lib/canvas/canvas-node-factory";
 import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
 import { arrangeBoardImages, composeSmartCanvas, SMART_CANVAS_DEFAULT_FONT_SIZE, smartCanvasBackground, smartCanvasSizeForRatio, smartCanvasTexts } from "@/lib/canvas/smart-canvas";
-import { CANVAS_GRID_SIZE, canGroupSelectedNodes, canUngroupSelectedNodes, findBoardDropTarget, findContainingGroupId, findGroupDropTarget, getConnectionTargetAnchor, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides, snapNodesIntoGroup } from "@/lib/canvas/canvas-node-geometry";
+import { CANVAS_GRID_SIZE, canGroupSelectedNodes, canUngroupSelectedNodes, findBoardDropTarget, findContainingGroupId, findGroupDropTarget, getConnectionTargetAnchor, isContainerNode, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides, snapNodesIntoGroup } from "@/lib/canvas/canvas-node-geometry";
 import {
     audioExtension,
     buildGenerationConfig,
@@ -524,7 +524,8 @@ function InfiniteCanvasPage() {
 
         const addNode = (nodeId: string) => {
             nodeIds.add(nodeId);
-            if (nodeById.get(nodeId)?.type === CanvasNodeType.Group) nodes.forEach((node) => node.metadata?.groupId === nodeId && nodeIds.add(node.id));
+            const activeContainer = nodeById.get(nodeId);
+            if (activeContainer && isContainerNode(activeContainer)) nodes.forEach((node) => node.metadata?.groupId === nodeId && nodeIds.add(node.id));
         };
         addNode(activeNodeId);
         connections.forEach((connection) => {
@@ -696,7 +697,7 @@ function InfiniteCanvasPage() {
         const dragIds = new Set(nextSelected);
         currentNodes.forEach((node) => {
             if (!nextSelected.has(node.id)) return;
-            const memberKey = node.type === CanvasNodeType.Group ? "groupId" : node.type === CanvasNodeType.SmartCanvas ? "boardId" : null;
+            const memberKey = isContainerNode(node) ? "groupId" : node.type === CanvasNodeType.SmartCanvas ? "boardId" : null;
             if (!memberKey) return;
             currentNodes.forEach((child) => {
                 if (child.metadata?.[memberKey] === node.id) dragIds.add(child.id);
@@ -753,7 +754,7 @@ function InfiniteCanvasPage() {
                         const boardId = targetBoard && nodeCenterInside(node, targetBoard) ? targetBoard.id : undefined;
                         if (next.metadata?.boardId !== boardId) next = { ...next, metadata: { ...next.metadata, boardId } };
                     }
-                    if (!movedIds.has(next.id) || next.type === CanvasNodeType.Group) return next;
+                    if (!movedIds.has(next.id) || isContainerNode(next)) return next;
                     const groupId = findContainingGroupId(next, moved);
                     if (next.metadata?.groupId === groupId) return next;
                     return { ...next, metadata: { ...next.metadata, groupId } };
@@ -770,7 +771,7 @@ function InfiniteCanvasPage() {
             if (clickedDefinition?.hidePanel) {
                 // Clicking a display-only plugin node selects it without opening a lower panel.
                 setDialogNodeId((current) => (current === clickedNodeId ? current : null));
-            } else if (clickedNode?.type !== CanvasNodeType.Group) {
+            } else if (clickedNode && !isContainerNode(clickedNode)) {
                 setDialogNodeId(clickedNodeId);
             }
         }
@@ -782,7 +783,7 @@ function InfiniteCanvasPage() {
         if (index < 0) return;
         const step = direction === "up" ? 1 : -1;
         let target = index + step;
-        while (target >= 0 && target < current.length && (current[target].type === CanvasNodeType.Group || current[target].type === CanvasNodeType.SmartCanvas)) target += step;
+        while (target >= 0 && target < current.length && (isContainerNode(current[target]) || current[target].type === CanvasNodeType.SmartCanvas)) target += step;
         if (target < 0 || target >= current.length) return;
         const next = [...current];
         const [node] = next.splice(index, 1);
@@ -1836,6 +1837,7 @@ function InfiniteCanvasPage() {
                     onAddPrompt={() => createNode(CanvasNodeType.Prompt)}
                     onAddVideo={() => createNode(CanvasNodeType.Video)}
                     onAddAudio={() => createNode(CanvasNodeType.Audio)}
+                    onAddFrame={() => createNode(CanvasNodeType.Frame)}
                     onAddSmartCanvas={() => createNode(CanvasNodeType.SmartCanvas)}
                     onAddExtensionNode={(type) => createNode(type)}
                     onUndo={undoCanvas}
