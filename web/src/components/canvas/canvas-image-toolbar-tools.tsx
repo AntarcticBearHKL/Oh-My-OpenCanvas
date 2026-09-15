@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { Brush, Camera, Copy, Eraser, Grid2x2, Lock, LockOpen, ScanSearch, ScanText, Scissors, ZoomIn } from "lucide-react";
+import { Brush, Camera, Copy, Eraser, Grid2x2, Lock, LockOpen, MousePointer2, ScanSearch, ScanText, Scissors, ZoomIn } from "lucide-react";
 
 import type { CanvasNodeData } from "@/types/canvas";
 import i18n from "@/i18n";
 
-type ImageNodeActionToolId = "resize" | "maskEdit" | "crop" | "removeBackground" | "split" | "resolution" | "analyze" | "ocr" | "angle" | "duplicate";
+type ImageNodeActionToolId = "resize" | "maskEdit" | "crop" | "removeBackground" | "split" | "resolution" | "analyze" | "ocr" | "segment" | "angle" | "duplicate";
 export type ImageQuickToolId = "info" | "delete" | "saveAsset" | "download" | ImageNodeActionToolId;
 
 type ImageToolHandlers = {
@@ -17,6 +17,7 @@ type ImageToolHandlers = {
     onResolution: (node: CanvasNodeData) => void;
     onAnalyze: (node: CanvasNodeData) => void;
     onOcr: (node: CanvasNodeData) => void;
+    onSegment: (node: CanvasNodeData) => void;
     onAngle: (node: CanvasNodeData) => void;
     onDuplicate: (node: CanvasNodeData) => void;
 };
@@ -36,7 +37,7 @@ type ImageQuickToolsConfig = {
     showLabels: boolean;
 };
 
-export const IMAGE_QUICK_TOOLS_STORAGE_KEY = "canvas-image-quick-tools-v13";
+export const IMAGE_QUICK_TOOLS_STORAGE_KEY = "canvas-image-quick-tools-v14";
 
 const defaultBaseToolIds: ImageQuickToolId[] = ["info", "delete", "saveAsset", "download"];
 
@@ -105,6 +106,14 @@ const imageToolDefinitions: ImageToolDefinition[] = [
         title: () => i18n.t("canvas.imageTools.ocrTitle"),
         icon: () => <ScanText className="size-4" />,
         run: (node, handlers) => handlers.onOcr(node),
+    },
+    {
+        id: "segment",
+        defaultVisible: true,
+        label: () => i18n.t("canvas.imageTools.segment"),
+        title: () => i18n.t("canvas.imageTools.segmentTitle"),
+        icon: () => <MousePointer2 className="size-4" />,
+        run: (node, handlers) => handlers.onSegment(node),
     },
     {
         id: "angle",

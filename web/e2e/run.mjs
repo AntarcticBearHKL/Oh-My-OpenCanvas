@@ -361,6 +361,20 @@ const LIB_ASSERTIONS = `(async () => {
     ok("ocr normalises blank input", ocr.normaliseOcrText("   ") === "", JSON.stringify(ocr.normaliseOcrText("   ")));
     ok("ocr exposes extractImageText", typeof ocr.extractImageText === "function");
 
+    const sam = await import("/src/lib/image/mobile-sam-math.ts");
+    ok("sam resize scale landscape", sam.samResizeScale(1000, 500) === 1024 / 1000, sam.samResizeScale(1000, 500));
+    ok("sam resize scale portrait", sam.samResizeScale(500, 1000) === 1024 / 1000, sam.samResizeScale(500, 1000));
+    ok("sam resize scale square", sam.samResizeScale(1024, 1024) === 1 && sam.MOBILE_SAM_INPUT_SIZE === 1024, sam.samResizeScale(1024, 1024));
+    ok("sam model point scales into model space", JSON.stringify(sam.samModelPoint(10, 20, 0.5)) === "[5,10]", JSON.stringify(sam.samModelPoint(10, 20, 0.5)));
+    ok("sam best mask index picks argmax", sam.pickBestMaskIndex([0.1, 0.9, 0.3]) === 1, sam.pickBestMaskIndex([0.1, 0.9, 0.3]));
+    ok("sam best mask index ties take the first", sam.pickBestMaskIndex([0.4, 0.6, 0.6]) === 1, sam.pickBestMaskIndex([0.4, 0.6, 0.6]));
+    ok("sam best mask index empty is zero", sam.pickBestMaskIndex([]) === 0, sam.pickBestMaskIndex([]));
+    ok("sam binarize thresholds at zero", Array.from(sam.binarizeMaskLogits([-1, 0, 1])).join(",") === "0,0,1", Array.from(sam.binarizeMaskLogits([-1, 0, 1])).join(","));
+    ok("sam binarize keeps all positive", Array.from(sam.binarizeMaskLogits([1, 2, 3])).join(",") === "1,1,1", Array.from(sam.binarizeMaskLogits([1, 2, 3])).join(","));
+    ok("sam binarize drops all negative", Array.from(sam.binarizeMaskLogits([-3, -2, -1])).join(",") === "0,0,0", Array.from(sam.binarizeMaskLogits([-3, -2, -1])).join(","));
+    ok("sam score clamps into zero to one", sam.clampSamScore(1.0177) === 1 && sam.clampSamScore(-0.5) === 0 && sam.clampSamScore(0.42) === 0.42, sam.clampSamScore(1.0177) + "," + sam.clampSamScore(-0.5) + "," + sam.clampSamScore(0.42));
+    ok("sam score handles non-finite", sam.clampSamScore(Number.NaN) === 0 && sam.clampSamScore(Number.POSITIVE_INFINITY) === 0, sam.clampSamScore(Number.NaN) + "," + sam.clampSamScore(Number.POSITIVE_INFINITY));
+
     const modelStore = await import("/src/stores/use-local-model-store.ts");
     const localModels = modelStore.listLocalModels();
     ok("local model registry lists background-removal", localModels.some((model) => model.id === "background-removal"), JSON.stringify(localModels.map((model) => model.id)));

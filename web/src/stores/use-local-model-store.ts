@@ -3,9 +3,7 @@ import { create } from "zustand";
 import { createCanvasContext } from "@/lib/canvas/canvas-2d";
 import { removeImageBackground } from "@/services/background-removal";
 
-const BACKGROUND_REMOVAL_READY_KEY = "canvas-bg-removal-ready";
-
-export type LocalModelId = "background-removal";
+export type LocalModelId = "background-removal" | "mobile-sam";
 
 export type LocalModelStatus = "idle" | "downloading" | "ready" | "error";
 
@@ -26,10 +24,25 @@ type LocalModelStore = {
     clearModel: (id: LocalModelId) => void;
 };
 
-let preparing: Promise<boolean> | null = null;
+const READY_KEYS: Record<LocalModelId, string> = {
+    "background-removal": "canvas-bg-removal-ready",
+    "mobile-sam": "canvas-mobile-sam-ready",
+};
 
-function initialBackgroundRemoval(): LocalModelState {
-    if (typeof window === "undefined" || localStorage.getItem(BACKGROUND_REMOVAL_READY_KEY) !== "1") return { status: "idle", percent: 0 };
+const warmUps: Record<LocalModelId, (onProgress: (percent: number) => void) => Promise<void>> = {
+    "background-removal": warmUpBackgroundRemoval,
+    "mobile-sam": (onProgress) => import("@/lib/image/mobile-sam").then((module) => module.loadMobileSam(onProgress)),
+};
+
+const resets: Record<LocalModelId, () => void> = {
+    "background-removal": () => {},
+    "mobile-sam": () => void import("@/lib/image/mobile-sam").then((module) => module.resetMobileSam()),
+};
+
+const preparing = new Map<LocalModelId, Promise<boolean>>();
+
+function initialState(id: LocalModelId): LocalModelState {
+    if (typeof window === "undefined" || localStorage.getItem(READY_KEYS[id]) !== "1") return { status: "idle", percent: 0 };
     return { status: "ready", percent: 100 };
 }
 
@@ -48,19 +61,20 @@ async function warmUpBackgroundRemoval(onProgress: (percent: number) => void) {
 }
 
 export const useLocalModelStore = create<LocalModelStore>((set, get) => ({
-    models: { "background-removal": initialBackgroundRemoval() },
+    models: { "background-removal": initialState("background-removal"), "mobile-sam": initialState("mobile-sam") },
     prepareModel: (id, force?: boolean) => {
         if (!force && get().models[id].status === "ready") return Promise.resolve(true);
-        if (preparing) return preparing;
+        const active = preparing.get(id);
+        if (active) return active;
         let percent = 0;
         const update = (status: LocalModelStatus, next: number) => set((state) => ({ models: { ...state.models, [id]: { status, percent: next } } }));
         update("downloading", percent);
-        preparing = warmUpBackgroundRemoval((next) => {
+        const task = warmUps[id]((next) => {
             percent = Math.max(percent, next);
             update("downloading", percent);
         })
             .then(() => {
-                localStorage.setItem(BACKGROUND_REMOVAL_READY_KEY, "1");
+                localStorage.setItem(READY_KEYS[id], "1");
                 update("ready", 100);
                 return true;
             })
@@ -69,12 +83,14 @@ export const useLocalModelStore = create<LocalModelStore>((set, get) => ({
                 return false;
             })
             .finally(() => {
-                preparing = null;
+                preparing.delete(id);
             });
-        return preparing;
+        preparing.set(id, task);
+        return task;
     },
     clearModel: (id) => {
-        localStorage.removeItem(BACKGROUND_REMOVAL_READY_KEY);
+        localStorage.removeItem(READY_KEYS[id]);
+        resets[id]();
         set((state) => ({ models: { ...state.models, [id]: { status: "idle", percent: 0 } } }));
     },
 }));
@@ -88,6 +104,14 @@ export function listLocalModels(): LocalModelDescriptor[] {
             prepare: (force) => useLocalModelStore.getState().prepareModel("background-removal", force),
             clear: () => useLocalModelStore.getState().clearModel("background-removal"),
             read: () => useLocalModelStore.getState().models["background-removal"],
+        },
+        {
+            id: "mobile-sam",
+            titleKey: "config.localModels.mobileSam",
+            descriptionKey: "config.localModels.mobileSamDescription",
+            prepare: (force) => useLocalModelStore.getState().prepareModel("mobile-sam", force),
+            clear: () => useLocalModelStore.getState().clearModel("mobile-sam"),
+            read: () => useLocalModelStore.getState().models["mobile-sam"],
         },
     ];
 }

@@ -32,6 +32,7 @@ import { CanvasNodeCropDialog, type CanvasImageCropRect } from "@/components/can
 import { CanvasNodeMaskEditDialog } from "@/components/canvas/canvas-node-mask-edit-dialog";
 import { CanvasNodeSplitDialog, type CanvasImageSplitParams } from "@/components/canvas/canvas-node-split-dialog";
 import { CanvasNodeResolutionDialog, type CanvasImageResolutionPayload } from "@/components/canvas/canvas-node-resolution-dialog";
+import { CanvasNodeSegmentDialog, type CanvasImageSegmentResult } from "@/components/canvas/canvas-node-segment-dialog";
 import { buildNodeGenerationInputs, type NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
 import { CanvasNodeHoverToolbar, CanvasNodeInfoModal } from "@/components/canvas/canvas-node-hover-toolbar";
 import { CanvasNodeListPanel } from "@/components/canvas/canvas-node-layer-popover";
@@ -206,6 +207,7 @@ function InfiniteCanvasPage() {
     const [splitNodeId, setSplitNodeId] = useState<string | null>(null);
     const [resolutionNodeId, setResolutionNodeId] = useState<string | null>(null);
     const [analyzeNodeId, setAnalyzeNodeId] = useState<string | null>(null);
+    const [segmentNodeId, setSegmentNodeId] = useState<string | null>(null);
     const [angleNodeId, setAngleNodeId] = useState<string | null>(null);
     const [previewNodeId, setPreviewNodeId] = useState<string | null>(null);
     const [previewImageId, setPreviewImageId] = useState<string | null>(null);
@@ -518,6 +520,7 @@ function InfiniteCanvasPage() {
     const splitNode = splitNodeId ? nodeById.get(splitNodeId) || null : null;
     const resolutionNode = resolutionNodeId ? nodeById.get(resolutionNodeId) || null : null;
     const analyzeNode = analyzeNodeId ? nodeById.get(analyzeNodeId) || null : null;
+    const segmentNode = segmentNodeId ? nodeById.get(segmentNodeId) || null : null;
     const angleNode = angleNodeId ? nodeById.get(angleNodeId) || null : null;
     const previewNode = previewNodeId ? nodeById.get(previewNodeId) || null : null;
     const previewContent = previewImageId ? previewNode?.metadata?.images?.find((image) => image.id === previewImageId)?.content : previewNode?.metadata?.content;
@@ -1620,6 +1623,24 @@ function InfiniteCanvasPage() {
         }
     }, [effectiveConfig, isAiConfigReady, message, openConfigDialog, t]);
 
+    const insertSegmentedImage = useCallback(
+        async (node: CanvasNodeData, result: CanvasImageSegmentResult) => {
+            const image = await uploadImage(result.maskDataUrl);
+            const width = Math.min(node.width, Math.max(220, image.width));
+            insertDerivedAsset(
+                {
+                    source: node,
+                    children: [{ image, title: t("canvas.segment.result"), size: { width, height: width * (image.height / image.width) }, metadata: { prompt: node.metadata?.prompt } }],
+                    relation: "segment",
+                    select: "children",
+                },
+                { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+            );
+            setSegmentNodeId(null);
+        },
+        [t],
+    );
+
     const handleResolutionConfirm = useCallback(
         (node: CanvasNodeData, payload: CanvasImageResolutionPayload) => {
             if (payload.kind === "ai") void aiUpscaleImageNode(node, payload.prompt);
@@ -1992,6 +2013,7 @@ function InfiniteCanvasPage() {
                     onResolution={(node) => setResolutionNodeId(node.id)}
                     onAnalyze={(node) => setAnalyzeNodeId(node.id)}
                     onOcr={(node) => void ocrImageNode(node)}
+                    onSegment={(node) => setSegmentNodeId(node.id)}
                     onAngle={(node) => setAngleNodeId(node.id)}
                     onRetry={(node) => void handleRetryNode(node)}
                     onToggleFreeResize={(node) => toggleNodeFreeResize(node.id)}
@@ -2083,6 +2105,10 @@ function InfiniteCanvasPage() {
                         onClose={() => setAnalyzeNodeId(null)}
                         onCrop={(dataUrl) => void insertAnalyzedCrop(analyzeNode, dataUrl)}
                     />
+                ) : null}
+
+                {segmentNode?.metadata?.content ? (
+                    <CanvasNodeSegmentDialog dataUrl={segmentNode.metadata.content} open={Boolean(segmentNode)} onClose={() => setSegmentNodeId(null)} onConfirm={(result) => void insertSegmentedImage(segmentNode, result)} />
                 ) : null}
 
                 {angleNode?.metadata?.content ? <CanvasNodeAngleDialog dataUrl={angleNode.metadata.content} open={Boolean(angleNode)} onClose={() => setAngleNodeId(null)} onConfirm={(params) => void generateAngleNode(angleNode!, params)} /> : null}
