@@ -1268,6 +1268,10 @@ function InfiniteCanvasPage() {
 
     const handleBoardTextsChange = useCallback((nodeId: string, texts: NonNullable<CanvasNodeMetadata["boardTexts"]>) => handleSmartCanvasChange(nodeId, { boardTexts: texts }), [handleSmartCanvasChange]);
 
+    const handleBoardLayerChange = useCallback((nodeId: string, patch: Partial<CanvasNodeMetadata>) => {
+        setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...patch } } : node)));
+    }, []);
+
     const handleComposeBoard = useCallback(
         async (board: CanvasNodeData) => {
             const placed = nodesRef.current.filter((node) => (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.SmartCanvas) && node.metadata?.boardId === board.id);
@@ -1780,6 +1784,8 @@ function InfiniteCanvasPage() {
                         images={boardOrderedLayersById.get(panelNode.id) || []}
                         onMove={(imageId, direction) => handleSmartCanvasChange(panelNode.id, { boardLayers: moveBoardLayer(panelNode, boardOrderedLayersById.get(panelNode.id) || [], imageId, direction) })}
                         onToggleHidden={(imageId) => toggleNodeFlag(imageId, "hidden")}
+                        onBlendModeChange={(imageId, id) => handleBoardLayerChange(imageId, { blendMode: id })}
+                        onOpacityChange={(imageId, value) => handleBoardLayerChange(imageId, { opacity: value })}
                     />
                 </div>
             ) : (
@@ -1802,7 +1808,7 @@ function InfiniteCanvasPage() {
                     }}
                 />
             ),
-        [boardOrderedLayersById, configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleArrangeBoard, handleComposeBoard, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleNodePromptChange, handleSmartCanvasChange, mentionReferencesByNodeId, nodes, renderPluginPanel, runningNodeId, startNodeReferenceSelection, t, theme.node.text, toggleNodeFlag],
+        [boardOrderedLayersById, configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleArrangeBoard, handleBoardLayerChange, handleComposeBoard, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleNodePromptChange, handleSmartCanvasChange, mentionReferencesByNodeId, nodes, renderPluginPanel, runningNodeId, startNodeReferenceSelection, t, theme.node.text, toggleNodeFlag],
     );
 
     const renderNodeContentPanel = useCallback(

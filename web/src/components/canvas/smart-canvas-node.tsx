@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { Frame, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
+import { clampLayerOpacity, resolveBlendMode } from "@/lib/canvas/blend-modes";
 import { smartCanvasBackground, smartCanvasRatio, smartCanvasResolution, smartCanvasTexts } from "@/lib/canvas/smart-canvas";
 import { resolveImageUrl } from "@/services/image-storage";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
@@ -59,7 +60,7 @@ export function SmartCanvasNodeContent({ node, boardLayers = EMPTY_BOARD_LAYERS,
     return (
         <div
             className="relative h-full w-full overflow-hidden rounded-[inherit]"
-            style={{ backgroundColor: background === "transparent" ? theme.node.panel : background, backgroundImage: `linear-gradient(${gridColor} 1px, transparent 1px), linear-gradient(90deg, ${gridColor} 1px, transparent 1px)`, backgroundSize: "24px 24px" }}
+            style={{ backgroundColor: background === "transparent" ? theme.node.panel : background, backgroundImage: `linear-gradient(${gridColor} 1px, transparent 1px), linear-gradient(90deg, ${gridColor} 1px, transparent 1px)`, backgroundSize: "24px 24px", isolation: "isolate" }}
         >
             <BoardLayersView node={node} layers={boardLayers} byId={boardLayersById} visited={new Set([node.id])} />
             {texts.map((text) => (
@@ -134,6 +135,10 @@ export function SmartCanvasNodeContent({ node, boardLayers = EMPTY_BOARD_LAYERS,
     );
 }
 
+function layerBlendStyle(layer: CanvasNodeData): CSSProperties {
+    return { mixBlendMode: resolveBlendMode(layer.metadata?.blendMode).css as CSSProperties["mixBlendMode"], opacity: clampLayerOpacity(layer.metadata?.opacity) };
+}
+
 function BoardLayersView({ node, layers, byId, visited }: { node: CanvasNodeData; layers: CanvasNodeData[]; byId: Map<string, CanvasNodeData[]>; visited: Set<string> }) {
     const imageLayers = useMemo(() => layers.filter((layer) => layer.type === CanvasNodeType.Image), [layers]);
     const urls = useResolvedBoardImageUrls(imageLayers);
@@ -145,14 +150,14 @@ function BoardLayersView({ node, layers, byId, visited }: { node: CanvasNodeData
                 if (layer.type === CanvasNodeType.SmartCanvas) {
                     if (visited.has(layer.id)) return null;
                     return (
-                        <div key={layer.id} className="pointer-events-none absolute overflow-hidden rounded-[inherit]" style={{ left, top, width: layer.width, height: layer.height }}>
+                        <div key={layer.id} className="pointer-events-none absolute overflow-hidden rounded-[inherit]" style={{ left, top, width: layer.width, height: layer.height, isolation: "isolate", ...layerBlendStyle(layer) }}>
                             <BoardLayersView node={layer} layers={byId.get(layer.id) ?? EMPTY_BOARD_LAYERS} byId={byId} visited={new Set(visited).add(layer.id)} />
                         </div>
                     );
                 }
                 const url = urls[layer.id];
                 if (!url) return null;
-                return <img key={layer.id} src={url} alt="" draggable={false} className="pointer-events-none absolute select-none object-fill" style={{ left, top, width: layer.width, height: layer.height }} />;
+                return <img key={layer.id} src={url} alt="" draggable={false} className="pointer-events-none absolute select-none object-fill" style={{ left, top, width: layer.width, height: layer.height, ...layerBlendStyle(layer) }} />;
             })}
         </>
     );

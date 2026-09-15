@@ -73,6 +73,14 @@ const LIB_ASSERTIONS = `(async () => {
     const hiddenBoardOrder = smart.orderBoardImages(mixedLayers, [image("a", 100, 100), hiddenBoard, image("z", 100, 100)]);
     ok("orderBoardImages drops hidden boards", hiddenBoardOrder.map((item) => item.id).join(",") === "a,z", hiddenBoardOrder.map((item) => item.id).join(","));
 
+    const blend = await import("/src/lib/canvas/blend-modes.ts");
+    ok("blend opacity constants", blend.LAYER_OPACITY_MIN === 0 && blend.LAYER_OPACITY_MAX === 1 && blend.LAYER_OPACITY_DEFAULT === 1, blend.LAYER_OPACITY_MIN + "," + blend.LAYER_OPACITY_MAX + "," + blend.LAYER_OPACITY_DEFAULT);
+    ok("blend opacity clamps to bounds", blend.clampLayerOpacity(-0.5) === 0 && blend.clampLayerOpacity(1.5) === 1, blend.clampLayerOpacity(-0.5) + "," + blend.clampLayerOpacity(1.5));
+    ok("blend opacity defaults when missing or non-finite", blend.clampLayerOpacity(undefined) === 1 && blend.clampLayerOpacity(Number.NaN) === 1 && blend.clampLayerOpacity(Number.POSITIVE_INFINITY) === 1, blend.clampLayerOpacity(undefined) + "," + blend.clampLayerOpacity(Number.NaN));
+    ok("blend opacity rounds to two decimals", blend.clampLayerOpacity(0.333) === 0.33 && blend.clampLayerOpacity(0.666) === 0.67, blend.clampLayerOpacity(0.333) + "," + blend.clampLayerOpacity(0.666));
+    ok("blend modes resolve back to themselves", blend.CANVAS_BLEND_MODES.length === 16 && blend.CANVAS_BLEND_MODES.every((mode) => blend.resolveBlendMode(mode.id) === mode), blend.CANVAS_BLEND_MODES.length);
+    ok("blend mode unknown id falls back to default", blend.resolveBlendMode("nope").id === blend.DEFAULT_BLEND_MODE, blend.resolveBlendMode("nope").id);
+
     const image2 = await import("/src/lib/canvas/canvas-image-data.ts");
     ok("upscale clamp max", image2.resolveUpscaleSize(100, 100, 99999).width === 4096, JSON.stringify(image2.resolveUpscaleSize(100, 100, 99999)));
     const down = image2.resolveUpscaleSize(1000, 500, 200);

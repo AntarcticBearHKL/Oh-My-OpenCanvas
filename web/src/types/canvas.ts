@@ -119,6 +119,8 @@ export type CanvasNodeMetadata = {
     boardBackground?: string; // Smart Canvas board background colour as a CSS colour string; defaults to "transparent".
     boardTexts?: { id: string; text: string; x: number; y: number; fontSize: number; color: string }[]; // Smart Canvas text annotations drawn above placed images; x/y are board-local top-left coordinates and fontSize uses board units.
     boardLayers?: string[];
+    blendMode?: string;
+    opacity?: number;
     interactive?: boolean; // Plugin node interaction/move state; see CanvasNodeDefinition.interactionToggle.
     locked?: boolean;
     hidden?: boolean;

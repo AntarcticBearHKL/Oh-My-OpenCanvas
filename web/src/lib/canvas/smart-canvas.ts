@@ -1,3 +1,4 @@
+import { clampLayerOpacity, resolveBlendMode } from "@/lib/canvas/blend-modes";
 import { createCanvasContext } from "@/lib/canvas/canvas-2d";
 import { nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
 import { readMediaDimensions } from "@/lib/media-size";
@@ -142,6 +143,8 @@ export async function composeSmartCanvas(board: CanvasNodeData, layers: CanvasNo
         const y = (layer.position.y - board.position.y) * scaleY;
         const layerWidth = layer.width * scaleX;
         const layerHeight = layer.height * scaleY;
+        const layerAlpha = clampLayerOpacity(layer.metadata?.opacity);
+        const layerOperation = resolveBlendMode(layer.metadata?.blendMode).canvas;
         if (layer.type === CanvasNodeType.SmartCanvas) {
             if (nextVisited.has(layer.id)) continue;
             const childLayers = nodes.filter((node) => (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.SmartCanvas) && node.metadata?.boardId === layer.id);
@@ -150,20 +153,30 @@ export async function composeSmartCanvas(board: CanvasNodeData, layers: CanvasNo
             const element = await loadCompositeImage(nested.dataUrl);
             if (!element) continue;
             context.save();
+            context.globalAlpha = layerAlpha;
+            context.globalCompositeOperation = layerOperation;
             context.beginPath();
             context.rect(x, y, layerWidth, layerHeight);
             context.clip();
             context.drawImage(element, x, y, layerWidth, layerHeight);
             context.restore();
+            context.globalAlpha = 1;
+            context.globalCompositeOperation = "source-over";
             continue;
         }
         const url = await resolveImageUrl(layer.metadata?.storageKey, layer.metadata?.content || "");
         if (!url) continue;
         const element = await loadCompositeImage(url);
         if (!element) continue;
+        context.globalAlpha = layerAlpha;
+        context.globalCompositeOperation = layerOperation;
         context.drawImage(element, x, y, layerWidth, layerHeight);
+        context.globalAlpha = 1;
+        context.globalCompositeOperation = "source-over";
     }
 
+    context.globalAlpha = 1;
+    context.globalCompositeOperation = "source-over";
     context.textBaseline = "top";
     for (const text of smartCanvasTexts(board)) {
         context.font = `${text.fontSize * scaleY}px sans-serif`;

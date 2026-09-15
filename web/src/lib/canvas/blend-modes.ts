@@ -25,6 +25,15 @@ export const CANVAS_BLEND_MODES: CanvasBlendMode[] = [
 
 export const DEFAULT_BLEND_MODE = "normal";
 
+export const LAYER_OPACITY_MIN = 0;
+export const LAYER_OPACITY_MAX = 1;
+export const LAYER_OPACITY_DEFAULT = 1;
+
+export function clampLayerOpacity(value: number | undefined): number {
+    if (typeof value !== "number" || !Number.isFinite(value)) return LAYER_OPACITY_DEFAULT;
+    return Math.min(LAYER_OPACITY_MAX, Math.max(LAYER_OPACITY_MIN, Math.round(value * 100) / 100));
+}
+
 export function resolveBlendMode(id?: string) {
     return CANVAS_BLEND_MODES.find((mode) => mode.id === id) || CANVAS_BLEND_MODES[0];
 }
