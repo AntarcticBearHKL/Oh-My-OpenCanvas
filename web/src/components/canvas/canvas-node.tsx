@@ -42,6 +42,8 @@ type CanvasNodeProps = {
     renderPanel?: (node: CanvasNodeData) => ReactNode;
     renderNodeContent?: (node: CanvasNodeData) => ReactNode;
     isBoardDropTarget?: boolean;
+    isAssetsDropTarget?: boolean;
+    returnFrom?: Position | null;
     boardLayers?: CanvasNodeData[];
     boardLayersById?: Map<string, CanvasNodeData[]>;
     batchExpanded?: boolean;
@@ -111,6 +113,8 @@ export const CanvasNode = React.memo(function CanvasNode({
     renderPanel,
     renderNodeContent,
     isBoardDropTarget = false,
+    isAssetsDropTarget = false,
+    returnFrom,
     boardLayers,
     boardLayersById,
     batchExpanded = false,
@@ -149,6 +153,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const hasVideoContent = data.type === CanvasNodeType.Video && Boolean(data.metadata?.content);
     const hasAudioContent = data.type === CanvasNodeType.Audio && Boolean(data.metadata?.content);
     const isBoard = data.type === CanvasNodeType.SmartCanvas;
+    const isAssetsFolderDropTarget = data.type === CanvasNodeType.Assets && isAssetsDropTarget;
     const locked = Boolean(data.metadata?.locked);
     const isPlacedOnBoard = (data.type === CanvasNodeType.Image || data.type === CanvasNodeType.SmartCanvas) && Boolean(data.metadata?.boardId);
     const [enteredImage, setEnteredImage] = useState(false);
@@ -328,14 +333,20 @@ export const CanvasNode = React.memo(function CanvasNode({
     return (
         <div
             data-node-id={data.id}
-            className={`node-element absolute flex select-none flex-col transition-shadow duration-200 ${isBoard || data.type === CanvasNodeType.Config ? "z-[5]" : isSelected ? "z-50" : "z-10"} ${referenceSelectionState === "available" ? "cursor-pointer" : referenceSelectionState ? "cursor-not-allowed" : ""}`}
-            style={{
-                transform: `translate(${renderedPosition.x}px, ${renderedPosition.y}px)`,
-                width: data.width,
-                height: data.height,
-                transition: "box-shadow 200ms ease",
-                contain: "layout style",
-            }}
+            className={`node-element absolute flex select-none flex-col transition-shadow duration-200 ${isBoard || data.type === CanvasNodeType.Config ? "z-[5]" : isSelected ? "z-50" : "z-10"} ${returnFrom ? "canvas-node-return" : ""} ${referenceSelectionState === "available" ? "cursor-pointer" : referenceSelectionState ? "cursor-not-allowed" : ""}`}
+            style={
+                {
+                    transform: `translate(${renderedPosition.x}px, ${renderedPosition.y}px)`,
+                    width: data.width,
+                    height: data.height,
+                    transition: "box-shadow 200ms ease",
+                    contain: "layout style",
+                    "--node-return-from-x": returnFrom ? `${returnFrom.x}px` : undefined,
+                    "--node-return-from-y": returnFrom ? `${returnFrom.y}px` : undefined,
+                    "--node-return-to-x": `${renderedPosition.x}px`,
+                    "--node-return-to-y": `${renderedPosition.y}px`,
+                } as React.CSSProperties
+            }
             onMouseEnter={() => {
                 setHovered(true);
                 onHoverStart(data.id);
@@ -389,10 +400,10 @@ export const CanvasNode = React.memo(function CanvasNode({
                 className={`relative h-full w-full overflow-visible rounded-3xl border-2 ${frostedCard ? `canvas-glass-card ${frostedSurfaceClass}` : ""} ${enteredImage ? "canvas-node-enter" : ""}`}
                 style={{
                     background: hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.toolbar.panel,
-                    borderColor: hasImageContent ? imageBorderColor : isBoard && isBoardDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : "transparent",
+                    borderColor: hasImageContent ? imageBorderColor : isBoard && isBoardDropTarget ? selectionBlue : isAssetsFolderDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : "transparent",
                     borderStyle: "solid",
-                    outline: isBoard && isBoardDropTarget ? `2px solid ${selectionBlue}66` : isPlacedOnBoard ? `2px dashed ${selectionBlue}88` : undefined,
-                    outlineOffset: (isBoard && isBoardDropTarget) || isPlacedOnBoard ? 2 : undefined,
+                    outline: isBoard && isBoardDropTarget ? `2px solid ${selectionBlue}66` : isAssetsFolderDropTarget ? `2px solid ${selectionBlue}66` : isPlacedOnBoard ? `2px dashed ${selectionBlue}88` : undefined,
+                    outlineOffset: (isBoard && isBoardDropTarget) || isAssetsFolderDropTarget || isPlacedOnBoard ? 2 : undefined,
                     boxShadow: isActive ? `0 0 0 1px ${selectionBlue}55` : isRelated ? `0 0 0 1px ${theme.node.muted}55` : undefined,
                 }}
                 onMouseDown={(event) => {

@@ -102,6 +102,12 @@ export function findBoardDropTarget(movedIds: Set<string>, nodes: CanvasNodeData
     );
 }
 
+export function findAssetsDropTarget(movedIds: Set<string>, nodes: CanvasNodeData[]) {
+    const movingNodes = nodes.filter((node) => movedIds.has(node.id) && node.type === CanvasNodeType.Image);
+    if (!movingNodes.length) return null;
+    return [...nodes].reverse().find((assets) => assets.type === CanvasNodeType.Assets && !movedIds.has(assets.id) && movingNodes.some((node) => nodeCenterInside(node, assets))) || null;
+}
+
 export function getConnectionTargetAnchor(node: CanvasNodeData, current: ConnectionHandle) {
     return {
         x: current.handleType === "source" ? node.position.x : node.position.x + node.width,

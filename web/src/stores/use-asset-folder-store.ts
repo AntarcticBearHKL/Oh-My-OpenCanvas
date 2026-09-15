@@ -15,6 +15,7 @@ export type AssetFolderFile = {
 };
 
 export type OutputFolderStatus = "idle" | "unbound" | "unsupported" | "writing" | "error";
+export type AssetCollectStatus = "idle" | "saving" | "saved" | "failed";
 
 type AssetFolderStore = {
     folderName: string;
@@ -22,12 +23,15 @@ type AssetFolderStore = {
     capped: boolean;
     failed: boolean;
     supported: boolean;
+    collectStatus: AssetCollectStatus;
     outputFolderName: string;
     outputStatus: OutputFolderStatus;
     bindFolder: () => Promise<boolean>;
     refresh: () => Promise<void>;
     restore: () => Promise<void>;
     clear: () => Promise<void>;
+    requestWriteAccess: () => Promise<boolean>;
+    writeAsset: (fileName: string, blob: Blob) => Promise<boolean>;
     bindOutputFolder: () => Promise<boolean>;
     restoreOutputFolder: () => Promise<void>;
     clearOutputFolder: () => Promise<void>;
@@ -88,12 +92,13 @@ export const useAssetFolderStore = create<AssetFolderStore>()((set, get) => ({
     capped: false,
     failed: false,
     supported: supportsDirectoryPicker(),
+    collectStatus: "idle",
     outputFolderName: "",
     outputStatus: supportsDirectoryPicker() ? "unbound" : "unsupported",
     bindFolder: async () => {
         if (!supportsDirectoryPicker()) return false;
         try {
-            const handle = await window.showDirectoryPicker?.({ mode: "read" });
+            const handle = await window.showDirectoryPicker?.({ mode: "readwrite" });
             if (!handle) return false;
             directoryHandle = handle;
             await saveDirectoryHandle(handle, ASSET_FOLDER_HANDLE_KEY);
@@ -133,7 +138,32 @@ export const useAssetFolderStore = create<AssetFolderStore>()((set, get) => ({
         directoryHandle = null;
         revokeUrls();
         await clearDirectoryHandle(ASSET_FOLDER_HANDLE_KEY);
-        set({ folderName: "", files: [], capped: false, failed: false });
+        set({ folderName: "", files: [], capped: false, failed: false, collectStatus: "idle" });
+    },
+    requestWriteAccess: async () => (directoryHandle ? ensureWritePermission(directoryHandle) : false),
+    writeAsset: async (fileName, blob) => {
+        const handle = directoryHandle;
+        if (!handle) {
+            set({ collectStatus: "failed" });
+            return false;
+        }
+        set({ collectStatus: "saving" });
+        try {
+            if (!(await ensureWritePermission(handle))) {
+                set({ collectStatus: "failed" });
+                return false;
+            }
+            const fileHandle = await handle.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            set({ collectStatus: "saved" });
+            await get().refresh();
+            return true;
+        } catch {
+            set({ collectStatus: "failed" });
+            return false;
+        }
     },
     bindOutputFolder: async () => {
         if (!supportsDirectoryPicker()) {

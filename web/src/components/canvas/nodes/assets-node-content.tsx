@@ -15,12 +15,14 @@ export function AssetsNodeContent({ node, onInsert, onOutputFolderBind, onOutput
     const capped = useAssetFolderStore((state) => state.capped);
     const failed = useAssetFolderStore((state) => state.failed);
     const supported = useAssetFolderStore((state) => state.supported);
+    const collectStatus = useAssetFolderStore((state) => state.collectStatus);
     const bindFolder = useAssetFolderStore((state) => state.bindFolder);
     const refresh = useAssetFolderStore((state) => state.refresh);
     const outputFolderName = useAssetFolderStore((state) => state.outputFolderName);
     const outputStatus = useAssetFolderStore((state) => state.outputStatus);
     const bound = Boolean(folderName);
     const displayName = node.metadata?.assetFolderName || folderName;
+    const collectLabel = collectStatus === "saving" ? t("canvas.assets.collectSaving") : collectStatus === "saved" ? t("canvas.assets.collectSaved") : collectStatus === "failed" ? t("canvas.assets.collectFailed") : "";
     const outputStatusLabel = outputStatus === "writing" ? t("canvas.assets.outputWriting") : outputStatus === "error" ? t("canvas.assets.outputFailed") : "";
     const outputLabel = outputFolderName || t("canvas.assets.outputUnbound");
 
@@ -28,6 +30,12 @@ export function AssetsNodeContent({ node, onInsert, onOutputFolderBind, onOutput
         void useAssetFolderStore.getState().restore();
         void useAssetFolderStore.getState().restoreOutputFolder();
     }, []);
+
+    useEffect(() => {
+        if (collectStatus !== "saved") return;
+        const timer = window.setTimeout(() => useAssetFolderStore.setState({ collectStatus: "idle" }), 2000);
+        return () => window.clearTimeout(timer);
+    }, [collectStatus]);
 
     return (
         <div className="flex h-full w-full flex-col gap-2 p-3 text-left">
@@ -55,6 +63,12 @@ export function AssetsNodeContent({ node, onInsert, onOutputFolderBind, onOutput
             {bound ? (
                 <div className="truncate text-[10px]" style={{ color: theme.node.muted }}>
                     {displayName}
+                </div>
+            ) : null}
+
+            {collectLabel ? (
+                <div className="truncate text-[10px]" style={{ color: collectStatus === "failed" ? theme.node.text : theme.node.muted }}>
+                    {collectLabel}
                 </div>
             ) : null}
 

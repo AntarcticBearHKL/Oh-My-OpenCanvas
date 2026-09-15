@@ -63,7 +63,7 @@ import { applyNodeConfigPatch, createCanvasNode } from "@/lib/canvas/canvas-node
 import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
 import { extractImageText, ocrPrompt } from "@/lib/canvas/canvas-ocr";
 import { arrangeBoardImages, BOARD_LAYOUT_TEMPLATES, boardLayerImageIds, composeSmartCanvas, moveBoardLayer, orderBoardImages, SMART_CANVAS_DEFAULT_FONT_SIZE, smartCanvasBackground, smartCanvasSizeForRatio, smartCanvasTexts, type BoardLayoutTemplate } from "@/lib/canvas/smart-canvas";
-import { CANVAS_GRID_SIZE, bulkRenameTitles, findBoardDropTarget, getConnectionTargetAnchor, isNodeHidden, isNodeLocked, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides } from "@/lib/canvas/canvas-node-geometry";
+import { CANVAS_GRID_SIZE, bulkRenameTitles, findAssetsDropTarget, findBoardDropTarget, getConnectionTargetAnchor, isNodeHidden, isNodeLocked, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides } from "@/lib/canvas/canvas-node-geometry";
 import {
     audioExtension,
     buildGenerationConfig,
@@ -106,6 +106,7 @@ const EMPTY_REFERENCES: CanvasResourceReference[] = [];
 const CONNECTION_HANDLE_HIT_RADIUS = 40;
 const CONNECTION_NODE_HIT_PADDING = 32;
 const EMPTY_SNAP_GUIDES = { x: [], y: [] };
+const NODE_RETURN_MS = 220;
 const BOARD_LAYOUT_LABEL_KEYS: Record<BoardLayoutTemplate, string> = {
     grid: "canvas.smartCanvas.layoutGrid",
     row: "canvas.smartCanvas.layoutRow",
@@ -155,6 +156,8 @@ function InfiniteCanvasPage() {
     const didInitialCenterRef = useRef(false);
     const rafRef = useRef<number | null>(null);
     const dragMoveRef = useRef<{ clientX: number; clientY: number } | null>(null);
+    const dragPreviewRef = useRef<Map<string, Position> | null>(null);
+    const dropTargetAssetsRef = useRef<string | null>(null);
     const nodeDraggingRef = useRef(false);
     const dragRef = useRef<{
         isDraggingNode: boolean;
@@ -225,8 +228,10 @@ function InfiniteCanvasPage() {
     const [isNodeDragging, setIsNodeDragging] = useState(false);
     const [isNodeResizing, setIsNodeResizing] = useState(false);
     const [dropTargetBoardId, setDropTargetBoardId] = useState<string | null>(null);
+    const [dropTargetAssetsNodeId, setDropTargetAssetsNodeId] = useState<string | null>(null);
     const [snapGuides, setSnapGuides] = useState<{ x: number[]; y: number[] }>(EMPTY_SNAP_GUIDES);
     const [dragPreview, setDragPreview] = useState<Map<string, Position> | null>(null);
+    const [returningNodes, setReturningNodes] = useState<Map<string, Position>>(new Map());
     const [referencePickerNodeId, setReferencePickerNodeId] = useState<string | null>(null);
     const [boardPreview, setBoardPreview] = useState<{ dataUrl: string; width: number; height: number; title: string; boardId: string } | null>(null);
     const [isNodeListOpen, setIsNodeListOpen] = useState(false);
@@ -798,6 +803,25 @@ function InfiniteCanvasPage() {
         setIsNodeDragging(true);
     }, []);
 
+    const collectImageIntoAssets = useCallback((node: CanvasNodeData, permission: Promise<boolean>) => {
+        void (async () => {
+            try {
+                if (!(await permission)) {
+                    useAssetFolderStore.setState({ collectStatus: "failed" });
+                    return;
+                }
+                const blob = await resolveOutputBlob(node);
+                if (!blob) {
+                    useAssetFolderStore.setState({ collectStatus: "failed" });
+                    return;
+                }
+                await useAssetFolderStore.getState().writeAsset(outputFileName(node.title, node.id, node.metadata?.mimeType, node.metadata?.storageKey), blob);
+            } catch {
+                useAssetFolderStore.setState({ collectStatus: "failed" });
+            }
+        })();
+    }, []);
+
     const finishNodeDrag = useCallback((clientX?: number, clientY?: number) => {
         if (rafRef.current) {
             cancelAnimationFrame(rafRef.current);
@@ -811,15 +835,40 @@ function InfiniteCanvasPage() {
         const dx = clientX == null ? 0 : (clientX - dragRef.current.startX) / currentViewport.k;
         const dy = clientY == null ? 0 : (clientY - dragRef.current.startY) / currentViewport.k;
         const initialPositions = dragRef.current.initialSelectedNodes;
+        const assetsTargetId = dragRef.current.hasMoved ? dropTargetAssetsRef.current : null;
+        const previewPositions = dragPreviewRef.current;
 
         historyPausedRef.current = false;
         nodeDraggingRef.current = false;
         setIsNodeDragging(false);
         setDropTargetBoardId(null);
+        setDropTargetAssetsNodeId(null);
+        dropTargetAssetsRef.current = null;
         setSnapGuides(EMPTY_SNAP_GUIDES);
         setDragPreview(null);
+        dragPreviewRef.current = null;
         dragMoveRef.current = null;
-        if (dragRef.current.hasMoved && clientX != null && clientY != null) {
+
+        if (assetsTargetId) {
+            const target = nodesRef.current.find((node) => node.id === assetsTargetId);
+            const returned = new Map<string, Position>();
+            if (target) {
+                const permission = useAssetFolderStore.getState().requestWriteAccess();
+                nodesRef.current.forEach((node) => {
+                    if (node.type !== CanvasNodeType.Image) return;
+                    const initial = initialPositions.find((item) => item.id === node.id);
+                    if (!initial) return;
+                    const dropped = previewPositions?.get(node.id) || { x: initial.x + dx, y: initial.y + dy };
+                    if (!nodeCenterInside({ ...node, position: dropped }, target)) return;
+                    returned.set(node.id, dropped);
+                    collectImageIntoAssets(node, permission);
+                });
+            }
+            if (returned.size) {
+                setReturningNodes(returned);
+                window.setTimeout(() => setReturningNodes(new Map()), NODE_RETURN_MS);
+            }
+        } else if (dragRef.current.hasMoved && clientX != null && clientY != null) {
             const movedIds = new Set(initialPositions.map((item) => item.id));
             const snapped = snapDragToGuides(initialPositions, nodesRef.current, dx, dy, 6 / currentViewport.k, CANVAS_GRID_SIZE);
             setNodes((prev) => {
@@ -853,7 +902,7 @@ function InfiniteCanvasPage() {
                 setDialogNodeId(clickedNodeId);
             }
         }
-    }, []);
+    }, [collectImageIntoAssets]);
 
     const moveNodeLayer = useCallback((nodeId: string, direction: "up" | "down") => {
         const current = nodesRef.current;
@@ -912,8 +961,13 @@ function InfiniteCanvasPage() {
                         return initial ? { ...node, position: { x: initial.x + finalDx, y: initial.y + finalDy } } : node;
                     });
                     const dropCandidates = previewNodes.filter((node) => !isNodeHidden(node));
-                    setDropTargetBoardId(findBoardDropTarget(movedIds, dropCandidates)?.id || null);
-                    setDragPreview(new Map(initialPositions.map((item) => [item.id, { x: item.x + finalDx, y: item.y + finalDy }])));
+                    const assetsTarget = findAssetsDropTarget(movedIds, dropCandidates);
+                    dropTargetAssetsRef.current = assetsTarget?.id || null;
+                    setDropTargetAssetsNodeId(assetsTarget?.id || null);
+                    setDropTargetBoardId(assetsTarget ? null : findBoardDropTarget(movedIds, dropCandidates)?.id || null);
+                    const preview = new Map(initialPositions.map((item) => [item.id, { x: item.x + finalDx, y: item.y + finalDy }]));
+                    dragPreviewRef.current = preview;
+                    setDragPreview(preview);
                 });
                 return;
             }
@@ -1966,6 +2020,8 @@ function InfiniteCanvasPage() {
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node) ? "disabled" : "available"}
                             showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.Prompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             isBoardDropTarget={dropTargetBoardId === node.id}
+                            isAssetsDropTarget={dropTargetAssetsNodeId === node.id}
+                            returnFrom={returningNodes.get(node.id)}
                             boardLayers={boardRenderLayersById.get(node.id)}
                             boardLayersById={boardRenderLayersById}
                             onBoardTextsChange={handleBoardTextsChange}
