@@ -14,7 +14,7 @@ import { buildNodeGenerationContext, buildNodeResponseMessages, hydrateNodeGener
 import { audioMetadata, buildAudioGenerationMetadata, buildImageGenerationMetadata, imageMetadata, videoMetadata } from "@/lib/canvas/canvas-node-factory";
 import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
 import { NODE_STATUS_ERROR, NODE_STATUS_IDLE, NODE_STATUS_LOADING, NODE_STATUS_SUCCESS, VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH } from "@/lib/canvas/canvas-node-constants";
-import { buildAngleLabel, buildAnglePrompt, buildGenerationConfig, findRetrySourceNode, generationReferenceUrls, getGenerationCount, hasResumableVideoTask, isGenerationCanceled, resolveMetadataReferences, sourceNodeReferenceImages } from "@/lib/canvas/canvas-generation-helpers";
+import { buildAngleLabel, buildAnglePrompt, buildGenerationConfig, createGenerationSeed, findRetrySourceNode, generationQueue, generationReferenceUrls, getGenerationCount, hasResumableVideoTask, isGenerationCanceled, pushGenerationVersion, resolveGenerationSeed, resolveMetadataReferences, runGenerationTaskWithRetry, sourceNodeReferenceImages } from "@/lib/canvas/canvas-generation-helpers";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasImageAngleParams } from "@/components/canvas/canvas-node-angle-dialog";
@@ -326,7 +326,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
     );
 
     const handleGenerateNode = useCallback(
-        async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string) => {
+        async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, replaySeed?: number) => {
             const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
             const generationConfig = buildGenerationConfig(effectiveConfig, sourceNode, mode);
             if (!isAiConfigReady(generationConfig, generationConfig.model)) {
@@ -469,54 +469,62 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                     setDialogNodeId(nodeId);
 
                     const controller = rootId === nodeId ? runController : startGenerationRequest(rootId, nodeId, nodeId, runController);
+                    const baseSeed = replaySeed ?? createGenerationSeed();
                     let hasSuccess = false;
                     let hasFailure = false;
                     let firstError = "";
                     await Promise.all(
-                        imageIds.map(async (imageId) => {
-                            try {
-                                const image = referenceImages.length
-                                    ? await requestEdit({ ...generationConfig, count: "1" }, effectivePrompt, referenceImages, { signal: controller.signal }).then((items) => items[0])
-                                    : await requestGeneration({ ...generationConfig, count: "1" }, effectivePrompt, { signal: controller.signal }).then((items) => items[0]);
-                                const uploaded = await uploadImage(image.dataUrl, { signal: controller.signal });
-                                const imageSize = fitNodeSize(uploaded.width, uploaded.height, imageConfig.width, imageConfig.height);
-                                const item: CanvasNodeImage = { id: imageId, status: NODE_STATUS_SUCCESS, content: uploaded.url, storageKey: uploaded.storageKey, thumbnail: uploaded.thumbnail, thumbnailKey: uploaded.thumbnailKey, naturalWidth: uploaded.width, naturalHeight: uploaded.height, bytes: uploaded.bytes, mimeType: uploaded.mimeType };
-                                setNodes((prev) =>
-                                    prev.map((node) => {
-                                        if (node.id !== rootId) return node;
-                                        const images = node.metadata?.images?.map((image) => (image.id === imageId ? item : image)) || [];
-                                        if (node.metadata?.primaryImageId) return { ...node, metadata: { ...node.metadata, images } };
-                                        const center = { x: node.position.x + node.width / 2, y: node.position.y + node.height / 2 };
-                                        return {
-                                            ...node,
-                                            position: { x: center.x - imageSize.width / 2, y: center.y - imageSize.height / 2 },
-                                            ...imageSize,
-                                            metadata: {
-                                                ...node.metadata,
-                                                content: item.content,
-                                                storageKey: item.storageKey,
-                                                naturalWidth: item.naturalWidth,
-                                                naturalHeight: item.naturalHeight,
-                                                bytes: item.bytes,
-                                                mimeType: item.mimeType,
-                                                images,
-                                                primaryImageId: imageId,
-                                            },
-                                        };
-                                    }),
-                                );
-                                hasSuccess = true;
-                                if (isGenerationSourceNode) setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_SUCCESS, errorDetails: undefined } } : node)));
-                                return true;
-                            } catch (error) {
-                                if (isGenerationCanceled(error)) return false;
-                                const errorDetails = error instanceof Error ? error.message : t("canvas.projectPage.generationFailed");
-                                if (!firstError) firstError = errorDetails;
-                                hasFailure = true;
-                                setNodes((prev) => prev.map((node) => (node.id === rootId ? { ...node, metadata: { ...node.metadata, images: node.metadata?.images?.map((image) => (image.id === imageId ? { ...image, status: NODE_STATUS_ERROR, errorDetails } : image)) } } : node)));
-                            }
-                            return false;
-                        }),
+                        imageIds.map((imageId, index) =>
+                            generationQueue.run(imageId, async () => {
+                                try {
+                                    const seed = baseSeed + index;
+                                    const image = await runGenerationTaskWithRetry(
+                                        () =>
+                                            referenceImages.length
+                                                ? requestEdit({ ...generationConfig, count: "1" }, effectivePrompt, referenceImages, { signal: controller.signal, seed }).then((items) => items[0])
+                                                : requestGeneration({ ...generationConfig, count: "1" }, effectivePrompt, { signal: controller.signal, seed }).then((items) => items[0]),
+                                        { signal: controller.signal },
+                                    );
+                                    const uploaded = await uploadImage(image.dataUrl, { signal: controller.signal });
+                                    const imageSize = fitNodeSize(uploaded.width, uploaded.height, imageConfig.width, imageConfig.height);
+                                    const item: CanvasNodeImage = { id: imageId, status: NODE_STATUS_SUCCESS, content: uploaded.url, storageKey: uploaded.storageKey, thumbnail: uploaded.thumbnail, thumbnailKey: uploaded.thumbnailKey, naturalWidth: uploaded.width, naturalHeight: uploaded.height, bytes: uploaded.bytes, mimeType: uploaded.mimeType };
+                                    setNodes((prev) =>
+                                        prev.map((node) => {
+                                            if (node.id !== rootId) return node;
+                                            const images = node.metadata?.images?.map((image) => (image.id === imageId ? item : image)) || [];
+                                            if (node.metadata?.primaryImageId) return { ...node, metadata: { ...node.metadata, images } };
+                                            const center = { x: node.position.x + node.width / 2, y: node.position.y + node.height / 2 };
+                                            return {
+                                                ...node,
+                                                position: { x: center.x - imageSize.width / 2, y: center.y - imageSize.height / 2 },
+                                                ...imageSize,
+                                                metadata: {
+                                                    ...node.metadata,
+                                                    content: item.content,
+                                                    storageKey: item.storageKey,
+                                                    naturalWidth: item.naturalWidth,
+                                                    naturalHeight: item.naturalHeight,
+                                                    bytes: item.bytes,
+                                                    mimeType: item.mimeType,
+                                                    images,
+                                                    primaryImageId: imageId,
+                                                },
+                                            };
+                                        }),
+                                    );
+                                    hasSuccess = true;
+                                    if (isGenerationSourceNode) setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_SUCCESS, errorDetails: undefined } } : node)));
+                                    return true;
+                                } catch (error) {
+                                    if (isGenerationCanceled(error)) return false;
+                                    const errorDetails = error instanceof Error ? error.message : t("canvas.projectPage.generationFailed");
+                                    if (!firstError) firstError = errorDetails;
+                                    hasFailure = true;
+                                    setNodes((prev) => prev.map((node) => (node.id === rootId ? { ...node, metadata: { ...node.metadata, images: node.metadata?.images?.map((image) => (image.id === imageId ? { ...image, status: NODE_STATUS_ERROR, errorDetails } : image)) } } : node)));
+                                }
+                                return false;
+                            }),
+                        ),
                     );
                     if (rootId !== nodeId) finishGenerationRequest(rootId, controller);
                     if (controller.signal.aborted) {
@@ -529,7 +537,17 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                     setNodes((prev) =>
                         prev.map((node) =>
                             node.id === nodeId && isGenerationSourceNode
-                                ? { ...node, metadata: { ...node.metadata, status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR, errorDetails: hasSuccess ? undefined : t("canvas.projectPage.generationFailed") } }
+                                ? {
+                                      ...node,
+                                      metadata: {
+                                          ...node.metadata,
+                                          status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR,
+                                          errorDetails: hasSuccess ? undefined : t("canvas.projectPage.generationFailed"),
+                                          ...(hasSuccess
+                                              ? { seed: baseSeed, generationVersions: pushGenerationVersion(node.metadata?.generationVersions, { id: nanoid(), prompt: effectivePrompt, seed: baseSeed, model: generationConfig.model, size: generationConfig.size, createdAt: Date.now() }) }
+                                              : {}),
+                                      },
+                                  }
                                 : node.id === rootId
                                   ? { ...node, metadata: { ...node.metadata, status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR, errorDetails: hasSuccess ? undefined : t("canvas.projectPage.allFailed") } }
                                     : node,
@@ -761,6 +779,16 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
         [completeVideoNodeTask, effectiveConfig, finishGenerationRequest, isAiConfigReady, message, openConfigDialog, startGenerationRequest, t],
     );
 
+    const handleReplayNode = useCallback(
+        (nodeId: string) => {
+            const node = nodesRef.current.find((item) => item.id === nodeId);
+            const seed = resolveGenerationSeed(node?.metadata?.generationVersions) ?? node?.metadata?.seed;
+            if (!node || seed === undefined) return;
+            void handleGenerateNode(nodeId, node.metadata?.generationMode || "image", node.metadata?.composerContent ?? node.metadata?.prompt ?? "", seed);
+        },
+        [handleGenerateNode],
+    );
+
     const handleRetryNode = useCallback(
         async (node: CanvasNodeData, imageId?: string) => {
             if (hasResumableVideoTask(node)) {
@@ -917,5 +945,5 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
         [completeVideoNodeTask, effectiveConfig, finishGenerationRequest, isAiConfigReady, message, openConfigDialog, pollVideoNodeTask, startGenerationRequest, t],
     );
 
-    return { handleGenerateNode, handleRetryNode, pollVideoNodeTask, confirmStopGeneration, maskEditImageNode, generateAngleNode };
+    return { handleGenerateNode, handleRetryNode, handleReplayNode, pollVideoNodeTask, confirmStopGeneration, maskEditImageNode, generateAngleNode };
 }

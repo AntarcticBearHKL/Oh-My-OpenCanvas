@@ -7,7 +7,7 @@ import type { NodeGenerationInput } from "@/components/canvas/canvas-node-genera
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasImageAngleParams } from "@/components/canvas/canvas-node-angle-dialog";
 import type { ReferenceImage } from "@/types/image";
-import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
+import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, type CanvasGenerationVersion, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
 
 export function imageExtension(dataUrl: string) {
     return dataUrl.match(/^data:image[/]([^;]+)/)?.[1] || dataUrl.match(/image[/]([^;]+)/)?.[1] || "png";
@@ -180,4 +180,67 @@ export function buildAngleLabel(params: CanvasImageAngleParams) {
 
 export function buildAnglePrompt(params: CanvasImageAngleParams) {
     return i18n.t("canvas.generation.anglePrompt", { angle: buildAngleLabel(params) });
+}
+
+export const GENERATION_CONCURRENCY = 2;
+export const GENERATION_MAX_ATTEMPTS = 3;
+export const GENERATION_RETRY_DELAY_MS = 2000;
+export const GENERATION_VERSION_LIMIT = 5;
+
+export function createGenerationQueue(limit = GENERATION_CONCURRENCY) {
+    const waiting: Array<() => void> = [];
+    const started: string[] = [];
+    const finished: string[] = [];
+    let running = 0;
+    let peak = 0;
+
+    const run = <T>(id: string, task: () => Promise<T>) =>
+        new Promise<T>((resolve, reject) => {
+            const dispatch = () => {
+                running += 1;
+                peak = Math.max(peak, running);
+                started.push(id);
+                task()
+                    .then(resolve, reject)
+                    .finally(() => {
+                        running -= 1;
+                        finished.push(id);
+                        waiting.shift()?.();
+                    });
+            };
+            if (running < limit) dispatch();
+            else waiting.push(dispatch);
+        });
+
+    return { run, snapshot: () => ({ running, peak, started: [...started], finished: [...finished] }) };
+}
+
+export const generationQueue = createGenerationQueue();
+
+export async function runGenerationTaskWithRetry<T>(task: () => Promise<T>, options: { attempts?: number; delayMs?: number; signal?: AbortSignal } = {}) {
+    const attempts = options.attempts ?? GENERATION_MAX_ATTEMPTS;
+    const delayMs = options.delayMs ?? GENERATION_RETRY_DELAY_MS;
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+        try {
+            return await task();
+        } catch (error) {
+            lastError = error;
+            if (options.signal?.aborted || attempt >= attempts) break;
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+    }
+    throw lastError;
+}
+
+export function createGenerationSeed() {
+    return Math.floor(Math.random() * 2147483647);
+}
+
+export function pushGenerationVersion(versions: CanvasGenerationVersion[] | undefined, version: CanvasGenerationVersion, limit = GENERATION_VERSION_LIMIT) {
+    return [version, ...(versions || [])].slice(0, limit);
+}
+
+export function resolveGenerationSeed(versions: CanvasGenerationVersion[] | undefined) {
+    return versions?.find((version) => typeof version.seed === "number")?.seed;
 }

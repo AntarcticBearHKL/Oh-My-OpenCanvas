@@ -58,7 +58,7 @@ type ImageApiResponse = {
     code?: number;
     msg?: string;
 };
-type RequestOptions = { signal?: AbortSignal };
+type RequestOptions = { signal?: AbortSignal; seed?: number };
 
 const QUALITY_BASE: Record<string, number> = {
     low: 1024,
@@ -196,9 +196,11 @@ function parseImagePayload(payload: ImageApiResponse) {
         || (payload as Record<string, unknown>).results as Array<Record<string, unknown>> | undefined
         || [];
     const images = imageList
-        .map(resolveImageSource)
-        .filter((value): value is string => Boolean(value))
-        .map((dataUrl) => ({ id: nanoid(), dataUrl }));
+        .map((item) => {
+            const dataUrl = resolveImageSource(item);
+            return dataUrl ? { id: nanoid(), dataUrl, ...(typeof item.seed === "number" ? { seed: item.seed } : {}) } : null;
+        })
+        .filter((value): value is { id: string; dataUrl: string; seed?: number } => Boolean(value));
 
     if (images.length === 0) {
         // Check whether the response contains data in an unrecognized format.
@@ -458,6 +460,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
                 prompt: withSystemPrompt(requestConfig, prompt),
                 n,
                 ...resolveImageRequestOptions(config),
+                ...(options?.seed === undefined ? {} : { seed: options.seed }),
                 output_format: IMAGE_OUTPUT_FORMAT,
             },
             { headers: aiHeaders(requestConfig, "application/json"), signal: options?.signal },
@@ -503,6 +506,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
                 n: 1,
                 ...resolveImageRequestOptions(config),
                 input_references: inputReferences,
+                ...(options?.seed === undefined ? {} : { seed: options.seed }),
                 output_format: IMAGE_OUTPUT_FORMAT,
             },
             { headers: aiHeaders(requestConfig, "application/json"), signal: options?.signal },

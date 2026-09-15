@@ -50,6 +50,15 @@ export type CanvasNodeText = {
     content: string;
 };
 
+export type CanvasGenerationVersion = {
+    id: string;
+    prompt: string;
+    seed: number;
+    model?: string;
+    size?: string;
+    createdAt: number;
+};
+
 export type CanvasNodeMetadata = {
     content?: string;
     composerContent?: string;
@@ -100,6 +109,8 @@ export type CanvasNodeMetadata = {
     interactive?: boolean; // Plugin node interaction/move state; see CanvasNodeDefinition.interactionToggle.
     locked?: boolean;
     hidden?: boolean;
+    seed?: number;
+    generationVersions?: CanvasGenerationVersion[];
 };
 
 export type CanvasNodeData = {

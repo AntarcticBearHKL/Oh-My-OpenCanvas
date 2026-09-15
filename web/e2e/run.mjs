@@ -93,6 +93,45 @@ const LIB_ASSERTIONS = `(async () => {
     ok("align needs two", align.alignNodes(trio, new Set(["a"]), "left").size === 0);
     ok("distribute needs three", align.alignNodes(trio, new Set(["a", "b"]), "distribute-y").size === 0);
 
+    const generation = await import("/src/lib/canvas/canvas-generation-helpers.ts");
+    ok("generation limits", generation.GENERATION_CONCURRENCY === 2 && generation.GENERATION_MAX_ATTEMPTS === 3 && generation.GENERATION_VERSION_LIMIT === 5 && generation.GENERATION_RETRY_DELAY_MS === 2000);
+
+    const queue = generation.createGenerationQueue();
+    await Promise.all(
+        ["a", "b", "c", "d", "e"].map((id) =>
+            queue.run(id, async () => {
+                await new Promise((resolveTask) => setTimeout(resolveTask, 0));
+                return id;
+            }),
+        ),
+    );
+    const snapshot = queue.snapshot();
+    ok("queue caps concurrency at 2", snapshot.peak === 2, JSON.stringify(snapshot));
+    ok("queue starts tasks FIFO", snapshot.started.join(",") === "a,b,c,d,e", snapshot.started.join(","));
+    ok("queue releases tasks FIFO", snapshot.finished.join(",") === "a,b,c,d,e", snapshot.finished.join(","));
+
+    let attempts = 0;
+    await generation.runGenerationTaskWithRetry(async () => {
+        attempts += 1;
+        throw new Error("boom");
+    }, { delayMs: 0 }).catch(() => null);
+    ok("retry caps at 3 attempts", attempts === 3, attempts);
+
+    let recovered = 0;
+    const recoveredValue = await generation.runGenerationTaskWithRetry(async () => {
+        recovered += 1;
+        if (recovered < 2) throw new Error("flaky");
+        return "done";
+    }, { delayMs: 0 });
+    ok("retry recovers before cap", recoveredValue === "done" && recovered === 2, recovered);
+
+    let versions = [];
+    for (let index = 0; index < 7; index += 1) versions = generation.pushGenerationVersion(versions, { id: String(index), prompt: "p", seed: index, createdAt: index });
+    ok("versions pruned to 5 newest", versions.length === 5 && versions[0].id === "6" && versions[4].id === "2", versions.map((version) => version.id).join(","));
+
+    const version = { id: "v", prompt: "p", seed: 12345, createdAt: 1 };
+    ok("seed round-trips through versions", generation.resolveGenerationSeed(generation.pushGenerationVersion(undefined, version)) === 12345, generation.resolveGenerationSeed(generation.pushGenerationVersion(undefined, version)));
+
     return results;
 })()`;
 
