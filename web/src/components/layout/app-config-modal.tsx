@@ -1,5 +1,5 @@
 import { Button, Form, Input, Modal, Select, Tabs, theme as antdTheme } from "antd";
-import { Bot, CircleDollarSign, Cloud, Cpu, Database, FolderSync, Info, Palette, Pencil, Plus, Rss, ShieldCheck, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Bot, CircleDollarSign, Cloud, Cpu, Database, Info, Palette, Pencil, Plus, Rss, ShieldCheck, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -10,7 +10,6 @@ import { ConfigGenerationCost } from "@/components/layout/config-generation-cost
 import { ConfigPromptSources } from "@/components/layout/config-prompt-sources";
 import { ConfigLocalModels } from "@/components/layout/config-local-models";
 import { ConfigLocalStorage } from "@/components/layout/config-local-storage";
-import { ConfigWorkspace } from "@/components/layout/config-workspace";
 import { VersionReleaseModal } from "@/components/layout/version-release-modal";
 import { changeAppLocale, type AppLocale } from "@/i18n";
 import { createModelChannel, modelOptionsFromChannels, normalizeModelOptionValue, selectableModelsByCapability, useConfigStore, type AiConfig, type ConfigTabKey, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
@@ -192,12 +191,6 @@ export function AppConfigPanel() {
                         label: t("config.tabs.localStorage"),
                         icon: <Database className="size-4" />,
                         children: <ConfigLocalStorage active={configTab === "local-storage"} />,
-                    },
-                    {
-                        key: "workspace",
-                        label: t("config.tabs.workspace"),
-                        icon: <FolderSync className="size-4" />,
-                        children: <ConfigWorkspace />,
                     },
                     {
                         key: "cost",

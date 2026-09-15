@@ -1,13 +1,14 @@
-import { Alert, App, Button } from "antd";
+import { App, Button } from "antd";
 import { FolderInput, FolderOpen, FolderX, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import type { CanvasTheme } from "@/lib/canvas-theme";
 import type { WorkspaceSyncAction } from "@/lib/workspace/workspace-sync";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
 import { useWorkspaceStore } from "@/stores/use-workspace-store";
 
-export function ConfigWorkspace() {
+export function CanvasAssetLibrary({ theme }: { theme: CanvasTheme }) {
     const { t } = useTranslation();
     const { modal, message } = App.useApp();
     const supported = useWorkspaceStore((state) => state.supported);
@@ -85,52 +86,33 @@ export function ConfigWorkspace() {
         }
     };
 
-    if (!supported) {
-        return <Alert type="warning" showIcon title={t("config.workspace.unsupported")} description={t("config.workspace.unsupportedDescription")} />;
-    }
+    if (!supported) return null;
 
     return (
-        <div className="space-y-3">
-            <section className="rounded-lg border border-border p-4 dark:border-border">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                        <div className="flex items-center gap-2 text-sm font-semibold">
-                            <FolderOpen className="size-4" />
-                            {t("config.workspace.title")}
-                        </div>
-                        <div className="mt-1 text-xs text-muted-foreground">{t("config.workspace.description")}</div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                        <Button icon={<FolderInput className="size-4" />} loading={busy} onClick={() => void bind()}>
-                            {directoryName ? t("config.workspace.rebind") : t("config.workspace.bind")}
+        <div className="mb-2 rounded-lg border px-2 py-1.5 text-[11px]" style={{ borderColor: theme.toolbar.border, color: theme.node.muted }}>
+            <div className="flex min-w-0 items-center gap-1.5">
+                <FolderOpen className="size-3.5 shrink-0" />
+                <span className="min-w-0 flex-1 truncate font-medium" style={{ color: theme.node.text }}>
+                    {directoryName || t("config.workspace.unbound")}
+                </span>
+                <span className="shrink-0">{t(`config.workspace.status.${status}`)}</span>
+            </div>
+            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-0.5">
+                <Button size="small" type="text" className="!h-6 !px-1.5 !text-[11px]" icon={<FolderInput className="size-3.5" />} loading={busy} onClick={() => void bind()}>
+                    {directoryName ? t("config.workspace.rebind") : t("config.workspace.bind")}
+                </Button>
+                {directoryName ? (
+                    <>
+                        <Button size="small" type="text" className="!h-6 !px-1.5 !text-[11px]" icon={<RefreshCw className="size-3.5" />} disabled={busy} onClick={() => void sync()}>
+                            {t("config.workspace.syncNow")}
                         </Button>
-                        {directoryName ? (
-                            <Button icon={<FolderX className="size-4" />} disabled={busy} onClick={() => void unbind()}>
-                                {t("config.workspace.unbind")}
-                            </Button>
-                        ) : null}
-                    </div>
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-lg bg-muted p-3 dark:bg-muted/70">
-                        <div className="text-xs text-muted-foreground">{t("config.workspace.folderLabel")}</div>
-                        <div className="mt-2 truncate text-sm font-medium">{directoryName || t("config.workspace.unbound")}</div>
-                    </div>
-                    <div className="rounded-lg bg-muted p-3 dark:bg-muted/70">
-                        <div className="text-xs text-muted-foreground">{t("config.workspace.statusLabel")}</div>
-                        <div className="mt-2 text-sm font-medium">{t(`config.workspace.status.${status}`)}</div>
-                    </div>
-                </div>
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                    <div className="text-xs text-muted-foreground">
-                        {lastSummary ? t("config.workspace.lastSync", lastSummary) : t("config.workspace.neverSynced")}
-                    </div>
-                    <Button type="primary" icon={<RefreshCw className="size-4" />} disabled={!directoryName} loading={busy} onClick={() => void sync()}>
-                        {t("config.workspace.syncNow")}
-                    </Button>
-                </div>
-            </section>
-            <Alert type="info" showIcon title={t("config.workspace.conflictHint")} />
+                        <Button size="small" type="text" danger className="!h-6 !px-1.5 !text-[11px]" icon={<FolderX className="size-3.5" />} disabled={busy} onClick={() => void unbind()}>
+                            {t("config.workspace.unbind")}
+                        </Button>
+                    </>
+                ) : null}
+            </div>
+            <div className="mt-1 truncate">{lastSummary ? t("config.workspace.lastSync", lastSummary) : t("config.workspace.neverSynced")}</div>
         </div>
     );
 }

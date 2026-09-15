@@ -286,7 +286,6 @@ export default {
             localModels: "本地模型",
             promptSources: "提示词来源",
             localStorage: "本地存储",
-            workspace: "工作区",
             cost: "成本",
             agent: "Agent",
             about: "关于",

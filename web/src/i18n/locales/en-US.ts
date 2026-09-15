@@ -286,7 +286,6 @@ export default {
             localModels: "Local models",
             promptSources: "Prompt sources",
             localStorage: "Local storage",
-            workspace: "Workspace",
             cost: "Cost",
             agent: "Agent",
             about: "About",

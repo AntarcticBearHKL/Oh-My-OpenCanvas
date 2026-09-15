@@ -14,6 +14,7 @@ import { CANVAS_SIDE_PANEL_MAX_WIDTH, CANVAS_SIDE_PANEL_MIN_WIDTH, CANVAS_SIDE_P
 
 import type { InsertAssetPayload } from "./asset-picker-modal";
 import { CanvasSwitcherTab } from "./canvas-switcher";
+import { CanvasAssetLibrary } from "./canvas-asset-library";
 
 const PANEL_MOTION_SECONDS = CANVAS_SIDE_PANEL_MOTION_MS / 1000;
 const PANEL_EASE = [0.22, 1, 0.36, 1] as const;
@@ -193,6 +194,9 @@ const CanvasAssetsTab = memo(function CanvasAssetsTab({ onInsert, theme }: { onI
 
     return (
         <div className="flex h-full flex-col">
+            <div className="px-3 pt-1">
+                <CanvasAssetLibrary theme={theme} />
+            </div>
             <div className="flex items-center gap-2 px-3 pb-2 pt-1">
                 <Input size="small" allowClear className="min-w-0 flex-1" prefix={<Search className="size-3.5 text-muted-foreground" />} placeholder={t("canvas.sidePanel.searchAssets")} value={keyword} onChange={(e) => setKeyword(e.target.value)} />
                 <button
