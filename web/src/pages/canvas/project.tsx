@@ -33,6 +33,7 @@ import { CanvasNodeSplitDialog, type CanvasImageSplitParams } from "@/components
 import { CanvasNodeResolutionDialog, type CanvasImageResolutionPayload } from "@/components/canvas/canvas-node-resolution-dialog";
 import { buildNodeGenerationInputs, type NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
 import { CanvasNodeHoverToolbar, CanvasNodeInfoModal } from "@/components/canvas/canvas-node-hover-toolbar";
+import { CanvasNodeListPanel } from "@/components/canvas/canvas-node-layer-popover";
 import { CanvasRulers } from "@/components/canvas/canvas-rulers";
 import { CanvasSelectionToolbar } from "@/components/canvas/canvas-selection-toolbar";
 import { alignNodes, type AlignAxis } from "@/lib/canvas/alignment";
@@ -57,7 +58,7 @@ import { buildNodeMentionReferences, getGroupResourceNodes, isCanvasReferenceNod
 import { applyNodeConfigPatch, createCanvasNode } from "@/lib/canvas/canvas-node-factory";
 import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
 import { arrangeBoardImages, composeSmartCanvas, SMART_CANVAS_DEFAULT_FONT_SIZE, smartCanvasBackground, smartCanvasSizeForRatio, smartCanvasTexts } from "@/lib/canvas/smart-canvas";
-import { CANVAS_GRID_SIZE, canGroupSelectedNodes, canUngroupSelectedNodes, findBoardDropTarget, findContainingGroupId, findGroupDropTarget, getConnectionTargetAnchor, isContainerNode, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides, snapNodesIntoGroup } from "@/lib/canvas/canvas-node-geometry";
+import { CANVAS_GRID_SIZE, bulkRenameTitles, canGroupSelectedNodes, canUngroupSelectedNodes, findBoardDropTarget, findContainingGroupId, findGroupDropTarget, getConnectionTargetAnchor, isContainerNode, isNodeHidden, isNodeLocked, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides, snapNodesIntoGroup } from "@/lib/canvas/canvas-node-geometry";
 import {
     audioExtension,
     buildGenerationConfig,
@@ -207,6 +208,7 @@ function InfiniteCanvasPage() {
     const [dragPreview, setDragPreview] = useState<Map<string, Position> | null>(null);
     const [referencePickerNodeId, setReferencePickerNodeId] = useState<string | null>(null);
     const [boardPreview, setBoardPreview] = useState<{ dataUrl: string; width: number; height: number; title: string; boardId: string } | null>(null);
+    const [isNodeListOpen, setIsNodeListOpen] = useState(false);
 
     const nodesRef = useRef(nodes);
     const connectionsRef = useRef(connections);
@@ -438,6 +440,7 @@ function InfiniteCanvasPage() {
             [...nodesRef.current]
                 .reverse()
                 .forEach((node) => {
+                    if (isNodeHidden(node)) return;
                     const anchor = getConnectionTargetAnchor(node, current);
                     const dx = world.x - anchor.x;
                     const dy = world.y - anchor.y;
@@ -471,7 +474,7 @@ function InfiniteCanvasPage() {
         const viewRight = viewLeft + width / viewport.k + padding * 2;
         const viewBottom = viewTop + height / viewport.k + padding * 2;
 
-        return nodes.filter((node) => node.position.x + node.width > viewLeft && node.position.x < viewRight && node.position.y + node.height > viewTop && node.position.y < viewBottom);
+        return nodes.filter((node) => !isNodeHidden(node) && node.position.x + node.width > viewLeft && node.position.x < viewRight && node.position.y + node.height > viewTop && node.position.y < viewBottom);
     }, [nodes, size.height, size.width, viewport.k, viewport.x, viewport.y]);
 
     const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
@@ -633,6 +636,7 @@ function InfiniteCanvasPage() {
             setHoveredNodeId(null);
             setToolbarNodeId(null);
             setDialogNodeId(null);
+            setIsNodeListOpen(false);
             if (pendingConnectionCreateRef.current) cancelPendingConnectionCreate();
             if (event.button !== 0) return;
 
@@ -692,9 +696,20 @@ function InfiniteCanvasPage() {
         event.stopPropagation();
         // Capture already selected the node; this only starts dragging, with a fallback selection if capture did not run.
         const currentNodes = nodesRef.current;
+        const target = currentNodes.find((node) => node.id === nodeId);
+        if (target && isNodeLocked(target)) {
+            pendingSelectionRef.current = null;
+            return;
+        }
         const nextSelected = pendingSelectionRef.current ?? selectNodeByEvent(event, nodeId).nextSelected;
         pendingSelectionRef.current = null;
-        const dragIds = new Set(nextSelected);
+        const dragIds = new Set(
+            [...nextSelected].filter((id) => {
+                const node = currentNodes.find((item) => item.id === id);
+                return Boolean(node && !isNodeLocked(node) && !isNodeHidden(node));
+            }),
+        );
+        if (!dragIds.size) return;
         currentNodes.forEach((node) => {
             if (!nextSelected.has(node.id)) return;
             const memberKey = isContainerNode(node) ? "groupId" : node.type === CanvasNodeType.SmartCanvas ? "boardId" : null;
@@ -744,9 +759,9 @@ function InfiniteCanvasPage() {
                     const initial = initialPositions.find((item) => item.id === node.id);
                     return initial ? { ...node, position: { x: initial.x + snapped.dx, y: initial.y + snapped.dy } } : node;
                 });
-                const targetGroup = findGroupDropTarget(movedIds, moved);
+                const targetGroup = findGroupDropTarget(movedIds, moved.filter((node) => !isNodeHidden(node)));
                 if (targetGroup) return snapNodesIntoGroup(movedIds, moved, targetGroup);
-                const targetBoard = findBoardDropTarget(movedIds, moved);
+                const targetBoard = findBoardDropTarget(movedIds, moved.filter((node) => !isNodeHidden(node)));
                 const draggedBoardIds = new Set(moved.filter((node) => movedIds.has(node.id) && node.type === CanvasNodeType.SmartCanvas).map((node) => node.id));
                 return moved.map((node) => {
                     let next = node;
@@ -791,6 +806,21 @@ function InfiniteCanvasPage() {
         setNodes(next);
     }, []);
 
+    const toggleNodeFlag = useCallback((nodeId: string, flag: "locked" | "hidden") => {
+        setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, [flag]: !node.metadata?.[flag] } } : node)));
+    }, []);
+
+    const renameNodes = useCallback((ids: string[], title: string) => {
+        const titles = bulkRenameTitles(ids, title);
+        if (!titles.size) return;
+        setNodes((prev) =>
+            prev.map((node) => {
+                const nextTitle = titles.get(node.id);
+                return nextTitle ? { ...node, title: nextTitle } : node;
+            }),
+        );
+    }, []);
+
     const handleGlobalMouseMove = useCallback(
         (event: MouseEvent) => {
             const currentViewport = viewportRef.current;
@@ -818,7 +848,8 @@ function InfiniteCanvasPage() {
                         const initial = initialPositions.find((item) => item.id === node.id);
                         return initial ? { ...node, position: { x: initial.x + finalDx, y: initial.y + finalDy } } : node;
                     });
-                    setDropTargetGroupId(findGroupDropTarget(movedIds, previewNodes)?.id || findBoardDropTarget(movedIds, previewNodes)?.id || null);
+                    const dropCandidates = previewNodes.filter((node) => !isNodeHidden(node));
+                    setDropTargetGroupId(findGroupDropTarget(movedIds, dropCandidates)?.id || findBoardDropTarget(movedIds, dropCandidates)?.id || null);
                     setDragPreview(new Map(initialPositions.map((item) => [item.id, { x: item.x + finalDx, y: item.y + finalDy }])));
                 });
                 return;
@@ -856,7 +887,7 @@ function InfiniteCanvasPage() {
                 .forEach((node) => {
                     const intersects = rectX < node.position.x + node.width && rectX + rectW > node.position.x && rectY < node.position.y + node.height && rectY + rectH > node.position.y;
 
-                    if (intersects) nextSelected.add(node.id);
+                    if (intersects && !isNodeLocked(node) && !isNodeHidden(node)) nextSelected.add(node.id);
                 });
 
             const nextSelectionBox = { ...currentSelection, currentWorldX: world.x, currentWorldY: world.y };
@@ -1006,6 +1037,7 @@ function InfiniteCanvasPage() {
                 setCropNodeId(null);
                 setMaskEditNodeId(null);
                 setPendingConnectionCreate(null);
+                setIsNodeListOpen(false);
             }
         };
 
@@ -1809,6 +1841,8 @@ function InfiniteCanvasPage() {
                     onDelete={(node) => deleteNodes(new Set([node.id]))}
                     onDuplicate={(node) => duplicateNode(node.id)}
                     onMoveLayer={moveNodeLayer}
+                    onToggleFlag={toggleNodeFlag}
+                    onBulkRename={renameNodes}
                     onCaptureVideoFrame={(node, position) => void captureVideoNodeFrame(node.id, position)}
                     onUngroup={(node) => ungroupSelection(new Set([node.id]))}
                     onComposeBoard={(node) => void handleComposeBoard(node)}
@@ -1849,10 +1883,18 @@ function InfiniteCanvasPage() {
                     onScaleChange={setZoomScale}
                     onResetViewport={resetViewport}
                     onToggleMiniMap={() => setIsMiniMapOpen((value) => !value)}
+                    isNodeListOpen={isNodeListOpen}
+                    onToggleNodeList={() => setIsNodeListOpen((value) => !value)}
                 />
 
                 <CanvasRulers viewport={viewport} viewportSize={size} />
                 {isMiniMapOpen ? <Minimap nodes={nodes} viewport={viewport} viewportSize={size} onViewportChange={setViewport} /> : null}
+
+                {isNodeListOpen ? (
+                    <div className="absolute bottom-[84px] left-1/2 z-[60] w-[250px] -translate-x-1/2">
+                        <CanvasNodeListPanel nodes={nodes} onToggleFlag={toggleNodeFlag} onBulkRename={renameNodes} />
+                    </div>
+                ) : null}
 
                 <input ref={imageInputRef} type="file" multiple accept="image/*,video/*,audio/mpeg,audio/wav,audio/x-wav,.mp3,.wav" className="hidden" onChange={handleImageInputChange} />
 

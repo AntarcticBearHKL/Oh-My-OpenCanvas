@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ChevronRight, Copy, Download, Group, Image as ImageIcon, Info, LayoutDashboard, Music2, Puzzle, RefreshCw, Sparkles, Star, Trash2, Video } from "lucide-react";
+import { ChevronRight, Copy, Download, Group, Image as ImageIcon, Info, LayoutDashboard, Lock, Music2, Puzzle, RefreshCw, Sparkles, Star, Trash2, Video } from "lucide-react";
 
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -148,6 +148,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const isFrame = data.type === CanvasNodeType.Frame;
     const isContainer = isGroup || isFrame;
     const isBoard = data.type === CanvasNodeType.SmartCanvas;
+    const locked = Boolean(data.metadata?.locked);
     const isPlacedOnBoard = data.type === CanvasNodeType.Image && Boolean(data.metadata?.boardId);
     const batchCount = data.type === CanvasNodeType.Image ? data.metadata?.images?.length || 0 : data.type === CanvasNodeType.Text ? data.metadata?.texts?.length || 0 : 0;
     const isBatchRoot = batchCount > 1;
@@ -155,7 +156,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     // forceInteractive states such as editing stay interactive, as do empty nodes so their upload and generation actions remain usable.
     const supportsInteractionToggle = Boolean(definition?.interactionToggle);
     const forceInteractive = supportsInteractionToggle ? Boolean(definition?.forceInteractive?.(data)) : false;
-    const contentInteractive = !supportsInteractionToggle || forceInteractive || !data.metadata?.content ? true : Boolean(data.metadata?.interactive);
+    const contentInteractive = locked ? false : !supportsInteractionToggle || forceInteractive || !data.metadata?.content ? true : Boolean(data.metadata?.interactive);
     // Transparent nodes such as SVGs blend into the canvas while retaining outlines for selected or related states.
     const transparentBg = Boolean(definition?.transparentBackground);
     const isActive = isConnectionTarget || isSelected || isFocusRelated;
@@ -283,6 +284,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     }, [data.id, handleResizeMove, onResizeEnd]);
 
     const handleResizeMouseDown = (event: React.MouseEvent, corner: ResizeCorner) => {
+        if (locked) return;
         event.stopPropagation();
         event.preventDefault();
         onResizeStart(data.id);
@@ -361,7 +363,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                             title={t("canvas.node.renameHint")}
                             onDoubleClick={(event) => {
                                 event.stopPropagation();
-                                setIsEditingTitle(true);
+                                if (!locked) setIsEditingTitle(true);
                             }}
                         >
                             {data.title || t("canvas.node.untitled")}
@@ -392,6 +394,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                         event.stopPropagation();
                         return;
                     }
+                    if (locked) return;
                     if (definition?.onDoubleClick && pluginContext) {
                         if (definition.onDoubleClick(pluginContext)) event.stopPropagation();
                         return;
@@ -448,6 +451,12 @@ export const CanvasNode = React.memo(function CanvasNode({
                     />
                 </div>
 
+                {locked ? (
+                    <div className="pointer-events-none absolute bottom-2 left-2 z-40 flex items-center rounded-md px-1.5 py-0.5 backdrop-blur-md" style={{ background: theme.toolbar.panel, color: theme.node.muted }}>
+                        <Lock className="size-3" />
+                    </div>
+                ) : null}
+
                 {hasImageContent ? (
                     <ImageInfoBar node={data} onInfo={onInfo} />
                 ) : null}
@@ -460,11 +469,11 @@ export const CanvasNode = React.memo(function CanvasNode({
                     </div>
                 ) : null}
 
-                {!referenceSelectionState ? <ResizeHandle corner="top-left" onMouseDown={handleResizeMouseDown} /> : null}
-                {!referenceSelectionState ? <ResizeHandle corner="top-right" onMouseDown={handleResizeMouseDown} /> : null}
-                {!referenceSelectionState ? <ResizeHandle corner="bottom-left" onMouseDown={handleResizeMouseDown} /> : null}
-                {!referenceSelectionState ? <ResizeHandle corner="bottom-right" onMouseDown={handleResizeMouseDown} /> : null}
-                {!referenceSelectionState && !isGroup ? <ResizeGrip active={hovered || isSelected} onMouseDown={handleResizeMouseDown} /> : null}
+                {!referenceSelectionState && !locked ? <ResizeHandle corner="top-left" onMouseDown={handleResizeMouseDown} /> : null}
+                {!referenceSelectionState && !locked ? <ResizeHandle corner="top-right" onMouseDown={handleResizeMouseDown} /> : null}
+                {!referenceSelectionState && !locked ? <ResizeHandle corner="bottom-left" onMouseDown={handleResizeMouseDown} /> : null}
+                {!referenceSelectionState && !locked ? <ResizeHandle corner="bottom-right" onMouseDown={handleResizeMouseDown} /> : null}
+                {!referenceSelectionState && !locked && !isGroup ? <ResizeGrip active={hovered || isSelected} onMouseDown={handleResizeMouseDown} /> : null}
             </div>
 
             {!referenceSelectionState && !isContainer ? <ConnectionHandleDot side="left" visible={hovered || isSelected || isConnecting} onMouseDown={(event) => onConnectStart(event, data.id, "target")} /> : null}

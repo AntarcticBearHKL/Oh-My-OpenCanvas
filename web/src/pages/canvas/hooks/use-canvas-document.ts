@@ -3,7 +3,7 @@ import { useCallback, useEffect, type Dispatch, type MutableRefObject, type SetS
 import { nanoid } from "nanoid";
 import { getGenerationCount } from "@/lib/canvas/canvas-generation-helpers";
 import { createCanvasNode } from "@/lib/canvas/canvas-node-factory";
-import { applyGroupSelection, applyUngroupSelection, collectGroupMemberNodes, getGroupWrapRect, isContainerNode } from "@/lib/canvas/canvas-node-geometry";
+import { applyGroupSelection, applyUngroupSelection, collectGroupMemberNodes, getGroupWrapRect, isContainerNode, isNodeLocked } from "@/lib/canvas/canvas-node-geometry";
 import { isCanvasReferenceNode } from "@/lib/canvas/canvas-resource-references";
 import { getNodeDefinition, isBuiltinNodeType as isBuiltinType } from "@/lib/canvas/node-registry";
 import type { AiConfig } from "@/stores/use-config-store";
@@ -89,7 +89,11 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
     const deleteNodes = useCallback(
         (ids: Set<string>) => {
             if (!ids.size) return;
-            const allIds = new Set(ids);
+            const allIds = new Set([...ids].filter((id) => {
+                const node = nodesRef.current.find((item) => item.id === id);
+                return !node || !isNodeLocked(node);
+            }));
+            if (!allIds.size) return;
             setNodes((prev) => {
                 const next = prev.filter((node) => !allIds.has(node.id));
                 return next.map((node) => {

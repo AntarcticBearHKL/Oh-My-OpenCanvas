@@ -63,6 +63,18 @@ const LIB_ASSERTIONS = `(async () => {
     ok("containing frame resolves", geo.findContainingGroupId(inside, [frame, inside]) === "f" && geo.findContainingGroupId(outside, [frame, outside]) === undefined);
     ok("frame rejects connections as target", geo.normalizeConnection("in", "f", [frame, inside], "source") === null && geo.normalizeConnection("f", "in", [frame, inside], "source").fromNodeId === "f");
 
+    ok("locked flag predicate", geo.isNodeLocked({ ...dragged, metadata: { locked: true } }) === true && geo.isNodeLocked(dragged) === false);
+    ok("hidden flag predicate", geo.isNodeHidden({ ...dragged, metadata: { hidden: true } }) === true && geo.isNodeHidden(dragged) === false);
+    const textNode = { id: "txt", type: "text", title: "txt", position: { x: 0, y: 0 }, width: 100, height: 100, metadata: {} };
+    const nodeList = [frame, inside, outside, textNode];
+    ok("type filter all", geo.filterNodesByType(nodeList, "all").length === 4);
+    ok("type filter image", geo.filterNodesByType(nodeList, "image").map((node) => node.id).join(",") === "in,out");
+    ok("type filter unknown", geo.filterNodesByType(nodeList, "video").length === 0);
+    ok("bulk rename single", geo.bulkRenameTitles(["a"], " 名字 ").get("a") === "名字");
+    const bulk = geo.bulkRenameTitles(["a", "b"], "名字");
+    ok("bulk rename numbered", bulk.get("a") === "名字 1" && bulk.get("b") === "名字 2");
+    ok("bulk rename blank", geo.bulkRenameTitles(["a", "b"], "   ").size === 0);
+
     const align = await import("/src/lib/canvas/alignment.ts");
     const trio = [
         { id: "a", type: "image", title: "a", position: { x: 100, y: 50 }, width: 100, height: 100, metadata: {} },

@@ -38,6 +38,8 @@ type CanvasNodeHoverToolbarProps = {
     onDelete: (node: CanvasNodeData) => void;
     onDuplicate: (node: CanvasNodeData) => void;
     onMoveLayer: (nodeId: string, direction: "up" | "down") => void;
+    onToggleFlag: (nodeId: string, flag: "locked" | "hidden") => void;
+    onBulkRename: (ids: string[], title: string) => void;
     onCaptureVideoFrame: (node: CanvasNodeData, position: VideoFramePosition) => void;
     onUngroup?: (node: CanvasNodeData) => void;
     onComposeBoard?: (node: CanvasNodeData) => void;
@@ -80,6 +82,8 @@ export function CanvasNodeHoverToolbar({
     onDelete,
     onDuplicate,
     onMoveLayer,
+    onToggleFlag,
+    onBulkRename,
     onCaptureVideoFrame,
     onUngroup,
     onComposeBoard,
@@ -184,7 +188,7 @@ export function CanvasNodeHoverToolbar({
             {!isBoard ? (
                 <CanvasFloatingToolbarAction title={t("canvas.nodeToolbar.layers")} label={t("canvas.nodeToolbar.layers")} icon={<Layers className="size-4" />} active={layerOpen} onClick={() => setLayerOpen((value) => !value)} showLabel={isImage ? showImageToolLabels : true} />
             ) : null}
-            {layerOpen ? <CanvasNodeLayerPopover node={node} nodes={nodes} onMove={(direction) => onMoveLayer(node.id, direction)} /> : null}
+            {layerOpen ? <CanvasNodeLayerPopover node={node} nodes={nodes} onMove={(direction) => onMoveLayer(node.id, direction)} onToggleFlag={onToggleFlag} onBulkRename={onBulkRename} /> : null}
         </div>
     );
 }

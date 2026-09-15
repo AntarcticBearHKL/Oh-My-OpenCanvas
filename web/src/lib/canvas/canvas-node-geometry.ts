@@ -63,6 +63,24 @@ export function isContainerNode(node: CanvasNodeData) {
     return node.type === CanvasNodeType.Group || node.type === CanvasNodeType.Frame;
 }
 
+export function isNodeLocked(node: CanvasNodeData) {
+    return Boolean(node.metadata?.locked);
+}
+
+export function isNodeHidden(node: CanvasNodeData) {
+    return Boolean(node.metadata?.hidden);
+}
+
+export function filterNodesByType(nodes: CanvasNodeData[], type: string) {
+    return type === "all" ? nodes : nodes.filter((node) => node.type === type);
+}
+
+export function bulkRenameTitles(ids: string[], title: string) {
+    const name = title.trim();
+    if (!name || !ids.length) return new Map<string, string>();
+    return new Map(ids.map((id, index) => [id, ids.length > 1 ? `${name} ${index + 1}` : name]));
+}
+
 export function findGroupDropTarget(movedIds: Set<string>, nodes: CanvasNodeData[]) {
     if (nodes.some((node) => movedIds.has(node.id) && isContainerNode(node))) return null;
     const movingNodes = nodes.filter((node) => movedIds.has(node.id) && !isContainerNode(node));

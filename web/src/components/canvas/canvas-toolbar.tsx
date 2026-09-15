@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
-import { Compass, Focus, Frame, Hand, HelpCircle, Image as ImageIcon, LayoutDashboard, MessageSquareText, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
+import { Compass, Focus, Frame, Hand, HelpCircle, Image as ImageIcon, LayoutDashboard, ListTree, MessageSquareText, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -33,6 +33,8 @@ export function CanvasToolbar({
     onScaleChange,
     onResetViewport,
     onToggleMiniMap,
+    isNodeListOpen,
+    onToggleNodeList,
 }: {
     selectedCount: number;
     canvasTool: "select" | "pan";
@@ -55,6 +57,8 @@ export function CanvasToolbar({
     onScaleChange: (scale: number) => void;
     onResetViewport: () => void;
     onToggleMiniMap: () => void;
+    isNodeListOpen: boolean;
+    onToggleNodeList: () => void;
 }) {
     const wrapRef = useRef<HTMLDivElement>(null);
     const { t } = useTranslation();
@@ -174,6 +178,20 @@ export function CanvasToolbar({
                     }}
                 >
                     <ZoomIn className="size-4.5" />
+                </ToolbarButton>
+                <ToolbarButton
+                    id="tool-node-list"
+                    label={t("canvas.nodeList.title")}
+                    active={isNodeListOpen}
+                    hovered={hovered}
+                    activeStyle={activeStyle}
+                    hoverStyle={hoverStyle}
+                    wrapRef={wrapRef}
+                    onTipX={setTipX}
+                    onHover={setHovered}
+                    onClick={onToggleNodeList}
+                >
+                    <ListTree className="size-4.5" />
                 </ToolbarButton>
                 {selectedCount ? (
                     <>
@@ -377,6 +395,7 @@ function toolLabel(id: string, t: (key: string) => string) {
     if (id === "tool-smart-canvas") return t("canvas.nodeTypes.smartCanvas");
     if (id === "tool-extensions") return t("canvas.toolbar.extensions");
     if (id === "tool-zoom") return t("canvas.toolbar.zoom");
+    if (id === "tool-node-list") return t("canvas.nodeList.title");
     if (id === "tool-delete") return t("canvas.deleteSelected");
     return "";
 }
