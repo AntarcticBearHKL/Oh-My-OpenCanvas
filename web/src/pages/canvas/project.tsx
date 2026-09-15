@@ -33,6 +33,7 @@ import { CanvasNodeSplitDialog, type CanvasImageSplitParams } from "@/components
 import { CanvasNodeResolutionDialog, type CanvasImageResolutionPayload } from "@/components/canvas/canvas-node-resolution-dialog";
 import { buildNodeGenerationInputs, type NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
 import { CanvasNodeHoverToolbar, CanvasNodeInfoModal } from "@/components/canvas/canvas-node-hover-toolbar";
+import { CanvasRulers } from "@/components/canvas/canvas-rulers";
 import { CanvasSelectionToolbar } from "@/components/canvas/canvas-selection-toolbar";
 import { alignNodes, type AlignAxis } from "@/lib/canvas/alignment";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
@@ -1848,6 +1849,7 @@ function InfiniteCanvasPage() {
                     onToggleMiniMap={() => setIsMiniMapOpen((value) => !value)}
                 />
 
+                <CanvasRulers viewport={viewport} viewportSize={size} />
                 {isMiniMapOpen ? <Minimap nodes={nodes} viewport={viewport} viewportSize={size} onViewportChange={setViewport} /> : null}
 
                 <input ref={imageInputRef} type="file" multiple accept="image/*,video/*,audio/mpeg,audio/wav,audio/x-wav,.mp3,.wav" className="hidden" onChange={handleImageInputChange} />
