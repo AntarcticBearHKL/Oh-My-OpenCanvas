@@ -309,6 +309,32 @@ const LIB_ASSERTIONS = `(async () => {
     ok("output conflict only with multiple outputs", output.outputNodesConflict([firstOutput, secondOutput]) === true && output.outputNodesConflict([firstOutput, outNodes[0]]) === false && output.outputNodesConflict([]) === false);
     ok("output describe source label", output.describeOutputSource(firstOutput) === "Out 1" && output.describeOutputSource(outNode("x", "text", "   ")) === "Untitled" && output.describeOutputSource(null) === "");
 
+    const workspace = await import("/src/lib/workspace/workspace-sync.ts");
+    ok("workspace file name keeps a safe title", workspace.workspaceFileName("id1", "Hello World") === "Hello World.json", workspace.workspaceFileName("id1", "Hello World"));
+    ok("workspace file name strips path-illegal characters", workspace.workspaceFileName("id1", 'a/b:c*d?e"f<g>h|i') === "abcdefghi.json", workspace.workspaceFileName("id1", 'a/b:c*d?e"f<g>h|i'));
+    ok("workspace file name falls back to the id", workspace.workspaceFileName("id1", "   ") === "id1.json", workspace.workspaceFileName("id1", "   "));
+    ok("workspace file name stays short", workspace.workspaceFileName("id1", "x".repeat(100)) === "x".repeat(48) + ".json", workspace.workspaceFileName("id1", "x".repeat(100)));
+    ok("conflict file name inserts the suffix", workspace.conflictFileName("foo.json") === "foo_conflict.json", workspace.conflictFileName("foo.json"));
+    ok("conflict file name dedupes with -2", workspace.conflictFileName("foo.json", ["foo_conflict.json"]) === "foo_conflict-2.json", workspace.conflictFileName("foo.json", ["foo_conflict.json"]));
+    ok("conflict file name dedupes with -3", workspace.conflictFileName("foo.json", ["foo_conflict.json", "foo_conflict-2.json"]) === "foo_conflict-3.json", workspace.conflictFileName("foo.json", ["foo_conflict.json", "foo_conflict-2.json"]));
+    ok("conflict file name keeps extensionless names", workspace.conflictFileName("foo") === "foo_conflict", workspace.conflictFileName("foo"));
+    ok("decide sync uploads a local-only project", workspace.decideSyncAction({ localMtime: 5 }) === "upload", workspace.decideSyncAction({ localMtime: 5 }));
+    ok("decide sync downloads a remote-only project", workspace.decideSyncAction({ remoteMtime: 5 }) === "download", workspace.decideSyncAction({ remoteMtime: 5 }));
+    ok("decide sync noops on untouched sides", workspace.decideSyncAction({ localMtime: 5, remoteMtime: 5, lastSyncedAt: 5 }) === "noop", workspace.decideSyncAction({ localMtime: 5, remoteMtime: 5, lastSyncedAt: 5 }));
+    ok("decide sync downloads when only remote changed", workspace.decideSyncAction({ localMtime: 2, remoteMtime: 5, lastSyncedAt: 3 }) === "download", workspace.decideSyncAction({ localMtime: 2, remoteMtime: 5, lastSyncedAt: 3 }));
+    ok("decide sync uploads when only local changed", workspace.decideSyncAction({ localMtime: 5, remoteMtime: 2, lastSyncedAt: 3 }) === "upload", workspace.decideSyncAction({ localMtime: 5, remoteMtime: 2, lastSyncedAt: 3 }));
+    ok("decide sync conflicts when both changed", workspace.decideSyncAction({ localMtime: 5, remoteMtime: 5, lastSyncedAt: 3 }) === "conflict", workspace.decideSyncAction({ localMtime: 5, remoteMtime: 5, lastSyncedAt: 3 }));
+    ok("decide sync conflicts without a baseline", workspace.decideSyncAction({ localMtime: 5, remoteMtime: 5 }) === "conflict", workspace.decideSyncAction({ localMtime: 5, remoteMtime: 5 }));
+    ok("decide sync noops with nothing on either side", workspace.decideSyncAction({}) === "noop", workspace.decideSyncAction({}));
+    const workspacePlan = workspace.planWorkspaceSync({
+        projects: [{ id: "p1", title: "Alpha", updatedAt: 5 }, { id: "p2", title: "Beta", updatedAt: 5 }],
+        files: [{ name: "Alpha.json", mtime: 1 }, { name: "Orphan.json", mtime: 9 }],
+        lastSyncedAt: { p1: 5 },
+    });
+    ok("plan workspace orders projects then remote-only files", workspacePlan.map((item) => item.action).join(",") === "noop,upload,download", workspacePlan.map((item) => item.action).join(","));
+    ok("plan workspace maps project file names", workspacePlan[0].fileName === "Alpha.json" && workspacePlan[1].fileName === "Beta.json", workspacePlan.map((item) => item.fileName).join(","));
+    ok("plan workspace appends remote-only files last", workspacePlan.length === 3 && workspacePlan[2].projectId === "" && workspacePlan[2].fileName === "Orphan.json", JSON.stringify(workspacePlan[2]));
+
     return results;
 })()`;
 
