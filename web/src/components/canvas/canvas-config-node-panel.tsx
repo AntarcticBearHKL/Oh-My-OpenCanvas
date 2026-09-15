@@ -178,7 +178,8 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
             <div className="ml-auto shrink-0">
                 <Button
                     type="primary"
-                    className="!h-9 !cursor-pointer !rounded-full !px-4"
+                    className="!h-9 !cursor-pointer !rounded-full !border-transparent !px-4 !text-[11px] !font-semibold transition hover:!opacity-90 disabled:!opacity-35"
+                    style={isRunning ? undefined : { background: theme.node.activeStroke, color: theme.node.panel }}
                     danger={isRunning}
                     disabled={!isRunning && !canGenerate}
                     onMouseDown={(event) => event.stopPropagation()}
