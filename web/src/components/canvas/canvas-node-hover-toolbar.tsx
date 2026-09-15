@@ -47,6 +47,7 @@ type CanvasNodeHoverToolbarProps = {
     onCaptureVideoFrame: (node: CanvasNodeData, position: VideoFramePosition) => void;
     onTextStyleChange?: (nodeId: string, patch: Partial<CanvasNodeMetadata>) => void;
     onComposeBoard?: (node: CanvasNodeData) => void;
+    onToggleName?: (node: CanvasNodeData, visible: boolean) => void;
     extraTools?: CanvasNodeToolbarItem[];
 };
 
@@ -94,6 +95,7 @@ export function CanvasNodeHoverToolbar({
     onCaptureVideoFrame,
     onTextStyleChange,
     onComposeBoard,
+    onToggleName,
     extraTools = [],
 }: CanvasNodeHoverToolbarProps) {
     const [quickImageToolIds, setQuickImageToolIds] = useState<ImageQuickToolId[]>(defaultImageQuickToolIds);
@@ -132,6 +134,7 @@ export function CanvasNodeHoverToolbar({
     const isText = node.type === CanvasNodeType.Text;
     const isConfig = node.type === CanvasNodeType.Config;
     const isBoard = node.type === CanvasNodeType.SmartCanvas;
+    const nameVisible = node.metadata?.showTitle === true;
     const canRetry = node.metadata?.status === "error" && !(isVideo && Boolean(node.metadata?.videoTaskId) && !hasVideo);
     const canQueryVideoTask = isVideo && Boolean(node.metadata?.videoTaskId) && !hasVideo && node.metadata?.status !== "loading";
     const quickImageToolIdSet = new Set(quickImageToolIds);
@@ -171,7 +174,8 @@ export function CanvasNodeHoverToolbar({
         ...(isAudio ? [{ id: "uploadAudio", title: t(hasAudio ? "canvas.nodeToolbar.replaceAudio" : "canvas.nodeToolbar.uploadAudio"), label: t(hasAudio ? "canvas.nodeToolbar.replaceAudio" : "canvas.nodeToolbar.uploadAudio"), icon: <Music2 className="size-4" />, onClick: () => onUpload(node) }] : []),
         ...(hasImage ? imageTools.map((tool) => ({ id: tool.id, title: tool.title, label: tool.label, icon: tool.icon, active: tool.active, onClick: tool.onClick })) : []),
     ];
-    const toolbarTools: ToolbarTool[] = hasImage ? [...baseToolbarTools, ...nodeToolbarTools].filter((tool) => quickImageToolIdSet.has(tool.id as ImageQuickToolId)) : [...baseToolbarTools, ...nodeToolbarTools, ...extraTools];
+    const nameToolbarTools: ToolbarTool[] = onToggleName ? [{ id: "toggleName", title: t(nameVisible ? "canvas.nodeToolbar.hideName" : "canvas.nodeToolbar.showName"), label: t(nameVisible ? "canvas.nodeToolbar.hideName" : "canvas.nodeToolbar.showName"), icon: <Tags className="size-4" />, active: nameVisible, onClick: () => onToggleName(node, !nameVisible) }] : [];
+    const toolbarTools: ToolbarTool[] = [...(hasImage ? [...baseToolbarTools, ...nodeToolbarTools].filter((tool) => quickImageToolIdSet.has(tool.id as ImageQuickToolId)) : [...baseToolbarTools, ...nodeToolbarTools, ...extraTools]), ...nameToolbarTools];
 
     return (
         <div
