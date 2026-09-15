@@ -26,6 +26,7 @@ import { NODE_DEFAULT_SIZE, getNodeSpec } from "@/constant/canvas";
 import { ActiveConnectionPath, ConnectionPath } from "@/components/canvas/canvas-connections";
 import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
 import { CanvasConfigNodePanel } from "@/components/canvas/canvas-config-node-panel";
+import { CanvasImageAnalysisDialog } from "@/components/canvas/canvas-image-analysis-dialog";
 import { CanvasNodeAngleDialog } from "@/components/canvas/canvas-node-angle-dialog";
 import { CanvasNodeCropDialog, type CanvasImageCropRect } from "@/components/canvas/canvas-node-crop-dialog";
 import { CanvasNodeMaskEditDialog } from "@/components/canvas/canvas-node-mask-edit-dialog";
@@ -166,7 +167,7 @@ function InfiniteCanvasPage() {
     const effectiveConfig = useEffectiveConfig();
     const isAiConfigReady = useConfigStore((state) => state.isAiConfigReady);
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
-    const prepareBackgroundRemoval = useLocalModelStore((state) => state.prepareBackgroundRemoval);
+    const prepareModel = useLocalModelStore((state) => state.prepareModel);
     const addAsset = useAssetStore((state) => state.addAsset);
     const cleanupAssetImages = useAssetStore((state) => state.cleanupImages);
     const hydrated = useCanvasStore((state) => state.hydrated);
@@ -203,6 +204,7 @@ function InfiniteCanvasPage() {
     const [maskEditNodeId, setMaskEditNodeId] = useState<string | null>(null);
     const [splitNodeId, setSplitNodeId] = useState<string | null>(null);
     const [resolutionNodeId, setResolutionNodeId] = useState<string | null>(null);
+    const [analyzeNodeId, setAnalyzeNodeId] = useState<string | null>(null);
     const [angleNodeId, setAngleNodeId] = useState<string | null>(null);
     const [previewNodeId, setPreviewNodeId] = useState<string | null>(null);
     const [previewImageId, setPreviewImageId] = useState<string | null>(null);
@@ -514,6 +516,7 @@ function InfiniteCanvasPage() {
     const maskEditNode = maskEditNodeId ? nodeById.get(maskEditNodeId) || null : null;
     const splitNode = splitNodeId ? nodeById.get(splitNodeId) || null : null;
     const resolutionNode = resolutionNodeId ? nodeById.get(resolutionNodeId) || null : null;
+    const analyzeNode = analyzeNodeId ? nodeById.get(analyzeNodeId) || null : null;
     const angleNode = angleNodeId ? nodeById.get(angleNodeId) || null : null;
     const previewNode = previewNodeId ? nodeById.get(previewNodeId) || null : null;
     const previewContent = previewImageId ? previewNode?.metadata?.images?.find((image) => image.id === previewImageId)?.content : previewNode?.metadata?.content;
@@ -1439,14 +1442,33 @@ function InfiniteCanvasPage() {
         setCropNodeId(null);
     }, []);
 
+    const insertAnalyzedCrop = useCallback(
+        async (node: CanvasNodeData, dataUrl: string) => {
+            const image = await uploadImage(dataUrl);
+            const width = Math.min(node.width, Math.max(220, image.width));
+            const childId = nanoid();
+            insertDerivedAsset(
+                {
+                    source: node,
+                    children: [{ id: childId, image, title: t("canvas.imageAnalysis.smartCrop"), size: { width, height: width * (image.height / image.width) }, metadata: { prompt: node.metadata?.prompt } }],
+                    relation: "crop",
+                    select: "children",
+                    openDialog: childId,
+                },
+                { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+            );
+        },
+        [t],
+    );
+
     const removeNodeBackground = useCallback(async (node: CanvasNodeData) => {
         if (node.type !== CanvasNodeType.Image) return;
         const key = `remove-bg-${node.id}`;
         const progressTimer = window.setInterval(() => {
-            const { status, percent } = useLocalModelStore.getState().backgroundRemoval;
+            const { status, percent } = useLocalModelStore.getState().models["background-removal"];
             if (status === "downloading") message.loading({ content: t("canvas.imageTools.removeBackgroundDownloading", { percent }), key, duration: 0 });
         }, 500);
-        const prepared = await prepareBackgroundRemoval();
+        const prepared = await prepareModel("background-removal");
         window.clearInterval(progressTimer);
         if (!prepared) {
             message.error({ content: t("canvas.imageTools.removeBackgroundFailed"), key });
@@ -1477,7 +1499,7 @@ function InfiniteCanvasPage() {
         } catch {
             message.error({ content: t("canvas.imageTools.removeBackgroundFailed"), key });
         }
-    }, [message, prepareBackgroundRemoval, t]);
+    }, [message, prepareModel, t]);
 
     const splitImageNode = useCallback(
         async (node: CanvasNodeData, params: CanvasImageSplitParams) => {
@@ -1931,6 +1953,7 @@ function InfiniteCanvasPage() {
                     onRemoveBackground={(node) => void removeNodeBackground(node)}
                     onSplit={(node) => setSplitNodeId(node.id)}
                     onResolution={(node) => setResolutionNodeId(node.id)}
+                    onAnalyze={(node) => setAnalyzeNodeId(node.id)}
                     onAngle={(node) => setAngleNodeId(node.id)}
                     onRetry={(node) => void handleRetryNode(node)}
                     onToggleFreeResize={(node) => toggleNodeFreeResize(node.id)}
@@ -2012,6 +2035,15 @@ function InfiniteCanvasPage() {
                         open={Boolean(resolutionNode)}
                         onClose={() => setResolutionNodeId(null)}
                         onConfirm={(payload) => handleResolutionConfirm(resolutionNode, payload)}
+                    />
+                ) : null}
+
+                {analyzeNode?.metadata?.content ? (
+                    <CanvasImageAnalysisDialog
+                        dataUrl={analyzeNode.metadata.content}
+                        open={Boolean(analyzeNode)}
+                        onClose={() => setAnalyzeNodeId(null)}
+                        onCrop={(dataUrl) => void insertAnalyzedCrop(analyzeNode, dataUrl)}
                     />
                 ) : null}
 

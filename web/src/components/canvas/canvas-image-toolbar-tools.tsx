@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { Brush, Camera, Copy, Eraser, Grid2x2, Lock, LockOpen, Scissors, ZoomIn } from "lucide-react";
+import { Brush, Camera, Copy, Eraser, Grid2x2, Lock, LockOpen, ScanSearch, Scissors, ZoomIn } from "lucide-react";
 
 import type { CanvasNodeData } from "@/types/canvas";
 import i18n from "@/i18n";
 
-type ImageNodeActionToolId = "resize" | "maskEdit" | "crop" | "removeBackground" | "split" | "resolution" | "angle" | "duplicate";
+type ImageNodeActionToolId = "resize" | "maskEdit" | "crop" | "removeBackground" | "split" | "resolution" | "analyze" | "angle" | "duplicate";
 export type ImageQuickToolId = "info" | "delete" | "saveAsset" | "download" | ImageNodeActionToolId;
 
 type ImageToolHandlers = {
@@ -15,6 +15,7 @@ type ImageToolHandlers = {
     onRemoveBackground: (node: CanvasNodeData) => void;
     onSplit: (node: CanvasNodeData) => void;
     onResolution: (node: CanvasNodeData) => void;
+    onAnalyze: (node: CanvasNodeData) => void;
     onAngle: (node: CanvasNodeData) => void;
     onDuplicate: (node: CanvasNodeData) => void;
 };
@@ -34,7 +35,7 @@ type ImageQuickToolsConfig = {
     showLabels: boolean;
 };
 
-export const IMAGE_QUICK_TOOLS_STORAGE_KEY = "canvas-image-quick-tools-v11";
+export const IMAGE_QUICK_TOOLS_STORAGE_KEY = "canvas-image-quick-tools-v12";
 
 const defaultBaseToolIds: ImageQuickToolId[] = ["info", "delete", "saveAsset", "download"];
 
@@ -87,6 +88,14 @@ const imageToolDefinitions: ImageToolDefinition[] = [
         title: () => i18n.t("canvas.imageTools.resolutionTitle"),
         icon: () => <ZoomIn className="size-4" />,
         run: (node, handlers) => handlers.onResolution(node),
+    },
+    {
+        id: "analyze",
+        defaultVisible: true,
+        label: () => i18n.t("canvas.imageTools.analyze"),
+        title: () => i18n.t("canvas.imageTools.analyzeTitle"),
+        icon: () => <ScanSearch className="size-4" />,
+        run: (node, handlers) => handlers.onAnalyze(node),
     },
     {
         id: "angle",

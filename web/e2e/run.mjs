@@ -335,6 +335,21 @@ const LIB_ASSERTIONS = `(async () => {
     ok("plan workspace maps project file names", workspacePlan[0].fileName === "Alpha.json" && workspacePlan[1].fileName === "Beta.json", workspacePlan.map((item) => item.fileName).join(","));
     ok("plan workspace appends remote-only files last", workspacePlan.length === 3 && workspacePlan[2].projectId === "" && workspacePlan[2].fileName === "Orphan.json", JSON.stringify(workspacePlan[2]));
 
+    const algorithms = await import("/src/lib/image/image-algorithms.ts");
+    const cropClamped = algorithms.resolveSmartCropArea(100, 80, 1, { x: -5, y: -3, width: 200, height: 200 });
+    ok("smart crop clamps into image bounds", cropClamped.x === 0 && cropClamped.y === 0 && cropClamped.width === 100 && cropClamped.height === 80, JSON.stringify(cropClamped));
+    const cropRounded = algorithms.resolveSmartCropArea(101, 80, 1, { x: 1.4, y: 2.6, width: 30.5, height: 20.2 });
+    ok("smart crop rounds to integers", cropRounded.x === 1 && cropRounded.y === 3 && cropRounded.width === 31 && cropRounded.height === 20, JSON.stringify(cropRounded));
+    const cropInvalid = algorithms.resolveSmartCropArea(120, 90, 0, { x: 5, y: 5, width: 20, height: 20 });
+    ok("smart crop falls back to the full image on invalid aspect", cropInvalid.x === 0 && cropInvalid.y === 0 && cropInvalid.width === 120 && cropInvalid.height === 90, JSON.stringify(cropInvalid));
+    const cropInside = algorithms.resolveSmartCropArea(64, 48, 1.5, { x: 50, y: 40, width: 40, height: 30 });
+    ok("smart crop keeps the box inside the image", cropInside.x + cropInside.width <= 64 && cropInside.y + cropInside.height <= 48 && cropInside.width >= 1 && cropInside.height >= 1, JSON.stringify(cropInside));
+
+    const modelStore = await import("/src/stores/use-local-model-store.ts");
+    const localModels = modelStore.listLocalModels();
+    ok("local model registry lists background-removal", localModels.some((model) => model.id === "background-removal"), JSON.stringify(localModels.map((model) => model.id)));
+    ok("local model descriptor exposes title/description/prepare/clear/read", localModels.every((model) => typeof model.titleKey === "string" && typeof model.descriptionKey === "string" && typeof model.prepare === "function" && typeof model.clear === "function" && typeof model.read === "function"), JSON.stringify(localModels.map((model) => Object.keys(model))));
+
     return results;
 })()`;
 

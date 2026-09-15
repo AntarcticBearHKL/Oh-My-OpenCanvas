@@ -5,19 +5,32 @@ import { removeImageBackground } from "@/services/background-removal";
 
 const BACKGROUND_REMOVAL_READY_KEY = "canvas-bg-removal-ready";
 
-type LocalModelStatus = "idle" | "downloading" | "ready" | "error";
+export type LocalModelId = "background-removal";
+
+export type LocalModelStatus = "idle" | "downloading" | "ready" | "error";
+
+export type LocalModelDescriptor = {
+    id: LocalModelId;
+    titleKey: string;
+    descriptionKey: string;
+    prepare: (force?: boolean) => Promise<boolean>;
+    clear: () => void;
+    read: () => { status: LocalModelStatus; percent: number };
+};
+
+type LocalModelState = { status: LocalModelStatus; percent: number };
 
 type LocalModelStore = {
-    backgroundRemoval: { status: LocalModelStatus; percent: number };
-    prepareBackgroundRemoval: (force?: boolean) => Promise<boolean>;
-    clearBackgroundRemovalModel: () => void;
+    models: Record<LocalModelId, LocalModelState>;
+    prepareModel: (id: LocalModelId, force?: boolean) => Promise<boolean>;
+    clearModel: (id: LocalModelId) => void;
 };
 
 let preparing: Promise<boolean> | null = null;
 
-function initialBackgroundRemoval() {
-    if (typeof window === "undefined" || localStorage.getItem(BACKGROUND_REMOVAL_READY_KEY) !== "1") return { status: "idle" as const, percent: 0 };
-    return { status: "ready" as const, percent: 100 };
+function initialBackgroundRemoval(): LocalModelState {
+    if (typeof window === "undefined" || localStorage.getItem(BACKGROUND_REMOVAL_READY_KEY) !== "1") return { status: "idle", percent: 0 };
+    return { status: "ready", percent: 100 };
 }
 
 async function warmUpBackgroundRemoval(onProgress: (percent: number) => void) {
@@ -35,23 +48,24 @@ async function warmUpBackgroundRemoval(onProgress: (percent: number) => void) {
 }
 
 export const useLocalModelStore = create<LocalModelStore>((set, get) => ({
-    backgroundRemoval: initialBackgroundRemoval(),
-    prepareBackgroundRemoval: (force?: boolean) => {
-        if (!force && get().backgroundRemoval.status === "ready") return Promise.resolve(true);
+    models: { "background-removal": initialBackgroundRemoval() },
+    prepareModel: (id, force?: boolean) => {
+        if (!force && get().models[id].status === "ready") return Promise.resolve(true);
         if (preparing) return preparing;
         let percent = 0;
-        set({ backgroundRemoval: { status: "downloading", percent } });
+        const update = (status: LocalModelStatus, next: number) => set((state) => ({ models: { ...state.models, [id]: { status, percent: next } } }));
+        update("downloading", percent);
         preparing = warmUpBackgroundRemoval((next) => {
             percent = Math.max(percent, next);
-            set({ backgroundRemoval: { status: "downloading", percent } });
+            update("downloading", percent);
         })
             .then(() => {
                 localStorage.setItem(BACKGROUND_REMOVAL_READY_KEY, "1");
-                set({ backgroundRemoval: { status: "ready", percent: 100 } });
+                update("ready", 100);
                 return true;
             })
             .catch(() => {
-                set({ backgroundRemoval: { status: "error", percent } });
+                update("error", percent);
                 return false;
             })
             .finally(() => {
@@ -59,8 +73,21 @@ export const useLocalModelStore = create<LocalModelStore>((set, get) => ({
             });
         return preparing;
     },
-    clearBackgroundRemovalModel: () => {
+    clearModel: (id) => {
         localStorage.removeItem(BACKGROUND_REMOVAL_READY_KEY);
-        set({ backgroundRemoval: { status: "idle", percent: 0 } });
+        set((state) => ({ models: { ...state.models, [id]: { status: "idle", percent: 0 } } }));
     },
 }));
+
+export function listLocalModels(): LocalModelDescriptor[] {
+    return [
+        {
+            id: "background-removal",
+            titleKey: "config.localModels.backgroundRemoval",
+            descriptionKey: "config.localModels.backgroundRemovalDescription",
+            prepare: (force) => useLocalModelStore.getState().prepareModel("background-removal", force),
+            clear: () => useLocalModelStore.getState().clearModel("background-removal"),
+            read: () => useLocalModelStore.getState().models["background-removal"],
+        },
+    ];
+}

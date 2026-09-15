@@ -21,7 +21,7 @@ const storeLabelKeys: Record<string, string> = {
 export function ConfigLocalStorage({ active }: { active: boolean }) {
     const { t } = useTranslation();
     const setConfigTab = useConfigStore((state) => state.setConfigTab);
-    const backgroundRemoval = useLocalModelStore((state) => state.backgroundRemoval);
+    const backgroundRemoval = useLocalModelStore((state) => state.models["background-removal"]);
     const [usage, setUsage] = useState<LocalStorageUsage | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
