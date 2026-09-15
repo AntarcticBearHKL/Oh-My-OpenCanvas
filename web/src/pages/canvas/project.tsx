@@ -79,6 +79,7 @@ import { getNodeDefinition, useNodeRegistryVersion } from "@/lib/canvas/node-reg
 import { describeOutputSource, outputNodesConflict, pickDefaultOutput, resolveLatestUpstream } from "@/lib/canvas/output-resolution";
 import { outputFileName, outputSourceFingerprint, resolveOutputBlob } from "@/lib/workspace/output-file";
 import { useOutputFolderStore } from "@/stores/use-output-folder-store";
+import { useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
 import { registerBuiltinNodes } from "@/components/canvas/nodes/builtin-nodes";
 import { CanvasPluginManagerModal } from "@/components/canvas/canvas-plugin-manager-modal";
 import { CanvasRefreshShell } from "@/components/canvas/canvas-refresh-shell";
@@ -184,6 +185,7 @@ function InfiniteCanvasPage() {
     const outputFolderName = useOutputFolderStore((state) => state.folderName);
     const outputFolderStatus = useOutputFolderStore((state) => state.status);
     const outputFolderSupported = useOutputFolderStore((state) => state.supported);
+    const panelOpen = useCanvasSidePanelStore((state) => state.panelOpen);
     const outputWriteFingerprints = useRef(new Map<string, string>());
     const [nodes, setNodes] = useState<CanvasNodeData[]>([]);
     const [connections, setConnections] = useState<CanvasConnection[]>([]);
@@ -391,7 +393,7 @@ function InfiniteCanvasPage() {
         const resizeObserver = new ResizeObserver(updateSize);
         resizeObserver.observe(el);
         return () => resizeObserver.disconnect();
-    }, [projectLoaded]);
+    }, [panelOpen, projectLoaded]);
 
     const screenToCanvas = useCallback((clientX: number, clientY: number) => {
         const rect = containerRef.current?.getBoundingClientRect();
@@ -1902,19 +1904,20 @@ function InfiniteCanvasPage() {
 
     return (
         <main className="relative flex h-full min-h-0 overflow-hidden" style={{ background: theme.canvas.background, color: theme.node.text }}>
-            <CanvasSidePanel />
+            <CanvasTopBar
+                title={currentProject?.title || t("canvas.projectPage.untitledCanvas")}
+                titleDraft={titleDraft}
+                isTitleEditing={titleEditing}
+                onTitleDraftChange={setTitleDraft}
+                onStartTitleEditing={startTitleEditing}
+                onFinishTitleEditing={finishTitleEditing}
+                onCancelTitleEditing={() => setTitleEditing(false)}
+                onProjects={() => navigate("/canvas")}
+            />
+            <div className="flex h-full shrink-0 pt-14">
+                <CanvasSidePanel />
+            </div>
             <section className="relative min-w-0 flex-1 overflow-hidden">
-                <CanvasTopBar
-                    title={currentProject?.title || t("canvas.projectPage.untitledCanvas")}
-                    titleDraft={titleDraft}
-                    isTitleEditing={titleEditing}
-                    onTitleDraftChange={setTitleDraft}
-                    onStartTitleEditing={startTitleEditing}
-                    onFinishTitleEditing={finishTitleEditing}
-                    onCancelTitleEditing={() => setTitleEditing(false)}
-                    onProjects={() => navigate("/canvas")}
-                />
-
                 <InfiniteCanvas
                     containerRef={containerRef}
                     viewport={viewport}

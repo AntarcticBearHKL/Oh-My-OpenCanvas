@@ -157,6 +157,8 @@ export default {
         collapsePanel: "Collapse panel",
         expandPanel: "Expand panel",
         projects: "My Canvases",
+        showNodeNames: "Show node names",
+        hideNodeNames: "Hide node names",
         undo: "Undo",
         redo: "Redo",
         renameHint: "Double-click to rename the canvas",

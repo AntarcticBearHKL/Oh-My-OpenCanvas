@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
-import { House, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Eye, EyeOff, House, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { UserStatusActions } from "@/components/layout/user-status-actions";
 import { canvasThemes, frostedSurfaceClass } from "@/lib/canvas-theme";
 import { useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
+import { useNodeTitleStore } from "@/stores/use-node-title-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 
 export function CanvasTopBar({
@@ -33,6 +34,8 @@ export function CanvasTopBar({
     const titleRef = useRef<HTMLDivElement>(null);
     const sidePanelOpen = useCanvasSidePanelStore((state) => state.panelOpen);
     const toggleSidePanel = useCanvasSidePanelStore((state) => state.togglePanel);
+    const namesVisible = useNodeTitleStore((state) => state.namesVisible);
+    const toggleNamesVisible = useNodeTitleStore((state) => state.toggleNamesVisible);
 
     useEffect(() => {
         if (!isTitleEditing) return;
@@ -61,6 +64,17 @@ export function CanvasTopBar({
                     <Tooltip title={t("canvas.projects")}>
                         <button type="button" onClick={onProjects} aria-label={t("canvas.projects")} className="grid size-7 place-items-center rounded-full transition hover:bg-black/5 dark:hover:bg-card/10" style={{ color: theme.node.text }}>
                             <House className="size-4" />
+                        </button>
+                    </Tooltip>
+                    <Tooltip title={namesVisible ? t("canvas.hideNodeNames") : t("canvas.showNodeNames")}>
+                        <button
+                            type="button"
+                            onClick={toggleNamesVisible}
+                            aria-label={namesVisible ? t("canvas.hideNodeNames") : t("canvas.showNodeNames")}
+                            className="grid size-7 place-items-center rounded-full transition hover:bg-black/5 dark:hover:bg-card/10"
+                            style={{ color: theme.node.text }}
+                        >
+                            {namesVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                         </button>
                     </Tooltip>
 

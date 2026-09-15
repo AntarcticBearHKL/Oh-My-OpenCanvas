@@ -157,6 +157,8 @@ export default {
         collapsePanel: "收起面板",
         expandPanel: "展开面板",
         projects: "我的画布",
+        showNodeNames: "显示节点名称",
+        hideNodeNames: "隐藏节点名称",
         undo: "撤销",
         redo: "重做",
         renameHint: "双击修改画布名称",

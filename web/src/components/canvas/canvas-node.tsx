@@ -18,6 +18,7 @@ import { CanvasNodeType, type CanvasNodeData, type CanvasNodeImage, type CanvasN
 import type { CanvasNodeContext, CanvasPluginHost } from "@/types/canvas-plugin";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import type { OutputFolderStatus } from "@/stores/use-output-folder-store";
+import { useNodeTitleStore } from "@/stores/use-node-title-store";
 import { useTranslation } from "react-i18next";
 
 type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
@@ -168,6 +169,7 @@ export const CanvasNode = React.memo(function CanvasNode({
 }: CanvasNodeProps) {
     const theme = useCanvasTheme();
     const { t } = useTranslation();
+    const namesVisible = useNodeTitleStore((state) => state.namesVisible);
     const [hovered, setHovered] = useState(false);
     const definition = getNodeDefinition(data.type);
     const pluginContext = useMemo<CanvasNodeContext | null>(() => (pluginHost ? buildNodeContext(pluginHost, data, theme, scale, isSelected) : null), [pluginHost, data, theme, scale, isSelected]);
@@ -378,7 +380,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 if (!referenceSelectionState) onSelectCapture?.(event, data.id);
             }}
         >
-            {!referenceSelectionState && !hasImageContent && (isSelected || hovered || isEditingTitle) && (
+            {!referenceSelectionState && !hasImageContent && (namesVisible || data.metadata?.showTitle === true || isSelected || hovered || isEditingTitle) && (
                 <div className="absolute left-3 top-[-28px] z-[65] max-w-[calc(100%-24px)]" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                     {isEditingTitle ? (
                         <input
@@ -1089,10 +1091,11 @@ function ImageSlotStatus({ image }: { image?: CanvasNodeImage }) {
 function ImageInfoBar({ node, onInfo }: { node: CanvasNodeData; onInfo?: (node: CanvasNodeData) => void }) {
     const theme = useCanvasTheme();
     const { t } = useTranslation();
+    const namesVisible = useNodeTitleStore((state) => state.namesVisible);
     const width = Math.round(node.metadata?.naturalWidth || node.width);
     const height = Math.round(node.metadata?.naturalHeight || node.height);
     const size = formatBytes(node.metadata?.bytes || 0);
-    const parts = [node.title?.trim(), width && height ? `${width} x ${height}` : "", size].filter(Boolean);
+    const parts = [namesVisible || node.metadata?.showTitle === true ? node.title?.trim() : "", width && height ? `${width} x ${height}` : "", size].filter(Boolean);
     return (
         <div className="pointer-events-none absolute left-3 top-[-28px] z-40 flex max-w-[calc(100%-24px)] items-center gap-1.5">
             <span className="min-w-0 truncate text-xs font-medium opacity-75" style={{ color: theme.node.text }}>
