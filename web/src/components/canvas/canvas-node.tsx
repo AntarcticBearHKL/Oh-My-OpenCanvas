@@ -7,6 +7,7 @@ import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
 import { ensureThumbnailUrl } from "@/services/image-storage";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
+import { resolveTextStyle, textStyleToCss } from "@/lib/canvas/text-style";
 import { buildNodeContext } from "@/lib/canvas/plugin-node-context";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { SmartCanvasNodeContent } from "./smart-canvas-node";
@@ -41,7 +42,8 @@ type CanvasNodeProps = {
     renderNodeContent?: (node: CanvasNodeData) => ReactNode;
     groupChildCount?: number;
     isGroupDropTarget?: boolean;
-    boardImages?: CanvasNodeData[];
+    boardLayers?: CanvasNodeData[];
+    boardLayersById?: Map<string, CanvasNodeData[]>;
     batchExpanded?: boolean;
     onBoardTextsChange?: (nodeId: string, texts: NonNullable<CanvasNodeMetadata["boardTexts"]>) => void;
     onMouseDown: (event: React.MouseEvent, nodeId: string) => void;
@@ -88,7 +90,8 @@ type NodeContentRendererProps = {
     onDeleteBatchImage?: (imageId: string) => void;
     onViewBatchImage?: (imageId: string) => void;
     groupChildCount: number;
-    boardImages?: CanvasNodeData[];
+    boardLayers?: CanvasNodeData[];
+    boardLayersById?: Map<string, CanvasNodeData[]>;
     onBoardTextsChange?: (nodeId: string, texts: NonNullable<CanvasNodeMetadata["boardTexts"]>) => void;
 };
 
@@ -109,7 +112,8 @@ export const CanvasNode = React.memo(function CanvasNode({
     renderNodeContent,
     groupChildCount = 0,
     isGroupDropTarget = false,
-    boardImages,
+    boardLayers,
+    boardLayersById,
     batchExpanded = false,
     onBoardTextsChange,
     onMouseDown,
@@ -149,7 +153,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const isContainer = isGroup || isFrame;
     const isBoard = data.type === CanvasNodeType.SmartCanvas;
     const locked = Boolean(data.metadata?.locked);
-    const isPlacedOnBoard = data.type === CanvasNodeType.Image && Boolean(data.metadata?.boardId);
+    const isPlacedOnBoard = (data.type === CanvasNodeType.Image || data.type === CanvasNodeType.SmartCanvas) && Boolean(data.metadata?.boardId);
     const batchCount = data.type === CanvasNodeType.Image ? data.metadata?.images?.length || 0 : data.type === CanvasNodeType.Text ? data.metadata?.texts?.length || 0 : 0;
     const isBatchRoot = batchCount > 1;
     // Nodes with the interaction/move toggle ignore content pointer events in move mode and allow interaction in interactive mode.
@@ -446,7 +450,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onDeleteBatchImage={(imageId) => onDeleteBatchImage?.(data.id, imageId)}
                         onViewBatchImage={(imageId) => onViewImage?.(data, imageId)}
                         groupChildCount={groupChildCount}
-                        boardImages={boardImages}
+                        boardLayers={boardLayers}
+                        boardLayersById={boardLayersById}
                         onBoardTextsChange={onBoardTextsChange}
                     />
                 </div>
@@ -580,8 +585,8 @@ function MissingPluginContent({ theme, type }: Pick<NodeContentRendererProps, "t
 
 function TextContent({ node, theme, isEditingContent, textareaRef, mentionReferences, batchExpanded, onContentChange, onStopEditing, onToggleBatch, onSetBatchPrimary }: NodeContentRendererProps) {
     const { t } = useTranslation();
-    const fontSize = node.metadata?.fontSize || 14;
-    const textStyle = { fontSize: `${fontSize}px`, lineHeight: `${Math.round(fontSize * 1.65)}px`, color: theme.node.text, boxSizing: "border-box" } as React.CSSProperties;
+    const resolvedTextStyle = resolveTextStyle(node.metadata);
+    const textStyle = { ...textStyleToCss(resolvedTextStyle), color: resolvedTextStyle.color || theme.node.text, boxSizing: "border-box" } as React.CSSProperties;
     const texts = node.metadata?.texts || [];
     const batchCount = texts.length;
     const isBatchRoot = batchCount > 1;

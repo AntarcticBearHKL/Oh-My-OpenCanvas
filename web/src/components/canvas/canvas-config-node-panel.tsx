@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from "react";
-import { Grid3x3, Image as ImageIcon, LoaderCircle, MessageSquare, Music2, Play, RefreshCw, Settings2, Square, Video } from "lucide-react";
+import { Braces, Grid3x3, Image as ImageIcon, LoaderCircle, MessageSquare, Music2, Play, RefreshCw, Settings2, Square, Video } from "lucide-react";
 import { Button, Segmented } from "antd";
 import { useTranslation } from "react-i18next";
 
@@ -8,6 +8,7 @@ import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveC
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { buildMatrixVariants } from "@/lib/canvas/generation-matrix";
 import { CanvasGenerationMatrixDialog } from "./canvas-generation-matrix-dialog";
+import { CanvasPromptVariablesDialog } from "./canvas-prompt-variables-dialog";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
@@ -40,6 +41,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
     const canReplay = mode === "image" && typeof node.metadata?.seed === "number";
     const matrixVariantCount = buildMatrixVariants(node.metadata?.matrix).length;
     const [matrixOpen, setMatrixOpen] = useState(false);
+    const [variablesOpen, setVariablesOpen] = useState(false);
 
     return (
         <div className="flex h-full w-full cursor-move flex-col px-3 pb-3 pt-7 text-sm" style={{ color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
@@ -116,6 +118,17 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                     {t("canvas.configNode.matrix")}
                     {matrixVariantCount > 0 ? ` · ${matrixVariantCount}` : ""}
                 </button>
+                <button
+                    type="button"
+                    data-variables-button
+                    className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border px-2 text-[11px] transition hover:bg-black/5 dark:hover:bg-white/10"
+                    style={{ borderColor: theme.node.stroke, color: theme.node.text }}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onClick={() => setVariablesOpen(true)}
+                >
+                    <Braces className="size-3.5" />
+                    {t("canvas.promptPanel.variables")}
+                </button>
                 {canReplay ? (
                     <button
                         type="button"
@@ -173,6 +186,16 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                 onConfirm={(matrix) => {
                     onConfigChange(node.id, { matrix });
                     setMatrixOpen(false);
+                }}
+            />
+            <CanvasPromptVariablesDialog
+                open={variablesOpen}
+                prompt={node.metadata?.composerContent ?? node.metadata?.prompt ?? ""}
+                variables={node.metadata?.variables}
+                onClose={() => setVariablesOpen(false)}
+                onConfirm={(variables) => {
+                    onConfigChange(node.id, { variables });
+                    setVariablesOpen(false);
                 }}
             />
         </div>

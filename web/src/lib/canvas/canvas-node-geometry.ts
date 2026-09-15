@@ -97,13 +97,27 @@ export function findGroupDropTarget(movedIds: Set<string>, nodes: CanvasNodeData
     );
 }
 
+export function isBoardDescendant(candidateId: string, ancestorId: string, nodes: CanvasNodeData[]) {
+    const boardIdByNodeId = new Map(nodes.map((node) => [node.id, node.metadata?.boardId]));
+    const visited = new Set<string>();
+    let current = boardIdByNodeId.get(candidateId);
+    while (current && !visited.has(current)) {
+        if (current === ancestorId) return true;
+        visited.add(current);
+        current = boardIdByNodeId.get(current);
+    }
+    return false;
+}
+
 export function findBoardDropTarget(movedIds: Set<string>, nodes: CanvasNodeData[]) {
-    const movingImages = nodes.filter((node) => movedIds.has(node.id) && node.type === CanvasNodeType.Image);
-    if (!movingImages.length) return null;
+    const movingNodes = nodes.filter((node) => movedIds.has(node.id) && (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.SmartCanvas));
+    if (!movingNodes.length) return null;
+    const movedBoardIds = movingNodes.filter((node) => node.type === CanvasNodeType.SmartCanvas).map((node) => node.id);
     return (
         [...nodes].reverse().find((board) => {
             if (board.type !== CanvasNodeType.SmartCanvas || movedIds.has(board.id)) return false;
-            return movingImages.some((node) => nodeCenterInside(node, board));
+            if (movedBoardIds.some((movedId) => isBoardDescendant(board.id, movedId, nodes))) return false;
+            return movingNodes.some((node) => nodeCenterInside(node, board));
         }) || null
     );
 }

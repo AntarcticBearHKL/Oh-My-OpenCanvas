@@ -1,4 +1,5 @@
 import type { GenerationMatrix, GenerationMatrixVariant } from "@/lib/canvas/generation-matrix";
+import type { PromptVariable } from "@/lib/canvas/prompt-variables";
 
 export type Position = {
     x: number;
@@ -70,6 +71,12 @@ export type CanvasNodeMetadata = {
     status?: CanvasNodeStatus;
     errorDetails?: string;
     fontSize?: number;
+    lineHeight?: number;
+    fontFamily?: string;
+    fontWeight?: "normal" | "bold";
+    italic?: boolean;
+    textAlign?: "left" | "center" | "right";
+    textColor?: string;
     generationMode?: CanvasGenerationMode;
     generationType?: CanvasImageGenerationType;
     model?: string;
@@ -110,6 +117,7 @@ export type CanvasNodeMetadata = {
     boardId?: string; // Set on an IMAGE node to mark it as placed on that Smart Canvas board.
     boardBackground?: string; // Smart Canvas board background colour as a CSS colour string; defaults to "transparent".
     boardTexts?: { id: string; text: string; x: number; y: number; fontSize: number; color: string }[]; // Smart Canvas text annotations drawn above placed images; x/y are board-local top-left coordinates and fontSize uses board units.
+    boardLayers?: string[];
     interactive?: boolean; // Plugin node interaction/move state; see CanvasNodeDefinition.interactionToggle.
     locked?: boolean;
     hidden?: boolean;
@@ -117,6 +125,7 @@ export type CanvasNodeMetadata = {
     generationVersions?: CanvasGenerationVersion[];
     matrix?: GenerationMatrix;
     matrixTrace?: GenerationMatrixVariant;
+    variables?: PromptVariable[];
 };
 
 export type CanvasNodeData = {

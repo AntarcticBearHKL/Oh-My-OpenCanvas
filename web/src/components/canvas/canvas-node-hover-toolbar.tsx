@@ -7,10 +7,11 @@ import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { formatBytes, getDataUrlByteSize } from "@/lib/image-utils";
 import type { VideoFramePosition } from "@/lib/canvas/canvas-video-frame";
-import { CanvasNodeType, type CanvasNodeData, type ViewportTransform } from "@/types/canvas";
+import { CanvasNodeType, type CanvasNodeData, type CanvasNodeMetadata, type ViewportTransform } from "@/types/canvas";
 import type { CanvasNodeToolbarItem } from "@/types/canvas-plugin";
 import { canvasFloatingBarClass, canvasFloatingBarStyle, CanvasFloatingToolbarAction } from "./canvas-floating-toolbar";
 import { CanvasNodeLayerPopover } from "./canvas-node-layer-popover";
+import { CanvasTextStylePopover } from "./canvas-text-style-popover";
 import { IMAGE_QUICK_TOOLS_STORAGE_KEY, buildImageToolbarTools, defaultImageQuickToolIds, readImageQuickToolsConfig, type ImageQuickToolId } from "./canvas-image-toolbar-tools";
 
 type CanvasNodeHoverToolbarProps = {
@@ -41,6 +42,7 @@ type CanvasNodeHoverToolbarProps = {
     onToggleFlag: (nodeId: string, flag: "locked" | "hidden") => void;
     onBulkRename: (ids: string[], title: string) => void;
     onCaptureVideoFrame: (node: CanvasNodeData, position: VideoFramePosition) => void;
+    onTextStyleChange?: (nodeId: string, patch: Partial<CanvasNodeMetadata>) => void;
     onUngroup?: (node: CanvasNodeData) => void;
     onComposeBoard?: (node: CanvasNodeData) => void;
     extraTools?: CanvasNodeToolbarItem[];
@@ -85,6 +87,7 @@ export function CanvasNodeHoverToolbar({
     onToggleFlag,
     onBulkRename,
     onCaptureVideoFrame,
+    onTextStyleChange,
     onUngroup,
     onComposeBoard,
     extraTools = [],
@@ -182,6 +185,7 @@ export function CanvasNodeHoverToolbar({
             {toolbarTools.map((tool) => (
                 <CanvasFloatingToolbarAction key={tool.id} {...tool} showLabel={isImage ? showImageToolLabels : !tool.iconOnly} />
             ))}
+            {isText && onTextStyleChange ? <CanvasTextStylePopover metadata={node.metadata} onChange={(patch) => onTextStyleChange(node.id, patch)} /> : null}
             {hasImage ? (
                 <CanvasFloatingToolbarAction title={t("canvas.imageTools.showLabels")} label={t("canvas.imageTools.showLabels")} icon={<Tags className="size-4" />} active={showImageToolLabels} onClick={toggleImageToolLabels} showLabel={showImageToolLabels} />
             ) : null}

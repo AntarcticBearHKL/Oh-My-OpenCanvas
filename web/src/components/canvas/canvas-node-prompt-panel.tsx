@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowUp, LoaderCircle, Maximize2, Square } from "lucide-react";
+import { ArrowUp, Braces, LoaderCircle, Maximize2, Square } from "lucide-react";
 import { Button, Modal, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
@@ -11,6 +11,7 @@ import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasPromptLibrary } from "./canvas-prompt-library";
 import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
 import { CanvasPromptChipInput } from "./canvas-prompt-chip-input";
+import { CanvasPromptVariablesDialog } from "./canvas-prompt-variables-dialog";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
 import { CanvasTextSettingsPopover } from "./canvas-text-settings-popover";
 import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData } from "@/types/canvas";
@@ -47,6 +48,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
     const isEditingExistingContent = hasTextContent || hasImageContent;
     const [prompt, setPrompt] = useState(node.metadata?.composerContent ?? node.metadata?.prompt ?? "");
     const [expanded, setExpanded] = useState(false);
+    const [variablesOpen, setVariablesOpen] = useState(false);
 
     // Restore prompts only when switching nodes; preserve the current input after generation on the same node.
     useEffect(() => {
@@ -96,6 +98,16 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         <Button type="text" className="!h-8 !w-8 !min-w-8 shrink-0 !rounded-full !bg-transparent !p-0" style={{ color: theme.node.text }} icon={<Maximize2 className="size-3.5" />} onClick={openExpandedEditor} aria-label={t("canvas.promptPanel.expandEditor")} />
                     </Tooltip>
                     <CanvasPromptLibrary onSelect={updatePrompt} />
+                    <button
+                        type="button"
+                        data-variables-button
+                        className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-full border px-2.5 text-xs transition hover:bg-black/5 dark:hover:bg-white/10"
+                        style={{ borderColor: theme.node.stroke, color: theme.node.text }}
+                        onClick={() => setVariablesOpen(true)}
+                    >
+                        <Braces className="size-3.5" />
+                        {t("canvas.promptPanel.variables")}
+                    </button>
                     {mode === "image" ? (
                         <>
                             <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="image" onMissingConfig={() => openConfigDialog()} className="max-w-[190px]" />
@@ -159,6 +171,16 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                     />
                 </div>
             </Modal>
+            <CanvasPromptVariablesDialog
+                open={variablesOpen}
+                prompt={prompt}
+                variables={node.metadata?.variables}
+                onClose={() => setVariablesOpen(false)}
+                onConfirm={(variables) => {
+                    onConfigChange(node.id, { variables });
+                    setVariablesOpen(false);
+                }}
+            />
         </div>
     );
 }

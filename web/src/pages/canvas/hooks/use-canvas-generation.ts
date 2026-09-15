@@ -16,6 +16,7 @@ import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
 import { NODE_STATUS_ERROR, NODE_STATUS_IDLE, NODE_STATUS_LOADING, NODE_STATUS_SUCCESS, VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH } from "@/lib/canvas/canvas-node-constants";
 import { buildAngleLabel, buildAnglePrompt, buildGenerationConfig, createGenerationSeed, findRetrySourceNode, generationQueue, generationReferenceUrls, getGenerationCount, hasResumableVideoTask, isGenerationCanceled, pushGenerationVersion, resolveGenerationSeed, resolveMetadataReferences, runGenerationTaskWithRetry, sourceNodeReferenceImages } from "@/lib/canvas/canvas-generation-helpers";
 import { buildMatrixVariants, type GenerationMatrixVariant } from "@/lib/canvas/generation-matrix";
+import { applyPromptVariables } from "@/lib/canvas/prompt-variables";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasImageAngleParams } from "@/components/canvas/canvas-node-angle-dialog";
@@ -383,7 +384,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                 buildNodeGenerationContext(nodeId, nodesRef.current, connectionsRef.current, editingTextNode ? t("canvas.projectPage.editTextPrompt", { source: sourceTextContent, prompt }) : prompt),
                 nodesRef.current,
             );
-            const effectivePrompt = generationContext.prompt.trim();
+            const effectivePrompt = applyPromptVariables(generationContext.prompt, sourceNode?.metadata?.variables).trim();
             if (runController.signal.aborted) {
                 finishGenerationRequest(nodeId, runController);
                 if (!options?.deferRunningState) setRunningNodeId(null);

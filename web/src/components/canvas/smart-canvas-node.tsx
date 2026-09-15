@@ -1,26 +1,27 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Frame, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { smartCanvasBackground, smartCanvasRatio, smartCanvasResolution, smartCanvasTexts } from "@/lib/canvas/smart-canvas";
 import { resolveImageUrl } from "@/services/image-storage";
-import type { CanvasNodeData, CanvasNodeMetadata } from "@/types/canvas";
+import { CanvasNodeType, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
 
 type SmartCanvasNodeContentProps = {
     node: CanvasNodeData;
-    boardImages?: CanvasNodeData[];
+    boardLayers?: CanvasNodeData[];
+    boardLayersById?: Map<string, CanvasNodeData[]>;
     onBoardTextsChange?: (nodeId: string, texts: NonNullable<CanvasNodeMetadata["boardTexts"]>) => void;
 };
 
 type BoardText = NonNullable<CanvasNodeMetadata["boardTexts"]>[number];
 
-const EMPTY_BOARD_IMAGES: CanvasNodeData[] = [];
+const EMPTY_BOARD_LAYERS: CanvasNodeData[] = [];
+const EMPTY_BOARD_LAYERS_BY_ID = new Map<string, CanvasNodeData[]>();
 
-export function SmartCanvasNodeContent({ node, boardImages = EMPTY_BOARD_IMAGES, onBoardTextsChange }: SmartCanvasNodeContentProps) {
+export function SmartCanvasNodeContent({ node, boardLayers = EMPTY_BOARD_LAYERS, boardLayersById = EMPTY_BOARD_LAYERS_BY_ID, onBoardTextsChange }: SmartCanvasNodeContentProps) {
     const theme = useCanvasTheme();
     const { t } = useTranslation();
-    const urls = useResolvedBoardImageUrls(boardImages);
     const ratio = smartCanvasRatio(node);
     const resolution = smartCanvasResolution(node).toUpperCase();
     const background = smartCanvasBackground(node);
@@ -60,20 +61,7 @@ export function SmartCanvasNodeContent({ node, boardImages = EMPTY_BOARD_IMAGES,
             className="relative h-full w-full overflow-hidden rounded-[inherit]"
             style={{ backgroundColor: background === "transparent" ? theme.node.panel : background, backgroundImage: `linear-gradient(${gridColor} 1px, transparent 1px), linear-gradient(90deg, ${gridColor} 1px, transparent 1px)`, backgroundSize: "24px 24px" }}
         >
-            {boardImages.map((image) => {
-                const url = urls[image.id];
-                if (!url) return null;
-                return (
-                    <img
-                        key={image.id}
-                        src={url}
-                        alt=""
-                        draggable={false}
-                        className="pointer-events-none absolute select-none object-fill"
-                        style={{ left: image.position.x - node.position.x, top: image.position.y - node.position.y, width: image.width, height: image.height }}
-                    />
-                );
-            })}
+            <BoardLayersView node={node} layers={boardLayers} byId={boardLayersById} visited={new Set([node.id])} />
             {texts.map((text) => (
                 <div
                     key={text.id}
@@ -129,7 +117,7 @@ export function SmartCanvasNodeContent({ node, boardImages = EMPTY_BOARD_IMAGES,
                 </div>
             ))}
             <div className="pointer-events-none absolute inset-0 rounded-[inherit] border border-dashed" style={{ borderColor: theme.node.stroke }} />
-            {boardImages.length ? null : (
+            {boardLayers.length ? null : (
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center" style={{ color: theme.node.placeholder }}>
                     <Frame className="size-6 opacity-40" />
                     <span className="text-xs">{t("canvas.smartCanvas.empty")}</span>
@@ -140,9 +128,33 @@ export function SmartCanvasNodeContent({ node, boardImages = EMPTY_BOARD_IMAGES,
                 <span>·</span>
                 <span>{resolution}</span>
                 <span>·</span>
-                <span>{t("canvas.smartCanvas.placedCount", { count: boardImages.length })}</span>
+                <span>{t("canvas.smartCanvas.placedCount", { count: boardLayers.length })}</span>
             </div>
         </div>
+    );
+}
+
+function BoardLayersView({ node, layers, byId, visited }: { node: CanvasNodeData; layers: CanvasNodeData[]; byId: Map<string, CanvasNodeData[]>; visited: Set<string> }) {
+    const imageLayers = useMemo(() => layers.filter((layer) => layer.type === CanvasNodeType.Image), [layers]);
+    const urls = useResolvedBoardImageUrls(imageLayers);
+    return (
+        <>
+            {layers.map((layer) => {
+                const left = layer.position.x - node.position.x;
+                const top = layer.position.y - node.position.y;
+                if (layer.type === CanvasNodeType.SmartCanvas) {
+                    if (visited.has(layer.id)) return null;
+                    return (
+                        <div key={layer.id} className="pointer-events-none absolute overflow-hidden rounded-[inherit]" style={{ left, top, width: layer.width, height: layer.height }}>
+                            <BoardLayersView node={layer} layers={byId.get(layer.id) ?? EMPTY_BOARD_LAYERS} byId={byId} visited={new Set(visited).add(layer.id)} />
+                        </div>
+                    );
+                }
+                const url = urls[layer.id];
+                if (!url) return null;
+                return <img key={layer.id} src={url} alt="" draggable={false} className="pointer-events-none absolute select-none object-fill" style={{ left, top, width: layer.width, height: layer.height }} />;
+            })}
+        </>
     );
 }
 

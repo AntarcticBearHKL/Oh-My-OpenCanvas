@@ -32,6 +32,47 @@ const LIB_ASSERTIONS = `(async () => {
     ok("arrange 3 aspect kept", Math.abs(three[1].width / three[1].height - 1000 / 100) < 0.2, three[1].width / three[1].height);
     ok("arrange 3 rounded", three.every((item) => Number.isInteger(item.position.x) && Number.isInteger(item.position.y) && Number.isInteger(item.width) && Number.isInteger(item.height)));
 
+    ok("layout templates ordered", smart.BOARD_LAYOUT_TEMPLATES.join(",") === "grid,row,column,feature", smart.BOARD_LAYOUT_TEMPLATES.join(","));
+    const layoutImages = [image("a", 100, 100), image("b", 100, 100), image("c", 100, 100)];
+    const gridNamed = JSON.stringify(smart.arrangeBoardImages(board, layoutImages, "grid"));
+    ok("grid template keeps default output", gridNamed === JSON.stringify(smart.arrangeBoardImages(board, layoutImages)), gridNamed);
+    const row = smart.arrangeBoardImages(board, layoutImages, "row");
+    ok("row template one row", row.every((item) => item.position.y === row[0].position.y) && row[0].position.x < row[1].position.x && row[1].position.x < row[2].position.x, JSON.stringify(row));
+    ok("row template aspect fit integers", row.every((item) => item.width === 192 && item.height === 192 && Number.isInteger(item.position.x) && Number.isInteger(item.position.y)), JSON.stringify(row));
+    const column = smart.arrangeBoardImages(board, layoutImages, "column");
+    ok("column template one column", column.every((item) => item.position.x === column[0].position.x) && column[0].position.y < column[1].position.y && column[1].position.y < column[2].position.y, JSON.stringify(column));
+    ok("column template aspect fit integers", column.every((item) => item.width === column[0].width && item.height === column[0].height && Number.isInteger(item.width) && Number.isInteger(item.height)), JSON.stringify(column));
+    const feature = smart.arrangeBoardImages(board, layoutImages, "feature");
+    ok("feature template keeps first image dominant", feature[0].width > feature[1].width && feature[0].height > feature[1].height && feature[0].position.x < feature[1].position.x, JSON.stringify(feature));
+    ok("feature template aspect fit integers", feature.every((item) => Number.isInteger(item.width) && Number.isInteger(item.height) && Number.isInteger(item.position.x) && Number.isInteger(item.position.y)), JSON.stringify(feature));
+    const rowAspect = smart.arrangeBoardImages(board, [image("w", 400, 100), image("t", 100, 400)], "row");
+    ok("row template keeps aspect", Math.abs(rowAspect[0].width / rowAspect[0].height - 4) < 0.05 && Math.abs(rowAspect[1].width / rowAspect[1].height - 0.25) < 0.01, JSON.stringify(rowAspect));
+
+    const layered = { ...board, metadata: { boardLayers: ["c", "a"] } };
+    const placed = [image("a", 100, 100), image("b", 100, 100), image("c", 100, 100), image("d", 100, 100)];
+    ok("layers empty by default", JSON.stringify(smart.smartCanvasLayers(board)) === "[]", JSON.stringify(smart.smartCanvasLayers(board)));
+    ok("layers read metadata", smart.smartCanvasLayers(layered).join(",") === "c,a", smart.smartCanvasLayers(layered).join(","));
+    ok("layer ids put layers first then leftovers", smart.boardLayerImageIds(layered, placed).join(",") === "c,a,b,d", smart.boardLayerImageIds(layered, placed).join(","));
+    const droppedLayers = smart.boardLayerImageIds({ ...board, metadata: { boardLayers: ["missing", "b"] } }, placed);
+    ok("layer ids drop missing images", droppedLayers.join(",") === "b,a,c,d", droppedLayers.join(","));
+    const hiddenImage = { ...placed[1], metadata: { ...placed[1].metadata, hidden: true } };
+    const orderedImages = smart.orderBoardImages(layered, [placed[0], hiddenImage, placed[2], placed[3]]);
+    ok("orderBoardImages drops hidden and follows layers", orderedImages.map((item) => item.id).join(",") === "c,a,d", orderedImages.map((item) => item.id).join(","));
+    ok("moveBoardLayer forward steps toward front", smart.moveBoardLayer(layered, placed, "c", "forward").join(",") === "a,c,b,d", smart.moveBoardLayer(layered, placed, "c", "forward").join(","));
+    ok("moveBoardLayer backward steps toward back", smart.moveBoardLayer(layered, placed, "a", "backward").join(",") === "a,c,b,d", smart.moveBoardLayer(layered, placed, "a", "backward").join(","));
+    ok("moveBoardLayer forward at front is a no-op", smart.moveBoardLayer(layered, placed, "d", "forward").join(",") === "c,a,b,d", smart.moveBoardLayer(layered, placed, "d", "forward").join(","));
+    ok("moveBoardLayer backward at back is a no-op", smart.moveBoardLayer(layered, placed, "c", "backward").join(",") === "c,a,b,d", smart.moveBoardLayer(layered, placed, "c", "backward").join(","));
+    ok("moveBoardLayer unknown id is a no-op", smart.moveBoardLayer(layered, placed, "zz", "forward").join(",") === "c,a,b,d", smart.moveBoardLayer(layered, placed, "zz", "forward").join(","));
+
+    const nestedBoard = { id: "nb", type: "smart-canvas", title: "nb", position: { x: 0, y: 0 }, width: 100, height: 100, metadata: {} };
+    const mixedLayers = { ...board, metadata: { boardLayers: ["nb", "a"] } };
+    const mixedPlaced = [image("a", 100, 100), nestedBoard, image("z", 100, 100)];
+    ok("mixed layer ids order boards and images", smart.boardLayerImageIds(mixedLayers, mixedPlaced).join(",") === "nb,a,z", smart.boardLayerImageIds(mixedLayers, mixedPlaced).join(","));
+    ok("mixed moveBoardLayer reorders boards", smart.moveBoardLayer(mixedLayers, mixedPlaced, "a", "forward").join(",") === "nb,z,a", smart.moveBoardLayer(mixedLayers, mixedPlaced, "a", "forward").join(","));
+    const hiddenBoard = { ...nestedBoard, metadata: { hidden: true } };
+    const hiddenBoardOrder = smart.orderBoardImages(mixedLayers, [image("a", 100, 100), hiddenBoard, image("z", 100, 100)]);
+    ok("orderBoardImages drops hidden boards", hiddenBoardOrder.map((item) => item.id).join(",") === "a,z", hiddenBoardOrder.map((item) => item.id).join(","));
+
     const image2 = await import("/src/lib/canvas/canvas-image-data.ts");
     ok("upscale clamp max", image2.resolveUpscaleSize(100, 100, 99999).width === 4096, JSON.stringify(image2.resolveUpscaleSize(100, 100, 99999)));
     const down = image2.resolveUpscaleSize(1000, 500, 200);
@@ -62,6 +103,19 @@ const LIB_ASSERTIONS = `(async () => {
     ok("snap into frame keeps position and sets groupId", nested.metadata.groupId === "f" && nested.position.x === 150 && nested.position.y === 100, JSON.stringify(nested));
     ok("containing frame resolves", geo.findContainingGroupId(inside, [frame, inside]) === "f" && geo.findContainingGroupId(outside, [frame, outside]) === undefined);
     ok("frame rejects connections as target", geo.normalizeConnection("in", "f", [frame, inside], "source") === null && geo.normalizeConnection("f", "in", [frame, inside], "source").fromNodeId === "f");
+
+    const boardA = { id: "ba", type: "smart-canvas", title: "A", position: { x: 0, y: 0 }, width: 640, height: 360, metadata: {} };
+    const boardB = { id: "bb", type: "smart-canvas", title: "B", position: { x: 80, y: 60 }, width: 200, height: 150, metadata: { boardId: "ba" } };
+    const boardC = { id: "bc", type: "smart-canvas", title: "C", position: { x: 100, y: 80 }, width: 80, height: 60, metadata: { boardId: "bb" } };
+    const boardTree = [boardA, boardB, boardC];
+    ok("board descendant direct", geo.isBoardDescendant("bb", "ba", boardTree) === true);
+    ok("board descendant indirect", geo.isBoardDescendant("bc", "ba", boardTree) === true);
+    ok("board descendant never self or ancestor", geo.isBoardDescendant("ba", "ba", boardTree) === false && geo.isBoardDescendant("ba", "bc", boardTree) === false);
+    ok("board drop accepts image", geo.findBoardDropTarget(new Set(["bimg"]), [boardA, image("bimg", 100, 100, { x: 40, y: 40 })])?.id === "ba");
+    ok("board drop accepts board", geo.findBoardDropTarget(new Set(["bb"]), [boardA, boardB])?.id === "ba");
+    ok("board drop rejects self", geo.findBoardDropTarget(new Set(["bb"]), [boardB]) === null);
+    ok("board drop rejects descendant cycle", geo.findBoardDropTarget(new Set(["ba"]), boardTree) === null);
+    ok("board drop rejects non-board target", geo.findBoardDropTarget(new Set(["bimg"]), [frame, image("bimg", 100, 100, { x: 40, y: 40 })]) === null);
 
     ok("locked flag predicate", geo.isNodeLocked({ ...dragged, metadata: { locked: true } }) === true && geo.isNodeLocked(dragged) === false);
     ok("hidden flag predicate", geo.isNodeHidden({ ...dragged, metadata: { hidden: true } }) === true && geo.isNodeHidden(dragged) === false);
@@ -159,6 +213,46 @@ const LIB_ASSERTIONS = `(async () => {
     ok("matrix drops bad counts and keeps duplicates", badCounts.length === 2 && badCounts.every((variant) => variant.count === 2), JSON.stringify(badCounts));
     const sizeOnly = matrix.buildMatrixVariants({ sizes: ["1024x1024", "512x512"] });
     ok("matrix sizes-only product", sizeOnly.length === 2 && sizeOnly[0].size === "1024x1024" && sizeOnly[1].size === "512x512" && sizeOnly.every((variant) => variant.prompt === undefined && variant.count === undefined), JSON.stringify(sizeOnly));
+
+    const variables = await import("/src/lib/canvas/prompt-variables.ts");
+    const parsed = variables.parsePromptVariables("{{c }} {{ b }} {{a}} {{ b }}");
+    ok("variables parse unique first-seen order", parsed.join(",") === "c,b,a", parsed.join(","));
+    ok("variables parse drops empty names", variables.parsePromptVariables("{{  }} {{}} {{ x }}").join(",") === "x", variables.parsePromptVariables("{{  }} {{}} {{ x }}").join(","));
+    ok("variables parse tolerates empty input", variables.parsePromptVariables("").length === 0 && variables.parsePromptVariables(undefined).length === 0);
+    const applied = variables.applyPromptVariables("a {{name}} b {{ name }} c", [{ name: "name", value: "X" }]);
+    ok("variables apply tolerates whitespace", applied === "a X b X c", applied);
+    const unmatched = variables.applyPromptVariables("{{known}} {{unknown}}", [{ name: "known", value: "yes" }]);
+    ok("variables apply keeps unmatched tokens", unmatched === "yes {{unknown}}", unmatched);
+    ok(
+        "variables apply unchanged without usable variables",
+        variables.applyPromptVariables("{{name}}", undefined) === "{{name}}" && variables.applyPromptVariables("{{name}}", []) === "{{name}}" && variables.applyPromptVariables("{{name}}", [{ name: "  ", value: "x" }]) === "{{name}}",
+        variables.applyPromptVariables("{{name}}", undefined),
+    );
+    const resolvedUnion = variables.resolvePromptVariableList("{{keep}} {{fresh}}", [{ name: "keep", value: "1" }, { name: "extra", value: "2" }]);
+    ok("variables resolve unions detected first", JSON.stringify(resolvedUnion) === JSON.stringify([{ name: "keep", value: "1" }, { name: "fresh", value: "" }, { name: "extra", value: "2" }]), JSON.stringify(resolvedUnion));
+    const resolvedTrimmed = variables.resolvePromptVariableList("{{ keep }}", [{ name: " keep ", value: "9" }]);
+    ok("variables resolve matches trimmed names", JSON.stringify(resolvedTrimmed) === JSON.stringify([{ name: "keep", value: "9" }]), JSON.stringify(resolvedTrimmed));
+    const resolvedOrder = variables.resolvePromptVariableList("{{b}} {{a}}", [{ name: "a", value: "1" }, { name: "b", value: "2" }]);
+    ok("variables resolve keeps detected order", JSON.stringify(resolvedOrder) === JSON.stringify([{ name: "b", value: "2" }, { name: "a", value: "1" }]), JSON.stringify(resolvedOrder));
+
+    const typography = await import("/src/lib/canvas/text-style.ts");
+    ok("text style fontSize clamps to bounds", typography.clampFontSize(2) === typography.TEXT_FONT_SIZE_MIN && typography.clampFontSize(999) === typography.TEXT_FONT_SIZE_MAX, typography.clampFontSize(2) + "," + typography.clampFontSize(999));
+    ok("text style fontSize rounds to integer", typography.clampFontSize(17.6) === 18 && typography.clampFontSize(17.4) === 17, typography.clampFontSize(17.6) + "," + typography.clampFontSize(17.4));
+    ok("text style fontSize non-finite falls back to default", typography.clampFontSize(Number.NaN) === typography.TEXT_FONT_SIZE_DEFAULT && typography.clampFontSize(Number.POSITIVE_INFINITY) === typography.TEXT_FONT_SIZE_DEFAULT, typography.clampFontSize(Number.NaN));
+    ok("text style lineHeight clamps to bounds", typography.clampLineHeight(0.2) === typography.TEXT_LINE_HEIGHT_MIN && typography.clampLineHeight(9) === typography.TEXT_LINE_HEIGHT_MAX, typography.clampLineHeight(0.2) + "," + typography.clampLineHeight(9));
+    ok("text style lineHeight rounds to two decimals", typography.clampLineHeight(1.234) === 1.23 && typography.clampLineHeight(1.236) === 1.24, typography.clampLineHeight(1.234) + "," + typography.clampLineHeight(1.236));
+    ok("text style lineHeight non-finite falls back to default", typography.clampLineHeight(Number.NaN) === typography.TEXT_LINE_HEIGHT_DEFAULT, typography.clampLineHeight(Number.NaN));
+    const textDefaults = typography.resolveTextStyle(undefined);
+    ok("text style defaults", textDefaults.fontSize === 14 && textDefaults.lineHeight === 1.65 && textDefaults.bold === false && textDefaults.italic === false && textDefaults.align === "left" && textDefaults.fontFamily === undefined && textDefaults.color === undefined, JSON.stringify(textDefaults));
+    const textMapped = typography.resolveTextStyle({ content: "x", fontSize: 24, lineHeight: 2, fontFamily: "Georgia, serif", fontWeight: "bold", italic: true, textAlign: "center", textColor: "#ff0000" });
+    ok("text style maps metadata", textMapped.fontSize === 24 && textMapped.lineHeight === 2 && textMapped.fontFamily === "Georgia, serif" && textMapped.bold === true && textMapped.italic === true && textMapped.align === "center" && textMapped.color === "#ff0000", JSON.stringify(textMapped));
+    const textUnknown = typography.resolveTextStyle({ textAlign: "diagonal", fontWeight: "heavy", italic: "yes", fontFamily: "  ", textColor: " ", fontSize: Number.NaN, lineHeight: -4 });
+    ok("text style unknown values fall back", textUnknown.align === "left" && textUnknown.bold === false && textUnknown.italic === false && textUnknown.fontFamily === undefined && textUnknown.color === undefined && textUnknown.fontSize === 14 && textUnknown.lineHeight === 1, JSON.stringify(textUnknown));
+    const textCssDefault = typography.textStyleToCss(textDefaults);
+    ok("text style css omits optional colour and font family", textCssDefault.color === undefined && textCssDefault.fontFamily === undefined && textCssDefault.fontSize === "14px" && textCssDefault.lineHeight === 1.65 && textCssDefault.fontWeight === "normal" && textCssDefault.fontStyle === "normal" && textCssDefault.textAlign === "left", JSON.stringify(textCssDefault));
+    const textCssMapped = typography.textStyleToCss(textMapped);
+    ok("text style css writes mapped values", textCssMapped.color === "#ff0000" && textCssMapped.fontFamily === "Georgia, serif" && textCssMapped.fontSize === "24px" && textCssMapped.lineHeight === 2 && textCssMapped.fontWeight === "bold" && textCssMapped.fontStyle === "italic" && textCssMapped.textAlign === "center", JSON.stringify(textCssMapped));
+    ok("text style offers font family stacks", typography.TEXT_FONT_FAMILIES.length >= 4 && typography.TEXT_FONT_FAMILIES.every((item) => item.label && item.value && !item.value.includes(";")), JSON.stringify(typography.TEXT_FONT_FAMILIES));
 
     return results;
 })()`;

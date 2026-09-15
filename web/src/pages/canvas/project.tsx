@@ -21,7 +21,7 @@ import { useThemeStore } from "@/stores/use-theme-store";
 import { cropDataUrl, splitDataUrl, upscaleDataUrl, type ImageUpscaleParams } from "@/lib/canvas/canvas-image-data";
 import { fitNodeSize } from "@/lib/canvas/canvas-node-size";
 import { captureVideoFrame, type VideoFramePosition } from "@/lib/canvas/canvas-video-frame";
-import { App, Button, Modal } from "antd";
+import { App, Button, Dropdown, Modal } from "antd";
 import { NODE_DEFAULT_SIZE, getNodeSpec } from "@/constant/canvas";
 import { ActiveConnectionPath, ConnectionPath } from "@/components/canvas/canvas-connections";
 import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
@@ -43,6 +43,7 @@ import { CanvasNode, selectionBlue } from "@/components/canvas/canvas-node";
 import { CanvasNodePromptPanel, type CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import { PromptNodePanel } from "@/components/canvas/prompt-node-panel";
 import { SmartCanvasSettingsPopover } from "@/components/canvas/smart-canvas-settings-popover";
+import { SmartCanvasLayerPopover } from "@/components/canvas/smart-canvas-layer-popover";
 import { CanvasToolbar } from "@/components/canvas/canvas-toolbar";
 import { AssetPickerModal } from "@/components/canvas/asset-picker-modal";
 import { CanvasSidePanel } from "@/components/canvas/canvas-side-panel";
@@ -57,7 +58,7 @@ import { NODE_STATUS_SUCCESS, VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH } from
 import { buildNodeMentionReferences, getGroupResourceNodes, isCanvasReferenceNode, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { applyNodeConfigPatch, createCanvasNode } from "@/lib/canvas/canvas-node-factory";
 import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
-import { arrangeBoardImages, composeSmartCanvas, SMART_CANVAS_DEFAULT_FONT_SIZE, smartCanvasBackground, smartCanvasSizeForRatio, smartCanvasTexts } from "@/lib/canvas/smart-canvas";
+import { arrangeBoardImages, BOARD_LAYOUT_TEMPLATES, boardLayerImageIds, composeSmartCanvas, moveBoardLayer, orderBoardImages, SMART_CANVAS_DEFAULT_FONT_SIZE, smartCanvasBackground, smartCanvasSizeForRatio, smartCanvasTexts, type BoardLayoutTemplate } from "@/lib/canvas/smart-canvas";
 import { CANVAS_GRID_SIZE, bulkRenameTitles, canGroupSelectedNodes, canUngroupSelectedNodes, findBoardDropTarget, findContainingGroupId, findGroupDropTarget, getConnectionTargetAnchor, isContainerNode, isNodeHidden, isNodeLocked, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides, snapNodesIntoGroup } from "@/lib/canvas/canvas-node-geometry";
 import {
     audioExtension,
@@ -97,6 +98,12 @@ const EMPTY_REFERENCES: CanvasResourceReference[] = [];
 const CONNECTION_HANDLE_HIT_RADIUS = 40;
 const CONNECTION_NODE_HIT_PADDING = 32;
 const EMPTY_SNAP_GUIDES = { x: [], y: [] };
+const BOARD_LAYOUT_LABEL_KEYS: Record<BoardLayoutTemplate, string> = {
+    grid: "canvas.smartCanvas.layoutGrid",
+    row: "canvas.smartCanvas.layoutRow",
+    column: "canvas.smartCanvas.layoutColumn",
+    feature: "canvas.smartCanvas.layoutFeature",
+};
 
 type CanvasClipboard = {
     nodes: CanvasNodeData[];
@@ -508,10 +515,10 @@ function InfiniteCanvasPage() {
         });
         return map;
     }, [nodes]);
-    const boardImagesById = useMemo(() => {
+    const boardLayerNodesById = useMemo(() => {
         const map = new Map<string, CanvasNodeData[]>();
         nodes.forEach((node) => {
-            const boardId = node.type === CanvasNodeType.Image ? node.metadata?.boardId : undefined;
+            const boardId = node.type === CanvasNodeType.Image || node.type === CanvasNodeType.SmartCanvas ? node.metadata?.boardId : undefined;
             if (!boardId) return;
             const list = map.get(boardId);
             if (list) list.push(node);
@@ -519,6 +526,28 @@ function InfiniteCanvasPage() {
         });
         return map;
     }, [nodes]);
+    const boardRenderLayersById = useMemo(() => {
+        const map = new Map<string, CanvasNodeData[]>();
+        boardLayerNodesById.forEach((list, boardId) => {
+            const board = nodeById.get(boardId);
+            if (board) map.set(boardId, orderBoardImages(board, list));
+        });
+        return map;
+    }, [boardLayerNodesById, nodeById]);
+    const boardOrderedLayersById = useMemo(() => {
+        const map = new Map<string, CanvasNodeData[]>();
+        boardLayerNodesById.forEach((list, boardId) => {
+            const board = nodeById.get(boardId);
+            if (!board) return;
+            const ordered: CanvasNodeData[] = [];
+            boardLayerImageIds(board, list).forEach((id) => {
+                const node = list.find((item) => item.id === id);
+                if (node) ordered.push(node);
+            });
+            map.set(boardId, ordered);
+        });
+        return map;
+    }, [boardLayerNodesById, nodeById]);
     const relatedHighlight = useMemo(() => {
         const nodeIds = new Set<string>();
         const connectionIds = new Set<string>();
@@ -710,13 +739,22 @@ function InfiniteCanvasPage() {
             }),
         );
         if (!dragIds.size) return;
+        const addBoardLayers = (board: CanvasNodeData) => {
+            currentNodes.forEach((child) => {
+                if (dragIds.has(child.id) || child.metadata?.boardId !== board.id) return;
+                dragIds.add(child.id);
+                if (child.type === CanvasNodeType.SmartCanvas) addBoardLayers(child);
+            });
+        };
         currentNodes.forEach((node) => {
             if (!nextSelected.has(node.id)) return;
-            const memberKey = isContainerNode(node) ? "groupId" : node.type === CanvasNodeType.SmartCanvas ? "boardId" : null;
-            if (!memberKey) return;
-            currentNodes.forEach((child) => {
-                if (child.metadata?.[memberKey] === node.id) dragIds.add(child.id);
-            });
+            if (isContainerNode(node)) {
+                currentNodes.forEach((child) => {
+                    if (child.metadata?.groupId === node.id) dragIds.add(child.id);
+                });
+            } else if (node.type === CanvasNodeType.SmartCanvas) {
+                addBoardLayers(node);
+            }
         });
         dragRef.current = {
             isDraggingNode: true,
@@ -765,7 +803,7 @@ function InfiniteCanvasPage() {
                 const draggedBoardIds = new Set(moved.filter((node) => movedIds.has(node.id) && node.type === CanvasNodeType.SmartCanvas).map((node) => node.id));
                 return moved.map((node) => {
                     let next = node;
-                    if (movedIds.has(node.id) && node.type === CanvasNodeType.Image && !draggedBoardIds.has(node.metadata?.boardId || "")) {
+                    if (movedIds.has(node.id) && (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.SmartCanvas) && !draggedBoardIds.has(node.metadata?.boardId || "")) {
                         const boardId = targetBoard && nodeCenterInside(node, targetBoard) ? targetBoard.id : undefined;
                         if (next.metadata?.boardId !== boardId) next = { ...next, metadata: { ...next.metadata, boardId } };
                     }
@@ -1198,7 +1236,7 @@ function InfiniteCanvasPage() {
 
     const handleComposeBoard = useCallback(
         async (board: CanvasNodeData) => {
-            const placed = nodesRef.current.filter((node) => node.type === CanvasNodeType.Image && node.metadata?.boardId === board.id);
+            const placed = nodesRef.current.filter((node) => (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.SmartCanvas) && node.metadata?.boardId === board.id);
             if (!placed.length) {
                 message.warning(t("canvas.smartCanvas.noContent"));
                 return;
@@ -1218,13 +1256,18 @@ function InfiniteCanvasPage() {
     );
 
     const handleArrangeBoard = useCallback(
-        (board: CanvasNodeData) => {
+        (board: CanvasNodeData, template: BoardLayoutTemplate = "grid") => {
             const placed = nodesRef.current.filter((node) => node.type === CanvasNodeType.Image && node.metadata?.boardId === board.id);
             if (!placed.length) {
                 message.warning(t("canvas.smartCanvas.noContent"));
                 return;
             }
-            const layout = new Map(arrangeBoardImages(board, placed).map((item) => [item.id, item]));
+            const ordered: CanvasNodeData[] = [];
+            boardLayerImageIds(board, placed).forEach((id) => {
+                const node = placed.find((item) => item.id === id);
+                if (node) ordered.push(node);
+            });
+            const layout = new Map(arrangeBoardImages(board, ordered, template).map((item) => [item.id, item]));
             setNodes((prev) =>
                 prev.map((node) => {
                     const item = layout.get(node.id);
@@ -1622,9 +1665,20 @@ function InfiniteCanvasPage() {
                     <Button size="small" type="text" className="!h-8 !rounded-full !px-2.5" style={{ color: theme.node.text }} icon={<LayoutDashboard className="size-3.5" />} onClick={() => void handleComposeBoard(panelNode)}>
                         {t("canvas.smartCanvas.preview")}
                     </Button>
-                    <Button size="small" type="text" className="!h-8 !rounded-full !px-2.5" style={{ color: theme.node.text }} icon={<LayoutGrid className="size-3.5" />} onClick={() => handleArrangeBoard(panelNode)}>
-                        {t("canvas.smartCanvas.arrange")}
-                    </Button>
+                    <Dropdown
+                        trigger={["click"]}
+                        menu={{
+                            items: BOARD_LAYOUT_TEMPLATES.map((template) => ({ key: template, label: t(BOARD_LAYOUT_LABEL_KEYS[template]) })),
+                            onClick: ({ key }) => {
+                                const template = BOARD_LAYOUT_TEMPLATES.find((item) => item === key);
+                                if (template) handleArrangeBoard(panelNode, template);
+                            },
+                        }}
+                    >
+                        <Button size="small" type="text" className="!h-8 !rounded-full !px-2.5" style={{ color: theme.node.text }} icon={<LayoutGrid className="size-3.5" />}>
+                            {t("canvas.smartCanvas.arrange")}
+                        </Button>
+                    </Dropdown>
                     <Button
                         size="small"
                         type="text"
@@ -1639,6 +1693,11 @@ function InfiniteCanvasPage() {
                     >
                         {t("canvas.smartCanvas.addText")}
                     </Button>
+                    <SmartCanvasLayerPopover
+                        images={boardOrderedLayersById.get(panelNode.id) || []}
+                        onMove={(imageId, direction) => handleSmartCanvasChange(panelNode.id, { boardLayers: moveBoardLayer(panelNode, boardOrderedLayersById.get(panelNode.id) || [], imageId, direction) })}
+                        onToggleHidden={(imageId) => toggleNodeFlag(imageId, "hidden")}
+                    />
                 </div>
             ) : (
                 <CanvasNodePromptPanel
@@ -1660,7 +1719,7 @@ function InfiniteCanvasPage() {
                     }}
                 />
             ),
-        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleArrangeBoard, handleComposeBoard, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleNodePromptChange, handleSmartCanvasChange, mentionReferencesByNodeId, nodes, renderPluginPanel, runningNodeId, startNodeReferenceSelection, t, theme.node.text],
+        [boardOrderedLayersById, configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleArrangeBoard, handleComposeBoard, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleNodePromptChange, handleSmartCanvasChange, mentionReferencesByNodeId, nodes, renderPluginPanel, runningNodeId, startNodeReferenceSelection, t, theme.node.text, toggleNodeFlag],
     );
 
     const renderNodeContentPanel = useCallback(
@@ -1756,7 +1815,8 @@ function InfiniteCanvasPage() {
                             showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             groupChildCount={groupChildCountById.get(node.id) || 0}
                             isGroupDropTarget={dropTargetGroupId === node.id}
-                            boardImages={boardImagesById.get(node.id)}
+                            boardLayers={boardRenderLayersById.get(node.id)}
+                            boardLayersById={boardRenderLayersById}
                             onBoardTextsChange={handleBoardTextsChange}
                             batchExpanded={expandedBatchNodeIds.has(node.id)}
                             mentionReferences={mentionReferencesByNodeId.get(node.id) || EMPTY_REFERENCES}
@@ -1826,6 +1886,7 @@ function InfiniteCanvasPage() {
                     onInfo={(node) => setInfoNodeId(node.id)}
                     onDecreaseFont={(node) => handleFontSizeChange(node.id, Math.max(10, (node.metadata?.fontSize || 14) - 2))}
                     onIncreaseFont={(node) => handleFontSizeChange(node.id, Math.min(32, (node.metadata?.fontSize || 14) + 2))}
+                    onTextStyleChange={handleConfigNodeChange}
                     onToggleDialog={(node) => setDialogNodeId((current) => (current === node.id ? null : node.id))}
                     onGenerateImage={generateImageFromTextNode}
                     onUpload={(node) => handleUploadRequest(node.id)}
