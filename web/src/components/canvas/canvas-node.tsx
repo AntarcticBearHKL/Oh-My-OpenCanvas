@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ChevronRight, Copy, Download, FolderInput, Image as ImageIcon, Info, LayoutDashboard, Lock, Music2, Puzzle, Radio, RefreshCw, Sparkles, Star, Trash2, Video, X } from "lucide-react";
+import { ChevronRight, Copy, Download, Image as ImageIcon, Info, LayoutDashboard, Lock, Music2, Puzzle, RefreshCw, Sparkles, Star, Trash2, Video } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { isCanvasOverlayTarget } from "@/lib/canvas/canvas-overlays";
@@ -10,14 +10,12 @@ import { ensureThumbnailUrl } from "@/services/image-storage";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { resolveTextStyle, textStyleToCss } from "@/lib/canvas/text-style";
 import { buildNodeContext } from "@/lib/canvas/plugin-node-context";
-import { describeOutputSource } from "@/lib/canvas/output-resolution";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { SmartCanvasNodeContent } from "./smart-canvas-node";
 import { PromptContent } from "./nodes/prompt-node-content";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeImage, type CanvasNodeMetadata, type CanvasNodeText, type Position } from "@/types/canvas";
 import type { CanvasNodeContext, CanvasPluginHost } from "@/types/canvas-plugin";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
-import type { OutputFolderStatus } from "@/stores/use-output-folder-store";
 import { useTranslation } from "react-i18next";
 
 type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
@@ -46,15 +44,6 @@ type CanvasNodeProps = {
     isBoardDropTarget?: boolean;
     boardLayers?: CanvasNodeData[];
     boardLayersById?: Map<string, CanvasNodeData[]>;
-    outputSource?: CanvasNodeData | null;
-    isDefaultOutput?: boolean;
-    defaultOutputTitle?: string | null;
-    outputConflict?: boolean;
-    outputFolderName?: string;
-    outputFolderStatus?: OutputFolderStatus;
-    outputFolderSupported?: boolean;
-    onOutputFolderBind?: (nodeId: string) => void;
-    onOutputFolderUnbind?: (nodeId: string) => void;
     batchExpanded?: boolean;
     onBoardTextsChange?: (nodeId: string, texts: NonNullable<CanvasNodeMetadata["boardTexts"]>) => void;
     onMouseDown: (event: React.MouseEvent, nodeId: string) => void;
@@ -103,15 +92,6 @@ type NodeContentRendererProps = {
     onViewBatchImage?: (imageId: string) => void;
     boardLayers?: CanvasNodeData[];
     boardLayersById?: Map<string, CanvasNodeData[]>;
-    outputSource?: CanvasNodeData | null;
-    isDefaultOutput?: boolean;
-    defaultOutputTitle?: string | null;
-    outputConflict?: boolean;
-    outputFolderName?: string;
-    outputFolderStatus?: OutputFolderStatus;
-    outputFolderSupported?: boolean;
-    onOutputFolderBind?: () => void;
-    onOutputFolderUnbind?: () => void;
     onBoardTextsChange?: (nodeId: string, texts: NonNullable<CanvasNodeMetadata["boardTexts"]>) => void;
 };
 
@@ -133,15 +113,6 @@ export const CanvasNode = React.memo(function CanvasNode({
     isBoardDropTarget = false,
     boardLayers,
     boardLayersById,
-    outputSource,
-    isDefaultOutput,
-    defaultOutputTitle,
-    outputConflict,
-    outputFolderName,
-    outputFolderStatus,
-    outputFolderSupported,
-    onOutputFolderBind,
-    onOutputFolderUnbind,
     batchExpanded = false,
     onBoardTextsChange,
     onMouseDown,
@@ -496,15 +467,6 @@ export const CanvasNode = React.memo(function CanvasNode({
                         onViewBatchImage={(imageId) => onViewImage?.(data, imageId)}
                         boardLayers={boardLayers}
                         boardLayersById={boardLayersById}
-                        outputSource={outputSource}
-                        isDefaultOutput={isDefaultOutput}
-                        defaultOutputTitle={defaultOutputTitle}
-                        outputConflict={outputConflict}
-                        outputFolderName={outputFolderName}
-                        outputFolderStatus={outputFolderStatus}
-                        outputFolderSupported={outputFolderSupported}
-                        onOutputFolderBind={() => onOutputFolderBind?.(data.id)}
-                        onOutputFolderUnbind={() => onOutputFolderUnbind?.(data.id)}
                         onBoardTextsChange={onBoardTextsChange}
                     />
                 </div>
@@ -534,7 +496,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 {!referenceSelectionState && !locked ? <ResizeGrip active={hovered || isSelected} onMouseDown={handleResizeMouseDown} /> : null}
             </div>
 
-            {!referenceSelectionState && data.type !== CanvasNodeType.AssetInput ? <ConnectionHandleDot side="left" visible={hovered || isSelected || isConnecting} onMouseDown={(event) => onConnectStart(event, data.id, "target")} /> : null}
+            {!referenceSelectionState ? <ConnectionHandleDot side="left" visible={hovered || isSelected || isConnecting} onMouseDown={(event) => onConnectStart(event, data.id, "target")} /> : null}
             {!referenceSelectionState && (definition?.hasSourceHandle ?? true) && data.type !== CanvasNodeType.Config ? <ConnectionHandleDot side="right" visible={hovered || isSelected || isConnecting} onMouseDown={(event) => onConnectStart(event, data.id, "source")} /> : null}
 
             {showPanel && renderPanel ? <div className="absolute left-1/2 top-full z-[70] w-[600px] -translate-x-1/2 pt-4">{renderPanel(data)}</div> : null}
@@ -543,7 +505,7 @@ export const CanvasNode = React.memo(function CanvasNode({
 });
 
 function NodeContent(props: NodeContentRendererProps) {
-    if ((props.node.type === CanvasNodeType.Config || props.node.type === CanvasNodeType.ImageGeneration || props.node.type === CanvasNodeType.Prompt || props.node.type === CanvasNodeType.AssetInput) && props.renderNodeContent) return props.renderNodeContent(props.node);
+    if ((props.node.type === CanvasNodeType.Config || props.node.type === CanvasNodeType.ImageGeneration || props.node.type === CanvasNodeType.Prompt || props.node.type === CanvasNodeType.Assets) && props.renderNodeContent) return props.renderNodeContent(props.node);
     if (props.isBatchRoot && props.node.type === CanvasNodeType.Image) return <ImageNodeContent {...props} />;
     if (props.node.type === CanvasNodeType.Text && props.node.metadata?.texts?.length && (props.node.metadata.status !== "error" || props.node.metadata.texts.some((text) => text.content))) return <TextContent {...props} />;
     if (props.node.metadata?.status === "loading") return <LoadingContent theme={props.theme} />;
@@ -570,7 +532,6 @@ const nodeContentRenderers: Partial<Record<CanvasNodeType, (props: NodeContentRe
     [CanvasNodeType.Video]: VideoNodeContent,
     [CanvasNodeType.Audio]: AudioNodeContent,
     [CanvasNodeType.SmartCanvas]: SmartCanvasNodeContent,
-    [CanvasNodeType.Output]: OutputContent,
 };
 
 function LoadingContent({ theme }: Pick<NodeContentRendererProps, "theme">) {
@@ -836,85 +797,6 @@ function AudioNodeContent({ node, theme }: NodeContentRendererProps) {
                 <span className="truncate">{t("canvas.node.audio")}</span>
             </div>
             <audio src={node.metadata.content} controls className="w-full" data-canvas-no-zoom />
-        </div>
-    );
-}
-
-function OutputContent({ theme, outputSource, isDefaultOutput, defaultOutputTitle, outputConflict, outputFolderName, outputFolderStatus, outputFolderSupported, onOutputFolderBind, onOutputFolderUnbind }: NodeContentRendererProps) {
-    const { t } = useTranslation();
-    const source = outputSource || null;
-    const content = source?.metadata?.content || source?.metadata?.prompt || "";
-    const folderStatus = outputFolderStatus === "writing" ? t("canvas.output.folderWriting") : outputFolderStatus === "error" ? t("canvas.output.folderFailed") : "";
-    const folderLabel = outputFolderName || t("canvas.output.folderUnbound");
-    return (
-        <div className="flex h-full w-full flex-col overflow-hidden rounded-[inherit]">
-            {isDefaultOutput || source ? (
-                <div className="flex shrink-0 items-center gap-2 px-3 pt-3 text-[11px]" style={{ color: theme.node.muted }}>
-                    {isDefaultOutput ? <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: theme.toolbar.activeBg, color: theme.toolbar.activeText }}>{t("canvas.output.defaultBadge")}</span> : null}
-                    {source ? <span className="min-w-0 flex-1 truncate">{t("canvas.output.source", { name: describeOutputSource(source) })}</span> : null}
-                </div>
-            ) : null}
-            {outputConflict && defaultOutputTitle ? (
-                <div className="shrink-0 px-3 pt-1 text-[10px]" style={{ color: theme.node.muted }}>
-                    {t("canvas.output.conflictHint", { name: defaultOutputTitle })}
-                </div>
-            ) : null}
-            <div className="min-h-0 flex-1 p-2">
-                {content && source?.type === CanvasNodeType.Image ? (
-                    <CanvasImage content={content} storageKey={source.metadata?.storageKey} thumbnail={source.metadata?.thumbnail} alt={describeOutputSource(source)} className="pointer-events-none block h-full w-full select-none object-contain" />
-                ) : content && source?.type === CanvasNodeType.Video ? (
-                    <video src={content} muted controls className="h-full w-full rounded-[18px] object-contain" data-canvas-no-zoom />
-                ) : content && source?.type === CanvasNodeType.Audio ? (
-                    <div className="flex h-full w-full flex-col justify-center gap-3 px-2" style={{ color: theme.node.text }}>
-                        <div className="flex items-center gap-2 text-xs opacity-70">
-                            <Music2 className="size-4 shrink-0" />
-                            <span className="truncate">{describeOutputSource(source)}</span>
-                        </div>
-                        <audio src={content} controls className="w-full" data-canvas-no-zoom />
-                    </div>
-                ) : content ? (
-                    <div className="thin-scrollbar h-full w-full overflow-y-auto whitespace-pre-wrap break-words p-2 font-mono text-xs leading-5" style={{ color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
-                        {content}
-                    </div>
-                ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center gap-2" style={{ color: theme.node.placeholder }}>
-                        <Radio className="size-6 opacity-35" />
-                        <span className="text-sm">{t("canvas.output.empty")}</span>
-                    </div>
-                )}
-            </div>
-            <div className="flex shrink-0 items-center gap-1.5 pl-3 pr-6 pb-2 pt-1 text-[11px]" style={{ color: theme.node.muted }}>
-                <FolderInput className="size-3.5 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">{folderStatus ? `${folderLabel} · ${folderStatus}` : folderLabel}</span>
-                {outputFolderSupported ? (
-                    <>
-                        <button
-                            type="button"
-                            className="flex h-6 shrink-0 items-center rounded-md px-1.5 text-[10px] font-medium transition hover:bg-black/5 dark:hover:bg-white/10"
-                            style={{ color: theme.node.text }}
-                            onClick={onOutputFolderBind}
-                            onMouseDown={(event) => event.stopPropagation()}
-                        >
-                            {outputFolderName ? t("canvas.output.folderRebind") : t("canvas.output.folderBind")}
-                        </button>
-                        {outputFolderName ? (
-                            <button
-                                type="button"
-                                className="grid size-6 shrink-0 place-items-center rounded-md transition hover:bg-black/5 dark:hover:bg-white/10"
-                                style={{ color: theme.node.text }}
-                                aria-label={t("canvas.output.folderUnbind")}
-                                title={t("canvas.output.folderUnbind")}
-                                onClick={onOutputFolderUnbind}
-                                onMouseDown={(event) => event.stopPropagation()}
-                            >
-                                <X className="size-3.5" />
-                            </button>
-                        ) : null}
-                    </>
-                ) : (
-                    <span className="shrink-0 text-[10px]">{t("canvas.output.folderUnsupported")}</span>
-                )}
-            </div>
         </div>
     );
 }

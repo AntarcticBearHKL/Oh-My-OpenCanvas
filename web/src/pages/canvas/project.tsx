@@ -26,7 +26,7 @@ import { NODE_DEFAULT_SIZE, getNodeSpec } from "@/constant/canvas";
 import { ActiveConnectionPath, ConnectionPath } from "@/components/canvas/canvas-connections";
 import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
 import { CanvasConfigNodePanel } from "@/components/canvas/canvas-config-node-panel";
-import { AssetInputNodeContent } from "@/components/canvas/nodes/asset-input-node-content";
+import { AssetsNodeContent } from "@/components/canvas/nodes/assets-node-content";
 import { CanvasImageAnalysisDialog } from "@/components/canvas/canvas-image-analysis-dialog";
 import { CanvasNodeAngleDialog } from "@/components/canvas/canvas-node-angle-dialog";
 import { CanvasNodeCropDialog, type CanvasImageCropRect } from "@/components/canvas/canvas-node-crop-dialog";
@@ -76,9 +76,9 @@ import {
     resetInterruptedGeneration,
 } from "@/lib/canvas/canvas-generation-helpers";
 import { getNodeDefinition, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
-import { describeOutputSource, outputNodesConflict, pickDefaultOutput, resolveLatestUpstream } from "@/lib/canvas/output-resolution";
+import { resolveLatestUpstream } from "@/lib/canvas/output-resolution";
 import { outputFileName, outputSourceFingerprint, resolveOutputBlob } from "@/lib/workspace/output-file";
-import { useOutputFolderStore } from "@/stores/use-output-folder-store";
+import { useAssetFolderStore } from "@/stores/use-asset-folder-store";
 import { useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
 import { registerBuiltinNodes } from "@/components/canvas/nodes/builtin-nodes";
 import { CanvasPluginManagerModal } from "@/components/canvas/canvas-plugin-manager-modal";
@@ -182,9 +182,7 @@ function InfiniteCanvasPage() {
     const renameProject = useCanvasStore((state) => state.renameProject);
     const currentProject = useCanvasStore((state) => state.projects.find((project) => project.id === projectId));
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
-    const outputFolderName = useOutputFolderStore((state) => state.folderName);
-    const outputFolderStatus = useOutputFolderStore((state) => state.status);
-    const outputFolderSupported = useOutputFolderStore((state) => state.supported);
+    const outputFolderName = useAssetFolderStore((state) => state.outputFolderName);
     const panelOpen = useCanvasSidePanelStore((state) => state.panelOpen);
     const outputWriteFingerprints = useRef(new Map<string, string>());
     const [nodes, setNodes] = useState<CanvasNodeData[]>([]);
@@ -450,7 +448,7 @@ function InfiniteCanvasPage() {
     );
 
     const createConnectedNode = useCallback(
-        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio | CanvasNodeType.Output, pending: PendingConnectionCreate) => {
+        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio, pending: PendingConnectionCreate) => {
             const metadata = type === CanvasNodeType.Config ? { model: effectiveConfig.imageModel || effectiveConfig.model, size: effectiveConfig.size, count: getGenerationCount(effectiveConfig.canvasImageCount || effectiveConfig.count) } : undefined;
             const newNode = createCanvasNode(type, pending.position, metadata);
             const connection = normalizeConnection(pending.connection.nodeId, newNode.id, [...nodesRef.current, newNode], pending.connection.handleType);
@@ -462,7 +460,7 @@ function InfiniteCanvasPage() {
             setConnections((prev) => [...prev, { id: nanoid(), ...connection }]);
             setSelectedNodeIds(new Set([newNode.id]));
             setSelectedConnectionId(null);
-            if (type !== CanvasNodeType.Text && type !== CanvasNodeType.Audio && type !== CanvasNodeType.Output) setDialogNodeId(newNode.id);
+            if (type !== CanvasNodeType.Text && type !== CanvasNodeType.Audio) setDialogNodeId(newNode.id);
             setPendingConnectionCreate(null);
             setConnecting(null);
         },
@@ -624,12 +622,10 @@ function InfiniteCanvasPage() {
         });
         return map;
     }, [connections, nodeById]);
-    const defaultOutputNode = useMemo(() => pickDefaultOutput(nodes), [nodes]);
-    const hasOutputConflict = useMemo(() => outputNodesConflict(nodes), [nodes]);
     const outputSourceById = useMemo(() => {
         const map = new Map<string, CanvasNodeData | null>();
         nodes.forEach((node) => {
-            if (node.type !== CanvasNodeType.Output) return;
+            if (node.type !== CanvasNodeType.Assets) return;
             map.set(node.id, resolveLatestUpstream(node.id, nodes, connections, nodeUpdatedAt));
         });
         return map;
@@ -1233,18 +1229,14 @@ function InfiniteCanvasPage() {
     }, []);
 
     const handleOutputFolderBind = useCallback(async (nodeId: string) => {
-        if (!(await useOutputFolderStore.getState().bindFolder())) return;
-        handleConfigNodeChange(nodeId, { outputFolderName: useOutputFolderStore.getState().folderName });
+        if (!(await useAssetFolderStore.getState().bindOutputFolder())) return;
+        handleConfigNodeChange(nodeId, { outputFolderName: useAssetFolderStore.getState().outputFolderName });
     }, [handleConfigNodeChange]);
 
     const handleOutputFolderUnbind = useCallback((nodeId: string) => {
         handleConfigNodeChange(nodeId, { outputFolderName: undefined });
-        void useOutputFolderStore.getState().clear();
+        void useAssetFolderStore.getState().clearOutputFolder();
     }, [handleConfigNodeChange]);
-
-    useEffect(() => {
-        void useOutputFolderStore.getState().restore();
-    }, []);
 
     useEffect(() => {
         if (!outputFolderName) return;
@@ -1258,9 +1250,9 @@ function InfiniteCanvasPage() {
                 try {
                     const blob = await resolveOutputBlob(source);
                     if (!blob) return;
-                    await useOutputFolderStore.getState().writeOutput(outputFileName(source.title, source.id, source.metadata?.mimeType, source.metadata?.storageKey), blob);
+                    await useAssetFolderStore.getState().writeOutput(outputFileName(source.title, source.id, source.metadata?.mimeType, source.metadata?.storageKey), blob);
                 } catch {
-                    useOutputFolderStore.setState({ status: "error" });
+                    useAssetFolderStore.setState({ outputStatus: "error" });
                 }
             })();
         });
@@ -1795,7 +1787,7 @@ function InfiniteCanvasPage() {
     );
     const renderNodePanel = useCallback(
         (panelNode: CanvasNodeData) =>
-            panelNode.type === CanvasNodeType.Image || panelNode.type === CanvasNodeType.Output || panelNode.type === CanvasNodeType.Prompt ? null : getNodeDefinition(panelNode.type)?.Panel ? (
+            panelNode.type === CanvasNodeType.Image || panelNode.type === CanvasNodeType.Prompt ? null : getNodeDefinition(panelNode.type)?.Panel ? (
                 renderPluginPanel(panelNode)
             ) : panelNode.type === CanvasNodeType.Config ? (
                 <CanvasConfigComposer
@@ -1877,7 +1869,8 @@ function InfiniteCanvasPage() {
     const renderNodeContentPanel = useCallback(
         (contentNode: CanvasNodeData) => {
             if (contentNode.type === CanvasNodeType.Prompt) return <PromptNodePanel node={contentNode} onContentChange={handleNodeContentChange} />;
-            if (contentNode.type === CanvasNodeType.AssetInput) return <AssetInputNodeContent node={contentNode} onInsert={(file) => void insertFolderFile(file)} />;
+            if (contentNode.type === CanvasNodeType.Assets)
+                return <AssetsNodeContent node={contentNode} onInsert={(file) => void insertFolderFile(file)} onOutputFolderBind={() => handleOutputFolderBind(contentNode.id)} onOutputFolderUnbind={() => handleOutputFolderUnbind(contentNode.id)} />;
             return (
             <CanvasConfigNodePanel
                 node={contentNode}
@@ -1894,7 +1887,7 @@ function InfiniteCanvasPage() {
             />
             );
         },
-        [configInputsById, confirmStopGeneration, handleConfigNodeChange, handleGenerateMatrix, handleNodeContentChange, handleReplayNode, insertFolderFile, runningNodeId],
+        [configInputsById, confirmStopGeneration, handleConfigNodeChange, handleGenerateMatrix, handleNodeContentChange, handleOutputFolderBind, handleOutputFolderUnbind, handleReplayNode, insertFolderFile, runningNodeId],
     );
 
     if (!projectLoaded && !loadedOnceRef.current) return <CanvasRefreshShell />;
@@ -1975,15 +1968,6 @@ function InfiniteCanvasPage() {
                             isBoardDropTarget={dropTargetBoardId === node.id}
                             boardLayers={boardRenderLayersById.get(node.id)}
                             boardLayersById={boardRenderLayersById}
-                            outputSource={outputSourceById.get(node.id)}
-                            isDefaultOutput={defaultOutputNode?.id === node.id}
-                            defaultOutputTitle={defaultOutputNode ? describeOutputSource(defaultOutputNode) : ""}
-                            outputConflict={hasOutputConflict}
-                            outputFolderName={node.metadata?.outputFolderName}
-                            outputFolderStatus={node.type === CanvasNodeType.Output ? outputFolderStatus : undefined}
-                            outputFolderSupported={outputFolderSupported}
-                            onOutputFolderBind={handleOutputFolderBind}
-                            onOutputFolderUnbind={handleOutputFolderUnbind}
                             onBoardTextsChange={handleBoardTextsChange}
                             batchExpanded={expandedBatchNodeIds.has(node.id)}
                             mentionReferences={mentionReferencesByNodeId.get(node.id) || EMPTY_REFERENCES}
@@ -2101,8 +2085,7 @@ function InfiniteCanvasPage() {
                     onAddVideo={() => createNode(CanvasNodeType.Video)}
                     onAddAudio={() => createNode(CanvasNodeType.Audio)}
                     onAddSmartCanvas={() => createNode(CanvasNodeType.SmartCanvas)}
-                    onAddOutput={() => createNode(CanvasNodeType.Output)}
-                    onAddAssetInput={() => createNode(CanvasNodeType.AssetInput)}
+                    onAddAssets={() => createNode(CanvasNodeType.Assets)}
                     onAddExtensionNode={(type) => createNode(type)}
                     onUndo={undoCanvas}
                     onRedo={redoCanvas}

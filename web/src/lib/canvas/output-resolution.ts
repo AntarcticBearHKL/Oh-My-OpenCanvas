@@ -1,4 +1,4 @@
-import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "@/types/canvas";
+import type { CanvasConnection, CanvasNodeData } from "@/types/canvas";
 
 export function resolveLatestUpstream(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[], updatedAt?: Record<string, number>): CanvasNodeData | null {
     const upstream = connections
@@ -15,17 +15,4 @@ export function resolveLatestUpstream(nodeId: string, nodes: CanvasNodeData[], c
         }
     });
     return latest || upstream[upstream.length - 1] || null;
-}
-
-export function pickDefaultOutput(nodes: CanvasNodeData[]): CanvasNodeData | null {
-    return nodes.find((node) => node.type === CanvasNodeType.Output) || null;
-}
-
-export function outputNodesConflict(nodes: CanvasNodeData[]): boolean {
-    return nodes.filter((node) => node.type === CanvasNodeType.Output).length > 1;
-}
-
-export function describeOutputSource(node: CanvasNodeData | null): string {
-    if (!node) return "";
-    return node.title?.trim() || "Untitled";
 }

@@ -4,6 +4,7 @@ import { ASSET_FOLDER_FILE_LIMIT, classifyAssetFolderFile, type AssetFolderFileK
 import { clearDirectoryHandle, loadDirectoryHandle, saveDirectoryHandle } from "@/lib/workspace/directory-handle";
 
 export const ASSET_FOLDER_HANDLE_KEY = "asset-folder";
+export const OUTPUT_FOLDER_HANDLE_KEY = "output-folder";
 
 export type AssetFolderFile = {
     id: string;
@@ -13,19 +14,28 @@ export type AssetFolderFile = {
     url: string;
 };
 
+export type OutputFolderStatus = "idle" | "unbound" | "unsupported" | "writing" | "error";
+
 type AssetFolderStore = {
     folderName: string;
     files: AssetFolderFile[];
     capped: boolean;
     failed: boolean;
     supported: boolean;
+    outputFolderName: string;
+    outputStatus: OutputFolderStatus;
     bindFolder: () => Promise<boolean>;
     refresh: () => Promise<void>;
     restore: () => Promise<void>;
     clear: () => Promise<void>;
+    bindOutputFolder: () => Promise<boolean>;
+    restoreOutputFolder: () => Promise<void>;
+    clearOutputFolder: () => Promise<void>;
+    writeOutput: (fileName: string, blob: Blob) => Promise<boolean>;
 };
 
 let directoryHandle: FileSystemDirectoryHandle | null = null;
+let outputDirectoryHandle: FileSystemDirectoryHandle | null = null;
 let objectUrls: string[] = [];
 
 function supportsDirectoryPicker() {
@@ -63,12 +73,23 @@ async function ensureReadPermission(handle: FileSystemDirectoryHandle) {
     }
 }
 
+async function ensureWritePermission(handle: FileSystemDirectoryHandle) {
+    if ((await handle.queryPermission({ mode: "readwrite" })) === "granted") return true;
+    try {
+        return (await handle.requestPermission({ mode: "readwrite" })) === "granted";
+    } catch {
+        return false;
+    }
+}
+
 export const useAssetFolderStore = create<AssetFolderStore>()((set, get) => ({
     folderName: "",
     files: [],
     capped: false,
     failed: false,
     supported: supportsDirectoryPicker(),
+    outputFolderName: "",
+    outputStatus: supportsDirectoryPicker() ? "unbound" : "unsupported",
     bindFolder: async () => {
         if (!supportsDirectoryPicker()) return false;
         try {
@@ -113,5 +134,66 @@ export const useAssetFolderStore = create<AssetFolderStore>()((set, get) => ({
         revokeUrls();
         await clearDirectoryHandle(ASSET_FOLDER_HANDLE_KEY);
         set({ folderName: "", files: [], capped: false, failed: false });
+    },
+    bindOutputFolder: async () => {
+        if (!supportsDirectoryPicker()) {
+            set({ outputStatus: "unsupported" });
+            return false;
+        }
+        try {
+            const handle = await window.showDirectoryPicker?.({ mode: "readwrite" });
+            if (!handle) return false;
+            outputDirectoryHandle = handle;
+            await saveDirectoryHandle(handle, OUTPUT_FOLDER_HANDLE_KEY);
+            set({ outputFolderName: handle.name, outputStatus: "idle" });
+            return true;
+        } catch {
+            set({ outputStatus: "error" });
+            return false;
+        }
+    },
+    restoreOutputFolder: async () => {
+        if (!supportsDirectoryPicker() || outputDirectoryHandle) return;
+        try {
+            const handle = await loadDirectoryHandle(OUTPUT_FOLDER_HANDLE_KEY);
+            if (!handle) return;
+            outputDirectoryHandle = handle;
+            set({ outputFolderName: handle.name, outputStatus: "idle" });
+        } catch {
+            set({ outputStatus: "error" });
+        }
+    },
+    clearOutputFolder: async () => {
+        outputDirectoryHandle = null;
+        try {
+            await clearDirectoryHandle(OUTPUT_FOLDER_HANDLE_KEY);
+        } catch {
+            set({ outputStatus: "error" });
+            return;
+        }
+        set({ outputFolderName: "", outputStatus: supportsDirectoryPicker() ? "unbound" : "unsupported" });
+    },
+    writeOutput: async (fileName, blob) => {
+        const handle = outputDirectoryHandle;
+        if (!handle) {
+            set({ outputStatus: "unbound" });
+            return false;
+        }
+        set({ outputStatus: "writing" });
+        try {
+            if (!(await ensureWritePermission(handle))) {
+                set({ outputStatus: "error" });
+                return false;
+            }
+            const fileHandle = await handle.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(blob);
+            await writable.close();
+            set({ outputStatus: "idle" });
+            return true;
+        } catch {
+            set({ outputStatus: "error" });
+            return false;
+        }
     },
 }));

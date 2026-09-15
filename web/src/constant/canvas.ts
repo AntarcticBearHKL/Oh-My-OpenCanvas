@@ -19,8 +19,7 @@ export const NODE_DEFAULT_SIZE = {
     [CanvasNodeType.Video]: { width: 420, height: 236, get title() { return i18n.t("canvas.nodeTypes.video"); } },
     [CanvasNodeType.Audio]: { width: 340, height: 120, get title() { return i18n.t("canvas.nodeTypes.audio"); } },
     [CanvasNodeType.SmartCanvas]: { width: 640, height: 360, get title() { return i18n.t("canvas.nodeTypes.smartCanvas"); } },
-    [CanvasNodeType.Output]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.output"); } },
-    [CanvasNodeType.AssetInput]: { width: 360, height: 320, get title() { return i18n.t("canvas.nodeTypes.assetInput"); } },
+    [CanvasNodeType.Assets]: { width: 360, height: 320, get title() { return i18n.t("canvas.nodeTypes.assets"); } },
 } satisfies Record<CanvasNodeType, { width: number; height: number; title: string }>;
 
 export const NODE_SPECS = {
@@ -56,12 +55,8 @@ export const NODE_SPECS = {
         width: 640, height: 360, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.SmartCanvas].title; },
         metadata: { status: "idle", boardRatio: "16:9", boardResolution: "2k" },
     },
-    [CanvasNodeType.Output]: {
-        width: 340, height: 240, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.Output].title; },
-        metadata: { status: "idle" },
-    },
-    [CanvasNodeType.AssetInput]: {
-        width: 360, height: 320, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.AssetInput].title; },
+    [CanvasNodeType.Assets]: {
+        width: 360, height: 320, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.Assets].title; },
         metadata: {},
     },
 } satisfies Record<CanvasNodeType, CanvasNodeSpec>;

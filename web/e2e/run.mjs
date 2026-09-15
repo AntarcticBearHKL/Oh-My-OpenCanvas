@@ -303,11 +303,6 @@ const LIB_ASSERTIONS = `(async () => {
     ok("output undefined timestamps keep the timestamped newest", output.resolveLatestUpstream("out", outNodes, outConns, { b: 7 })?.id === "b", output.resolveLatestUpstream("out", outNodes, outConns, { b: 7 })?.id);
     ok("output no upstream is null", output.resolveLatestUpstream("out", outNodes, []) === null);
     ok("output unknown target is null", output.resolveLatestUpstream("missing", outNodes, outConns) === null);
-    const firstOutput = outNode("o1", "output", "Out 1");
-    const secondOutput = outNode("o2", "output", "Out 2");
-    ok("output default is the first output", output.pickDefaultOutput([outNodes[0], firstOutput, secondOutput, outNodes[1]])?.id === "o1" && output.pickDefaultOutput([outNodes[0]]) === null);
-    ok("output conflict only with multiple outputs", output.outputNodesConflict([firstOutput, secondOutput]) === true && output.outputNodesConflict([firstOutput, outNodes[0]]) === false && output.outputNodesConflict([]) === false);
-    ok("output describe source label", output.describeOutputSource(firstOutput) === "Out 1" && output.describeOutputSource(outNode("x", "text", "   ")) === "Untitled" && output.describeOutputSource(null) === "");
 
     const workspace = await import("/src/lib/workspace/workspace-sync.ts");
     ok("workspace file name keeps a safe title", workspace.workspaceFileName("id1", "Hello World") === "Hello World.json", workspace.workspaceFileName("id1", "Hello World"));
@@ -358,13 +353,17 @@ const LIB_ASSERTIONS = `(async () => {
         outputFile.outputSourceFingerprint("s1", undefined, "aaaa"),
     );
 
-    const outputStore = await import("/src/stores/use-output-folder-store.ts");
-    ok("output folder uses its own handle key", outputStore.OUTPUT_FOLDER_HANDLE_KEY === "output-folder", outputStore.OUTPUT_FOLDER_HANDLE_KEY);
-    const unwritten = await outputStore.useOutputFolderStore.getState().writeOutput("noop.png", new Blob(["x"], { type: "image/png" }));
+    const folderStore = await import("/src/stores/use-asset-folder-store.ts");
     ok(
-        "output write without a bound folder never throws and reports unbound",
-        unwritten === false && outputStore.useOutputFolderStore.getState().status === "unbound" && outputStore.useOutputFolderStore.getState().lastWritten === null,
-        unwritten + "," + outputStore.useOutputFolderStore.getState().status,
+        "merged folder store keeps one asset handle key and one output handle key",
+        folderStore.ASSET_FOLDER_HANDLE_KEY === "asset-folder" && folderStore.OUTPUT_FOLDER_HANDLE_KEY === "output-folder",
+        folderStore.ASSET_FOLDER_HANDLE_KEY + "," + folderStore.OUTPUT_FOLDER_HANDLE_KEY,
+    );
+    const unwritten = await folderStore.useAssetFolderStore.getState().writeOutput("noop.png", new Blob(["x"], { type: "image/png" }));
+    ok(
+        "merged store output write without a bound folder never throws and reports unbound",
+        unwritten === false && folderStore.useAssetFolderStore.getState().outputStatus === "unbound",
+        unwritten + "," + folderStore.useAssetFolderStore.getState().outputStatus,
     );
 
     const algorithms = await import("/src/lib/image/image-algorithms.ts");
@@ -414,10 +413,27 @@ const LIB_ASSERTIONS = `(async () => {
     ok("asset folder cap is 200", assetFolder.ASSET_FOLDER_FILE_LIMIT === 200);
     ok("asset folder drag mime", assetFolder.ASSET_FOLDER_DRAG_MIME === "application/x-infinite-canvas-folder-file");
 
-    const assetInputNode = { id: "asset", type: "asset-input", title: "asset", position: { x: 0, y: 0 }, width: 360, height: 320, metadata: {} };
+    const assetsNode = { id: "assets", type: "assets", title: "assets", position: { x: 0, y: 0 }, width: 360, height: 320, metadata: {} };
     const plainImage = image("plain", 100, 100, { x: 500, y: 0 });
-    ok("connection rejects asset-input as target", geo.normalizeConnection(plainImage.id, assetInputNode.id, [plainImage, assetInputNode], "source") === null);
-    ok("connection rejects asset-input as source", geo.normalizeConnection(assetInputNode.id, plainImage.id, [assetInputNode, plainImage], "source") === null);
+    ok("merged assets node accepts an upstream connection", geo.normalizeConnection(plainImage.id, assetsNode.id, [plainImage, assetsNode], "source")?.toNodeId === assetsNode.id);
+
+    const canvasConstants = await import("/src/constant/canvas.ts");
+    ok(
+        "merged assets node resolves a default size",
+        canvasConstants.NODE_DEFAULT_SIZE.assets.width === 360 && canvasConstants.NODE_DEFAULT_SIZE.assets.height === 320 && canvasConstants.NODE_SPECS.assets.width === 360 && canvasConstants.NODE_SPECS.assets.height === 320,
+        JSON.stringify(canvasConstants.NODE_SPECS.assets),
+    );
+    ok(
+        "node specs expose exactly one folder node and no output type",
+        "assets" in canvasConstants.NODE_SPECS && !("output" in canvasConstants.NODE_SPECS) && !("output" in canvasConstants.NODE_DEFAULT_SIZE) && !("asset-input" in canvasConstants.NODE_SPECS),
+        JSON.stringify(Object.keys(canvasConstants.NODE_SPECS)),
+    );
+    const assetsSpec = canvasConstants.getNodeSpec("assets");
+    ok(
+        "merged assets node resolves a definition with a titled default size",
+        assetsSpec.width === 360 && assetsSpec.height === 320 && typeof assetsSpec.title === "string" && assetsSpec.title.length > 0 && Boolean(assetsSpec.metadata),
+        JSON.stringify({ title: assetsSpec.title, width: assetsSpec.width, height: assetsSpec.height }),
+    );
 
     return results;
 })()`;

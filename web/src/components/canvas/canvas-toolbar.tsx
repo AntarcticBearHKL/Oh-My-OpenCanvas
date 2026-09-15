@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
-import { Compass, Focus, FolderInput, Hand, HelpCircle, Image as ImageIcon, LayoutDashboard, ListTree, MessageSquareText, MousePointer2, Music2, Puzzle, Radio, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
+import { Compass, Focus, FolderInput, Hand, HelpCircle, Image as ImageIcon, LayoutDashboard, ListTree, MessageSquareText, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -24,8 +24,7 @@ export function CanvasToolbar({
     onAddVideo,
     onAddAudio,
     onAddSmartCanvas,
-    onAddOutput,
-    onAddAssetInput,
+    onAddAssets,
     onAddExtensionNode,
     onUndo,
     onRedo,
@@ -49,8 +48,7 @@ export function CanvasToolbar({
     onAddVideo: () => void;
     onAddAudio: () => void;
     onAddSmartCanvas: () => void;
-    onAddOutput: () => void;
-    onAddAssetInput: () => void;
+    onAddAssets: () => void;
     onAddExtensionNode: (type: string) => void;
     onUndo: () => void;
     onRedo: () => void;
@@ -139,10 +137,7 @@ export function CanvasToolbar({
                 <ToolbarButton id="tool-smart-canvas" label={t("canvas.nodeTypes.smartCanvas")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddSmartCanvas}>
                     <LayoutDashboard className="size-4.5" />
                 </ToolbarButton>
-                <ToolbarButton id="tool-output" label={t("canvas.nodeTypes.output")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddOutput}>
-                    <Radio className="size-4.5" />
-                </ToolbarButton>
-                <ToolbarButton id="tool-asset-input" label={t("canvas.nodeTypes.assetInput")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddAssetInput}>
+                <ToolbarButton id="tool-assets" label={t("canvas.nodeTypes.assets")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddAssets}>
                     <FolderInput className="size-4.5" />
                 </ToolbarButton>
                 {extensionDefs.length ? (
@@ -395,8 +390,7 @@ function toolLabel(id: string, t: (key: string) => string) {
     if (id === "tool-video") return t("canvas.toolbar.video");
     if (id === "tool-audio") return t("canvas.toolbar.audio");
     if (id === "tool-smart-canvas") return t("canvas.nodeTypes.smartCanvas");
-    if (id === "tool-output") return t("canvas.nodeTypes.output");
-    if (id === "tool-asset-input") return t("canvas.nodeTypes.assetInput");
+    if (id === "tool-assets") return t("canvas.nodeTypes.assets");
     if (id === "tool-extensions") return t("canvas.toolbar.extensions");
     if (id === "tool-zoom") return t("canvas.toolbar.zoom");
     if (id === "tool-node-list") return t("canvas.nodeList.title");

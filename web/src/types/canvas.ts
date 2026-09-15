@@ -21,8 +21,7 @@ export enum CanvasNodeType {
     Video = "video",
     Audio = "audio",
     SmartCanvas = "smart-canvas",
-    Output = "output",
-    AssetInput = "asset-input",
+    Assets = "assets",
 }
 
 // Node types are open strings: built-ins use CanvasNodeType and plugins use "<pluginId>:<name>".
