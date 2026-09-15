@@ -3,12 +3,38 @@ import { test } from "node:test";
 
 import { buildCanvasToolRequest } from "./operations";
 import { toolInputSchemas } from "./schemas";
+import type { CanvasNode, CanvasSnapshot } from "./types";
 
-type CanvasOp = { type: string; nodeType?: string; metadata?: { prompt?: unknown }; fromNodeId?: string; toNodeId?: string };
+type CanvasOp = {
+    type: string;
+    nodeType?: string;
+    id?: string;
+    ids?: string[];
+    title?: string;
+    position?: { x: number; y: number };
+    width?: number;
+    height?: number;
+    patch?: { title?: string; position?: { x: number; y: number } };
+    metadata?: Record<string, unknown>;
+    fromNodeId?: string;
+    toNodeId?: string;
+};
 
 function opsOf(name: Parameters<typeof buildCanvasToolRequest>[0], input: Record<string, unknown>) {
-    const request = buildCanvasToolRequest(name, input, null);
+    return opsWithState(name, input, null);
+}
+
+function opsWithState(name: Parameters<typeof buildCanvasToolRequest>[0], input: Record<string, unknown>, state: CanvasSnapshot | null) {
+    const request = buildCanvasToolRequest(name, input, state);
     return (request.input as { ops: CanvasOp[] }).ops;
+}
+
+function canvas(nodes: CanvasNode[]): CanvasSnapshot {
+    return { projectId: "p", title: "p", nodes, connections: [], selectedNodeIds: [], viewport: { x: 0, y: 0, k: 1 } };
+}
+
+function node(id: string, type: CanvasNode["type"], x: number, y: number, width = 100, height = 100, metadata: Record<string, unknown> = {}): CanvasNode {
+    return { id, type, title: id, position: { x, y }, width, height, metadata };
 }
 
 test("generation flow reuses referenced nodes when the prompt only mentions them", () => {
@@ -38,4 +64,99 @@ test("smart canvas ops and node types are accepted by tool schemas", () => {
     ]);
     assert.equal(toolInputSchemas.canvas_create_node.parse({ nodeType: "smart-canvas" }).nodeType, "smart-canvas");
     assert.equal(toolInputSchemas.canvas_create_node.parse({ nodeType: "image-generation" }).nodeType, "image-generation");
+});
+
+test("node flags become one update per id and require a flag", () => {
+    assert.deepEqual(opsOf("canvas_set_node_flags", { ids: ["a", "b"], locked: true, hidden: false }), [
+        { type: "update_node", id: "a", metadata: { locked: true, hidden: false } },
+        { type: "update_node", id: "b", metadata: { locked: true, hidden: false } },
+    ]);
+    assert.deepEqual(opsOf("canvas_set_node_flags", { ids: ["a"], hidden: true }), [{ type: "update_node", id: "a", metadata: { hidden: true } }]);
+    assert.throws(() => opsOf("canvas_set_node_flags", { ids: ["a"] }), /locked/);
+});
+
+test("bulk rename numbers nodes in the given order", () => {
+    assert.deepEqual(opsOf("canvas_bulk_rename", { ids: ["b", "a"], title: " 主题 " }), [
+        { type: "update_node", id: "b", patch: { title: "主题 1" } },
+        { type: "update_node", id: "a", patch: { title: "主题 2" } },
+    ]);
+    assert.deepEqual(opsOf("canvas_bulk_rename", { ids: ["a"], title: "主题" }), [{ type: "update_node", id: "a", patch: { title: "主题" } }]);
+    assert.deepEqual(opsOf("canvas_bulk_rename", { ids: ["a", "b"], title: "   " }), []);
+});
+
+test("align nodes maps ids onto the selection bounds", () => {
+    const state = canvas([node("a", "image", 100, 50), node("b", "image", 300, 400, 50, 50), node("c", "image", 600, 200, 200, 20)]);
+    assert.deepEqual(opsWithState("canvas_align_nodes", { ids: ["a", "b", "c"], mode: "left" }, state), [
+        { type: "update_node", id: "a", patch: { position: { x: 100, y: 50 } } },
+        { type: "update_node", id: "b", patch: { position: { x: 100, y: 400 } } },
+        { type: "update_node", id: "c", patch: { position: { x: 100, y: 200 } } },
+    ]);
+    assert.deepEqual(opsWithState("canvas_align_nodes", { ids: ["a", "b", "c"], mode: "top" }, state), [
+        { type: "update_node", id: "a", patch: { position: { x: 100, y: 50 } } },
+        { type: "update_node", id: "b", patch: { position: { x: 300, y: 50 } } },
+        { type: "update_node", id: "c", patch: { position: { x: 600, y: 50 } } },
+    ]);
+    assert.deepEqual(opsWithState("canvas_align_nodes", { ids: ["a", "b", "missing"], mode: "left" }, state), [
+        { type: "update_node", id: "a", patch: { position: { x: 100, y: 50 } } },
+        { type: "update_node", id: "b", patch: { position: { x: 100, y: 400 } } },
+    ]);
+});
+
+test("distribute nodes equalises gaps and stays a no-op under three", () => {
+    const state = canvas([node("a", "image", 100, 50), node("b", "image", 300, 400, 50, 50), node("c", "image", 600, 200, 200, 20)]);
+    assert.deepEqual(opsWithState("canvas_align_nodes", { ids: ["a", "b", "c"], mode: "distribute-x" }, state), [
+        { type: "update_node", id: "a", patch: { position: { x: 100, y: 50 } } },
+        { type: "update_node", id: "b", patch: { position: { x: 375, y: 400 } } },
+        { type: "update_node", id: "c", patch: { position: { x: 600, y: 200 } } },
+    ]);
+    assert.deepEqual(opsWithState("canvas_align_nodes", { ids: ["a", "b"], mode: "distribute-y" }, state), []);
+});
+
+test("group nodes wraps members in a group node and selects it", () => {
+    const state = canvas([node("a", "image", 100, 50), node("b", "image", 300, 400, 50, 50)]);
+    const ops = opsWithState("canvas_group_nodes", { ids: ["a", "b"], title: "组" }, state);
+    const group = ops.find((op) => op.type === "add_node");
+    assert.match(String(group?.id), /^group-/);
+    assert.equal(group?.nodeType, "group");
+    assert.equal(group?.title, "组");
+    assert.deepEqual(group?.position, { x: 76, y: -2 });
+    assert.equal(group?.width, 298);
+    assert.equal(group?.height, 476);
+    assert.deepEqual(
+        ops.filter((op) => op.type === "update_node").map((op) => [op.id, op.metadata?.groupId]),
+        [["a", group?.id], ["b", group?.id]],
+    );
+    assert.deepEqual(ops[ops.length - 1], { type: "select_nodes", ids: [String(group?.id)] });
+    assert.deepEqual(opsWithState("canvas_group_nodes", { ids: ["a", "missing"] }, state), []);
+});
+
+test("ungroup nodes clears groupId and deletes emptied group nodes", () => {
+    const state = canvas([node("g1", "group", 76, -2, 298, 476), node("a", "image", 100, 50, 100, 100, { groupId: "g1" }), node("b", "image", 300, 400, 50, 50, { groupId: "g1" }), node("g2", "group", 0, 0), node("c", "image", 20, 20, 10, 10, { groupId: "g2" })]);
+    const expected = [
+        { type: "update_node", id: "a", metadata: { groupId: null } },
+        { type: "update_node", id: "b", metadata: { groupId: null } },
+        { type: "delete_node", ids: ["g1"] },
+    ];
+    assert.deepEqual(opsWithState("canvas_ungroup_nodes", { ids: ["a", "b"] }, state), expected);
+    assert.deepEqual(opsWithState("canvas_ungroup_nodes", { ids: ["g1"] }, state), expected);
+    assert.deepEqual(opsWithState("canvas_ungroup_nodes", { ids: ["c"] }, state), [
+        { type: "update_node", id: "c", metadata: { groupId: null } },
+        { type: "delete_node", ids: ["g2"] },
+    ]);
+});
+
+test("duplicate node copies the source with an offset and selects the copy", () => {
+    const source = node("src", "text", 10, 20, 340, 240, { content: "hi", locked: true });
+    const ops = opsWithState("canvas_duplicate_node", { id: "src" }, canvas([source]));
+    const copy = ops.find((op) => op.type === "add_node");
+    assert.match(String(copy?.id), /^copy-/);
+    assert.equal(copy?.nodeType, "text");
+    assert.equal(copy?.title, "src");
+    assert.deepEqual(copy?.position, { x: 50, y: 60 });
+    assert.equal(copy?.width, 340);
+    assert.equal(copy?.height, 240);
+    assert.deepEqual(copy?.metadata, { content: "hi", locked: true });
+    assert.deepEqual(ops[1], { type: "select_nodes", ids: [String(copy?.id)] });
+    assert.deepEqual(opsWithState("canvas_duplicate_node", { id: "src", dx: -10, dy: 5 }, canvas([source])).find((op) => op.type === "add_node")?.position, { x: 0, y: 25 });
+    assert.deepEqual(opsWithState("canvas_duplicate_node", { id: "missing" }, canvas([source])), []);
 });

@@ -72,6 +72,7 @@ import {
     resetInterruptedGeneration,
 } from "@/lib/canvas/canvas-generation-helpers";
 import { getNodeDefinition, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
+import { describeOutputSource, outputNodesConflict, pickDefaultOutput, resolveLatestUpstream } from "@/lib/canvas/output-resolution";
 import { registerBuiltinNodes } from "@/components/canvas/nodes/builtin-nodes";
 import { CanvasPluginManagerModal } from "@/components/canvas/canvas-plugin-manager-modal";
 import { CanvasRefreshShell } from "@/components/canvas/canvas-refresh-shell";
@@ -216,6 +217,7 @@ function InfiniteCanvasPage() {
     const [referencePickerNodeId, setReferencePickerNodeId] = useState<string | null>(null);
     const [boardPreview, setBoardPreview] = useState<{ dataUrl: string; width: number; height: number; title: string; boardId: string } | null>(null);
     const [isNodeListOpen, setIsNodeListOpen] = useState(false);
+    const [nodeUpdatedAt, setNodeUpdatedAt] = useState<Record<string, number>>({});
 
     const nodesRef = useRef(nodes);
     const connectionsRef = useRef(connections);
@@ -226,6 +228,24 @@ function InfiniteCanvasPage() {
     const connectionTargetNodeIdRef = useRef(connectionTargetNodeId);
     const selectionBoxRef = useRef(selectionBox);
     const pendingConnectionCreateRef = useRef(pendingConnectionCreate);
+    const nodeSnapshotsRef = useRef<Map<string, string> | null>(null);
+
+    useEffect(() => {
+        const now = Date.now();
+        const snapshots = new Map(nodes.map((node) => [node.id, JSON.stringify(node)]));
+        const previous = nodeSnapshotsRef.current;
+        nodeSnapshotsRef.current = snapshots;
+        if (!previous) {
+            setNodeUpdatedAt(Object.fromEntries(nodes.map((node) => [node.id, now])));
+            return;
+        }
+        const changed: Record<string, number> = {};
+        snapshots.forEach((snapshot, id) => {
+            if (previous.get(id) === snapshot) return;
+            changed[id] = now;
+        });
+        if (Object.keys(changed).length) setNodeUpdatedAt((current) => ({ ...current, ...changed }));
+    }, [nodes]);
 
     const { historyState, undoCanvas, redoCanvas, resetHistory, historyRef, lastHistoryRef, historyPausedRef } = useCanvasHistory({
         nodes,
@@ -410,7 +430,7 @@ function InfiniteCanvasPage() {
     );
 
     const createConnectedNode = useCallback(
-        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio, pending: PendingConnectionCreate) => {
+        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio | CanvasNodeType.Output, pending: PendingConnectionCreate) => {
             const metadata = type === CanvasNodeType.Config ? { model: effectiveConfig.imageModel || effectiveConfig.model, size: effectiveConfig.size, count: getGenerationCount(effectiveConfig.canvasImageCount || effectiveConfig.count) } : undefined;
             const newNode = createCanvasNode(type, pending.position, metadata);
             const connection = normalizeConnection(pending.connection.nodeId, newNode.id, [...nodesRef.current, newNode], pending.connection.handleType);
@@ -422,7 +442,7 @@ function InfiniteCanvasPage() {
             setConnections((prev) => [...prev, { id: nanoid(), ...connection }]);
             setSelectedNodeIds(new Set([newNode.id]));
             setSelectedConnectionId(null);
-            if (type !== CanvasNodeType.Text && type !== CanvasNodeType.Audio) setDialogNodeId(newNode.id);
+            if (type !== CanvasNodeType.Text && type !== CanvasNodeType.Audio && type !== CanvasNodeType.Output) setDialogNodeId(newNode.id);
             setPendingConnectionCreate(null);
             setConnecting(null);
         },
@@ -594,6 +614,16 @@ function InfiniteCanvasPage() {
         });
         return map;
     }, [connections, nodeById]);
+    const defaultOutputNode = useMemo(() => pickDefaultOutput(nodes), [nodes]);
+    const hasOutputConflict = useMemo(() => outputNodesConflict(nodes), [nodes]);
+    const outputSourceById = useMemo(() => {
+        const map = new Map<string, CanvasNodeData | null>();
+        nodes.forEach((node) => {
+            if (node.type !== CanvasNodeType.Output) return;
+            map.set(node.id, resolveLatestUpstream(node.id, nodes, connections, nodeUpdatedAt));
+        });
+        return map;
+    }, [connections, nodeUpdatedAt, nodes]);
     const referenceConnectedNodeIds = useMemo(() => new Set([referencePickerNodeId, ...(referencePickerNodeId ? connectedNodesByNodeId.get(referencePickerNodeId)?.flatMap((node) => node.type === CanvasNodeType.Group ? [node.id, ...getGroupResourceNodes(node.id, nodes).map((child) => child.id)] : [node.id]) || [] : [])].filter((id): id is string => Boolean(id))), [connectedNodesByNodeId, nodes, referencePickerNodeId]);
     const { applyAgentOps } = useAgentBridge({
         projectId,
@@ -1643,7 +1673,7 @@ function InfiniteCanvasPage() {
     );
     const renderNodePanel = useCallback(
         (panelNode: CanvasNodeData) =>
-            panelNode.type === CanvasNodeType.Image ? null : getNodeDefinition(panelNode.type)?.Panel ? (
+            panelNode.type === CanvasNodeType.Image || panelNode.type === CanvasNodeType.Output ? null : getNodeDefinition(panelNode.type)?.Panel ? (
                 renderPluginPanel(panelNode)
             ) : panelNode.type === CanvasNodeType.Config ? (
                 <CanvasConfigComposer
@@ -1817,6 +1847,10 @@ function InfiniteCanvasPage() {
                             isGroupDropTarget={dropTargetGroupId === node.id}
                             boardLayers={boardRenderLayersById.get(node.id)}
                             boardLayersById={boardRenderLayersById}
+                            outputSource={outputSourceById.get(node.id)}
+                            isDefaultOutput={defaultOutputNode?.id === node.id}
+                            defaultOutputTitle={defaultOutputNode ? describeOutputSource(defaultOutputNode) : ""}
+                            outputConflict={hasOutputConflict}
                             onBoardTextsChange={handleBoardTextsChange}
                             batchExpanded={expandedBatchNodeIds.has(node.id)}
                             mentionReferences={mentionReferencesByNodeId.get(node.id) || EMPTY_REFERENCES}
@@ -1935,6 +1969,7 @@ function InfiniteCanvasPage() {
                     onAddAudio={() => createNode(CanvasNodeType.Audio)}
                     onAddFrame={() => createNode(CanvasNodeType.Frame)}
                     onAddSmartCanvas={() => createNode(CanvasNodeType.SmartCanvas)}
+                    onAddOutput={() => createNode(CanvasNodeType.Output)}
                     onAddExtensionNode={(type) => createNode(type)}
                     onUndo={undoCanvas}
                     onRedo={redoCanvas}

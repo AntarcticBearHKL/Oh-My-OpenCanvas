@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ChevronRight, Copy, Download, Group, Image as ImageIcon, Info, LayoutDashboard, Lock, Music2, Puzzle, RefreshCw, Sparkles, Star, Trash2, Video } from "lucide-react";
+import { ChevronRight, Copy, Download, Group, Image as ImageIcon, Info, LayoutDashboard, Lock, Music2, Puzzle, Radio, RefreshCw, Sparkles, Star, Trash2, Video } from "lucide-react";
 
 import { canvasThemes, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -9,6 +9,7 @@ import { ensureThumbnailUrl } from "@/services/image-storage";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { resolveTextStyle, textStyleToCss } from "@/lib/canvas/text-style";
 import { buildNodeContext } from "@/lib/canvas/plugin-node-context";
+import { describeOutputSource } from "@/lib/canvas/output-resolution";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { SmartCanvasNodeContent } from "./smart-canvas-node";
 import { PromptContent } from "./nodes/prompt-node-content";
@@ -44,6 +45,10 @@ type CanvasNodeProps = {
     isGroupDropTarget?: boolean;
     boardLayers?: CanvasNodeData[];
     boardLayersById?: Map<string, CanvasNodeData[]>;
+    outputSource?: CanvasNodeData | null;
+    isDefaultOutput?: boolean;
+    defaultOutputTitle?: string | null;
+    outputConflict?: boolean;
     batchExpanded?: boolean;
     onBoardTextsChange?: (nodeId: string, texts: NonNullable<CanvasNodeMetadata["boardTexts"]>) => void;
     onMouseDown: (event: React.MouseEvent, nodeId: string) => void;
@@ -92,6 +97,10 @@ type NodeContentRendererProps = {
     groupChildCount: number;
     boardLayers?: CanvasNodeData[];
     boardLayersById?: Map<string, CanvasNodeData[]>;
+    outputSource?: CanvasNodeData | null;
+    isDefaultOutput?: boolean;
+    defaultOutputTitle?: string | null;
+    outputConflict?: boolean;
     onBoardTextsChange?: (nodeId: string, texts: NonNullable<CanvasNodeMetadata["boardTexts"]>) => void;
 };
 
@@ -114,6 +123,10 @@ export const CanvasNode = React.memo(function CanvasNode({
     isGroupDropTarget = false,
     boardLayers,
     boardLayersById,
+    outputSource,
+    isDefaultOutput,
+    defaultOutputTitle,
+    outputConflict,
     batchExpanded = false,
     onBoardTextsChange,
     onMouseDown,
@@ -452,6 +465,10 @@ export const CanvasNode = React.memo(function CanvasNode({
                         groupChildCount={groupChildCount}
                         boardLayers={boardLayers}
                         boardLayersById={boardLayersById}
+                        outputSource={outputSource}
+                        isDefaultOutput={isDefaultOutput}
+                        defaultOutputTitle={defaultOutputTitle}
+                        outputConflict={outputConflict}
                         onBoardTextsChange={onBoardTextsChange}
                     />
                 </div>
@@ -519,6 +536,7 @@ const nodeContentRenderers = {
     [CanvasNodeType.Group]: GroupNodeContent,
     [CanvasNodeType.Frame]: FrameNodeContent,
     [CanvasNodeType.SmartCanvas]: SmartCanvasNodeContent,
+    [CanvasNodeType.Output]: OutputContent,
 } satisfies Record<CanvasNodeType, (props: NodeContentRendererProps) => ReactNode>;
 
 function GroupNodeContent({ node, theme, groupChildCount }: NodeContentRendererProps) {
@@ -803,6 +821,51 @@ function AudioNodeContent({ node, theme }: NodeContentRendererProps) {
                 <span className="truncate">{t("canvas.node.audio")}</span>
             </div>
             <audio src={node.metadata.content} controls className="w-full" data-canvas-no-zoom />
+        </div>
+    );
+}
+
+function OutputContent({ theme, outputSource, isDefaultOutput, defaultOutputTitle, outputConflict }: NodeContentRendererProps) {
+    const { t } = useTranslation();
+    const source = outputSource || null;
+    const content = source?.metadata?.content || source?.metadata?.prompt || "";
+    return (
+        <div className="flex h-full w-full flex-col overflow-hidden rounded-[inherit]">
+            {isDefaultOutput || source ? (
+                <div className="flex shrink-0 items-center gap-2 px-3 pt-3 text-[11px]" style={{ color: theme.node.muted }}>
+                    {isDefaultOutput ? <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: theme.toolbar.activeBg, color: theme.toolbar.activeText }}>{t("canvas.output.defaultBadge")}</span> : null}
+                    {source ? <span className="min-w-0 flex-1 truncate">{t("canvas.output.source", { name: describeOutputSource(source) })}</span> : null}
+                </div>
+            ) : null}
+            {outputConflict && defaultOutputTitle ? (
+                <div className="shrink-0 px-3 pt-1 text-[10px]" style={{ color: theme.node.muted }}>
+                    {t("canvas.output.conflictHint", { name: defaultOutputTitle })}
+                </div>
+            ) : null}
+            <div className="min-h-0 flex-1 p-2">
+                {content && source?.type === CanvasNodeType.Image ? (
+                    <CanvasImage content={content} storageKey={source.metadata?.storageKey} thumbnail={source.metadata?.thumbnail} alt={describeOutputSource(source)} className="pointer-events-none block h-full w-full select-none object-contain" />
+                ) : content && source?.type === CanvasNodeType.Video ? (
+                    <video src={content} muted controls className="h-full w-full rounded-[18px] object-contain" style={{ background: theme.node.panel }} data-canvas-no-zoom />
+                ) : content && source?.type === CanvasNodeType.Audio ? (
+                    <div className="flex h-full w-full flex-col justify-center gap-3 px-2" style={{ color: theme.node.text }}>
+                        <div className="flex items-center gap-2 text-xs opacity-70">
+                            <Music2 className="size-4 shrink-0" />
+                            <span className="truncate">{describeOutputSource(source)}</span>
+                        </div>
+                        <audio src={content} controls className="w-full" data-canvas-no-zoom />
+                    </div>
+                ) : content ? (
+                    <div className="thin-scrollbar h-full w-full overflow-y-auto whitespace-pre-wrap break-words p-2 font-mono text-xs leading-5" style={{ color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
+                        {content}
+                    </div>
+                ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-2" style={{ color: theme.node.placeholder }}>
+                        <Radio className="size-6 opacity-35" />
+                        <span className="text-sm">{t("canvas.output.empty")}</span>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

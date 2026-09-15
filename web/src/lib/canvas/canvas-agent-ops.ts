@@ -50,7 +50,14 @@ export function applyCanvasAgentOps(snapshot: CanvasAgentSnapshot, ops?: CanvasA
         }
         if (op.type === "update_node") {
             if (!op.id) return;
-            nodes = nodes.map((node) => (node.id === op.id ? { ...node, ...op.patch, metadata: { ...node.metadata, ...op.patch?.metadata, ...op.metadata } } : node));
+            nodes = nodes.map((node) => {
+                if (node.id !== op.id) return node;
+                const metadata = { ...node.metadata, ...op.patch?.metadata, ...op.metadata };
+                for (const key of Object.keys(op.metadata || {})) {
+                    if ((op.metadata as Record<string, unknown>)[key] === null) delete metadata[key as keyof CanvasNodeMetadata];
+                }
+                return { ...node, ...op.patch, metadata };
+            });
         }
         if (op.type === "delete_node") {
             const ids = new Set(op.ids || (op.id ? [op.id] : op.nodeType ? nodes.filter((node) => node.type === op.nodeType).map((node) => node.id) : []));

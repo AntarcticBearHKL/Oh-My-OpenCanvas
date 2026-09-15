@@ -5,6 +5,10 @@ import { nextCanvasX } from "./tools";
 import type { CanvasNode, CanvasNodeType, CanvasSnapshot } from "./types";
 
 type CanvasToolRequest = { name: "canvas_apply_ops"; input: Record<string, unknown> };
+type AlignMode = "left" | "center-x" | "right" | "top" | "center-y" | "bottom" | "distribute-x" | "distribute-y";
+
+const GROUP_WRAP_PADDING = 24;
+const GROUP_WRAP_TOP_PADDING = 52;
 
 /** 将上层画布工具调用转换为前端可执行的批量操作。 */
 export function buildCanvasToolRequest(name: ToolName, input: Record<string, unknown>, state: CanvasSnapshot | null): CanvasToolRequest {
@@ -55,6 +59,58 @@ export function buildCanvasToolRequest(name: ToolName, input: Record<string, unk
     if (name === "canvas_resize_node") {
         const data = input as { id: string; width: number; height: number; freeResize?: boolean };
         return applyOps([{ type: "update_node", id: data.id, patch: { width: data.width, height: data.height }, metadata: data.freeResize === undefined ? undefined : { freeResize: data.freeResize } }]);
+    }
+    if (name === "canvas_set_node_flags") {
+        const data = input as { ids: string[]; locked?: boolean; hidden?: boolean };
+        const metadata: Record<string, unknown> = {};
+        if (data.locked !== undefined) metadata.locked = data.locked;
+        if (data.hidden !== undefined) metadata.hidden = data.hidden;
+        if (!Object.keys(metadata).length) throw new Error("locked 与 hidden 至少需要一个");
+        return applyOps(data.ids.map((id) => ({ type: "update_node", id, metadata })));
+    }
+    if (name === "canvas_bulk_rename") {
+        const data = input as { ids: string[]; title: string };
+        const title = data.title.trim();
+        if (!title) return applyOps([]);
+        return applyOps(data.ids.map((id, index) => ({ type: "update_node", id, patch: { title: data.ids.length > 1 ? `${title} ${index + 1}` : title } })));
+    }
+    if (name === "canvas_align_nodes") return applyOps(alignOps(input as { ids: string[]; mode: AlignMode }, state));
+    if (name === "canvas_group_nodes") {
+        const data = input as { ids: string[]; title?: string };
+        const members = data.ids.map((id) => findNode(state, id)).filter((node): node is CanvasNode => node !== undefined && !isContainerNodeType(node.type));
+        if (members.length < 2) return applyOps([]);
+        const left = Math.min(...members.map((node) => node.position.x));
+        const top = Math.min(...members.map((node) => node.position.y));
+        const right = Math.max(...members.map((node) => node.position.x + node.width));
+        const bottom = Math.max(...members.map((node) => node.position.y + node.height));
+        const groupId = `group-${crypto.randomUUID()}`;
+        return applyOps([
+            { type: "add_node", id: groupId, nodeType: "group", title: data.title, position: { x: left - GROUP_WRAP_PADDING, y: top - GROUP_WRAP_TOP_PADDING }, width: right - left + GROUP_WRAP_PADDING * 2, height: bottom - top + GROUP_WRAP_TOP_PADDING + GROUP_WRAP_PADDING },
+            ...members.map((node) => ({ type: "update_node", id: node.id, metadata: { groupId } })),
+            { type: "select_nodes", ids: [groupId] },
+        ]);
+    }
+    if (name === "canvas_ungroup_nodes") {
+        const ids = (input as { ids: string[] }).ids;
+        const nodes = state?.nodes || [];
+        const groups = new Set(ids.filter((id) => findNode(state, id)?.type === "group"));
+        const released = new Set(ids.filter((id) => findNode(state, id) !== undefined && !groups.has(id)));
+        for (const node of nodes) if (node.metadata?.groupId && groups.has(String(node.metadata.groupId))) released.add(node.id);
+        const emptyGroups = nodes.filter((node) => node.type === "group" && !groups.has(node.id) && !nodes.some((member) => member.metadata?.groupId === node.id && !released.has(member.id))).map((node) => node.id);
+        return applyOps([
+            ...[...released].map((id) => ({ type: "update_node", id, metadata: { groupId: null } })),
+            ...(groups.size || emptyGroups.length ? [{ type: "delete_node", ids: [...groups, ...emptyGroups] }] : []),
+        ]);
+    }
+    if (name === "canvas_duplicate_node") {
+        const data = input as { id: string; dx?: number; dy?: number };
+        const source = findNode(state, data.id);
+        if (!source) return applyOps([]);
+        const copyId = `copy-${crypto.randomUUID()}`;
+        return applyOps([
+            { type: "add_node", id: copyId, nodeType: source.type, title: source.title, position: { x: source.position.x + (data.dx ?? 40), y: source.position.y + (data.dy ?? 40) }, width: source.width, height: source.height, metadata: source.metadata },
+            { type: "select_nodes", ids: [copyId] },
+        ]);
     }
     if (name === "canvas_delete_nodes") return applyOps([{ type: "delete_node", ids: (input as { ids: string[] }).ids }]);
     if (name === "canvas_connect_nodes") {
@@ -160,6 +216,37 @@ function generationTitle(mode: "text" | "image" | "video" | "audio") {
 /** 按节点 ID 查找当前画布节点。 */
 function findNode(state: CanvasSnapshot | null, id: string): CanvasNode | undefined {
     return (state?.nodes || []).find((node) => node.id === id);
+}
+
+function isContainerNodeType(type: string) {
+    return type === "group" || type === "frame";
+}
+
+function alignOps(data: { ids: string[]; mode: AlignMode }, state: CanvasSnapshot | null) {
+    const nodes = data.ids.map((id) => findNode(state, id)).filter((node): node is CanvasNode => node !== undefined);
+    if (nodes.length < 2) return [];
+    const left = Math.min(...nodes.map((node) => node.position.x));
+    const top = Math.min(...nodes.map((node) => node.position.y));
+    const right = Math.max(...nodes.map((node) => node.position.x + node.width));
+    const bottom = Math.max(...nodes.map((node) => node.position.y + node.height));
+    if (data.mode === "distribute-x" || data.mode === "distribute-y") {
+        if (nodes.length < 3) return [];
+        const horizontal = data.mode === "distribute-x";
+        const sorted = [...nodes].sort((a, b) => (horizontal ? a.position.x - b.position.x : a.position.y - b.position.y));
+        const used = sorted.reduce((total, node) => total + (horizontal ? node.width : node.height), 0);
+        const gap = ((horizontal ? right - left : bottom - top) - used) / (sorted.length - 1);
+        let cursor = horizontal ? left : top;
+        return sorted.map((node) => {
+            const position = { x: horizontal ? Math.round(cursor) : node.position.x, y: horizontal ? node.position.y : Math.round(cursor) };
+            cursor += (horizontal ? node.width : node.height) + gap;
+            return { type: "update_node", id: node.id, patch: { position } };
+        });
+    }
+    return nodes.map((node) => {
+        const x = data.mode === "left" ? left : data.mode === "center-x" ? left + (right - left - node.width) / 2 : data.mode === "right" ? right - node.width : node.position.x;
+        const y = data.mode === "top" ? top : data.mode === "center-y" ? top + (bottom - top - node.height) / 2 : data.mode === "bottom" ? bottom - node.height : node.position.y;
+        return { type: "update_node", id: node.id, patch: { position: { x: Math.round(x), y: Math.round(y) } } };
+    });
 }
 
 /** 移除对象中未设置的生成参数。 */

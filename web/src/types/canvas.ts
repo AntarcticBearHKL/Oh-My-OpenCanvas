@@ -23,6 +23,7 @@ export enum CanvasNodeType {
     Group = "group",
     Frame = "frame",
     SmartCanvas = "smart-canvas",
+    Output = "output",
 }
 
 // Node types are open strings: built-ins use CanvasNodeType and plugins use "<pluginId>:<name>".

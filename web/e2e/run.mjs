@@ -254,6 +254,61 @@ const LIB_ASSERTIONS = `(async () => {
     ok("text style css writes mapped values", textCssMapped.color === "#ff0000" && textCssMapped.fontFamily === "Georgia, serif" && textCssMapped.fontSize === "24px" && textCssMapped.lineHeight === 2 && textCssMapped.fontWeight === "bold" && textCssMapped.fontStyle === "italic" && textCssMapped.textAlign === "center", JSON.stringify(textCssMapped));
     ok("text style offers font family stacks", typography.TEXT_FONT_FAMILIES.length >= 4 && typography.TEXT_FONT_FAMILIES.every((item) => item.label && item.value && !item.value.includes(";")), JSON.stringify(typography.TEXT_FONT_FAMILIES));
 
+    const agentOps = await import("/src/lib/canvas/canvas-agent-ops.ts");
+    const flaggedNode = { id: "flag", type: "image", title: "flag", position: { x: 0, y: 0 }, width: 100, height: 100, metadata: { groupId: "g1", status: "idle" } };
+    const clearedNode = agentOps.applyCanvasAgentOps(
+        { projectId: "p", title: "p", nodes: [flaggedNode], connections: [], selectedNodeIds: [], viewport: { x: 0, y: 0, k: 1 } },
+        [{ type: "update_node", id: "flag", metadata: { groupId: null, status: "idle" } }],
+    );
+    ok("agent update_node drops explicit null metadata keys", clearedNode.nodes[0].metadata.groupId === undefined && !("groupId" in clearedNode.nodes[0].metadata) && clearedNode.nodes[0].metadata.status === "idle", JSON.stringify(clearedNode.nodes[0].metadata));
+
+    const permissions = await import("/src/lib/canvas/agent-permissions.ts");
+    const allowedOps = [{ type: "add_node" }, { type: "delete_node", id: "n1" }];
+    const allAllowed = permissions.filterPermittedOps(allowedOps, permissions.DEFAULT_AGENT_PERMISSIONS);
+    ok("agent permissions default allows every op", allAllowed.permitted.length === 2 && allAllowed.blocked.length === 0, JSON.stringify(allAllowed));
+    const denied = permissions.filterPermittedOps(allowedOps, { ...permissions.DEFAULT_AGENT_PERMISSIONS, delete_node: false });
+    ok("agent permissions deny blocks matching type", denied.permitted.length === 1 && denied.permitted[0].type === "add_node" && denied.blocked.length === 1 && denied.blocked[0].type === "delete_node", JSON.stringify(denied));
+    const missingKey = permissions.filterPermittedOps([{ type: "arrange_board", id: "b1" }], {});
+    ok("agent permissions missing key stays permitted", missingKey.permitted.length === 1 && missingKey.blocked.length === 0, JSON.stringify(missingKey));
+    const noOps = permissions.filterPermittedOps(undefined, permissions.DEFAULT_AGENT_PERMISSIONS);
+    ok("agent permissions undefined ops yield nothing", noOps.permitted.length === 0 && noOps.blocked.length === 0, JSON.stringify(noOps));
+    ok(
+        "agent permissions default covers every op type",
+        permissions.AGENT_OP_TYPES.length === 10 && permissions.AGENT_OP_TYPES.every((type) => permissions.DEFAULT_AGENT_PERMISSIONS[type] === true),
+        permissions.AGENT_OP_TYPES.join(","),
+    );
+    ok(
+        "agent op describe add_node",
+        permissions.describeAgentOp({ type: "add_node", id: "n1" }) === "add_node n1" && permissions.describeAgentOp({ type: "add_node", nodeType: "image" }) === "add_node image",
+        permissions.describeAgentOp({ type: "add_node", nodeType: "image" }),
+    );
+    ok(
+        "agent op describe connect_nodes and run_generation",
+        permissions.describeAgentOp({ type: "connect_nodes", fromNodeId: "a", toNodeId: "b" }) === "connect_nodes a->b" &&
+            permissions.describeAgentOp({ type: "run_generation", nodeId: "n1" }) === "run_generation n1 image",
+        permissions.describeAgentOp({ type: "connect_nodes", fromNodeId: "a", toNodeId: "b" }),
+    );
+
+    const output = await import("/src/lib/canvas/output-resolution.ts");
+    const outNode = (id, type, title) => ({ id, type, title, position: { x: 0, y: 0 }, width: 340, height: 240, metadata: {} });
+    const outNodes = [outNode("a", "text", "A"), outNode("b", "image", "B"), outNode("c", "text", "C")];
+    const outConns = [
+        { id: "c1", fromNodeId: "a", toNodeId: "out" },
+        { id: "c2", fromNodeId: "b", toNodeId: "out" },
+        { id: "c3", fromNodeId: "c", toNodeId: "out" },
+    ];
+    ok("output newest upstream wins", output.resolveLatestUpstream("out", outNodes, outConns, { a: 10, b: 30, c: 20 })?.id === "b", output.resolveLatestUpstream("out", outNodes, outConns, { a: 10, b: 30, c: 20 })?.id);
+    ok("output ties fall back to last connection", output.resolveLatestUpstream("out", outNodes, outConns, { a: 5, b: 5, c: 5 })?.id === "c", output.resolveLatestUpstream("out", outNodes, outConns, { a: 5, b: 5, c: 5 })?.id);
+    ok("output missing timestamps fall back to last connection", output.resolveLatestUpstream("out", outNodes, outConns)?.id === "c", output.resolveLatestUpstream("out", outNodes, outConns)?.id);
+    ok("output undefined timestamps keep the timestamped newest", output.resolveLatestUpstream("out", outNodes, outConns, { b: 7 })?.id === "b", output.resolveLatestUpstream("out", outNodes, outConns, { b: 7 })?.id);
+    ok("output no upstream is null", output.resolveLatestUpstream("out", outNodes, []) === null);
+    ok("output unknown target is null", output.resolveLatestUpstream("missing", outNodes, outConns) === null);
+    const firstOutput = outNode("o1", "output", "Out 1");
+    const secondOutput = outNode("o2", "output", "Out 2");
+    ok("output default is the first output", output.pickDefaultOutput([outNodes[0], firstOutput, secondOutput, outNodes[1]])?.id === "o1" && output.pickDefaultOutput([outNodes[0]]) === null);
+    ok("output conflict only with multiple outputs", output.outputNodesConflict([firstOutput, secondOutput]) === true && output.outputNodesConflict([firstOutput, outNodes[0]]) === false && output.outputNodesConflict([]) === false);
+    ok("output describe source label", output.describeOutputSource(firstOutput) === "Out 1" && output.describeOutputSource(outNode("x", "text", "   ")) === "Untitled" && output.describeOutputSource(null) === "");
+
     return results;
 })()`;
 

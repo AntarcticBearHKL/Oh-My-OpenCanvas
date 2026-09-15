@@ -5,6 +5,7 @@ const positionSchema = z.object({ x: z.number(), y: z.number() });
 const viewportSchema = z.object({ x: z.number(), y: z.number(), k: z.number() });
 const nodeTypeSchema = z.enum(["image", "text", "config", "video", "audio", "smart-canvas", "image-generation"]);
 const generationModeSchema = z.enum(["text", "image", "video", "audio"]);
+const alignModeSchema = z.enum(["left", "center-x", "right", "top", "center-y", "bottom", "distribute-x", "distribute-y"]);
 
 /** Canvas MCP 对外提供的工具名称。 */
 export const toolNames = [
@@ -28,6 +29,12 @@ export const toolNames = [
     "canvas_update_node_text",
     "canvas_move_nodes",
     "canvas_resize_node",
+    "canvas_set_node_flags",
+    "canvas_bulk_rename",
+    "canvas_align_nodes",
+    "canvas_group_nodes",
+    "canvas_ungroup_nodes",
+    "canvas_duplicate_node",
     "canvas_delete_nodes",
     "canvas_connect_nodes",
     "canvas_select_nodes",
@@ -107,6 +114,12 @@ export const toolInputSchemas = {
     canvas_update_node_text: z.object({ id: z.string(), text: z.string(), title: z.string().optional() }),
     canvas_move_nodes: z.object({ items: z.array(z.object({ id: z.string(), x: z.number().optional(), y: z.number().optional(), dx: z.number().optional(), dy: z.number().optional() })).min(1) }),
     canvas_resize_node: z.object({ id: z.string(), width: z.number(), height: z.number(), freeResize: z.boolean().optional() }),
+    canvas_set_node_flags: z.object({ ids: z.array(z.string()).min(1), locked: z.boolean().optional(), hidden: z.boolean().optional() }),
+    canvas_bulk_rename: z.object({ ids: z.array(z.string()).min(1), title: z.string() }),
+    canvas_align_nodes: z.object({ ids: z.array(z.string()).min(2), mode: alignModeSchema }),
+    canvas_group_nodes: z.object({ ids: z.array(z.string()).min(2), title: z.string().optional() }),
+    canvas_ungroup_nodes: z.object({ ids: z.array(z.string()).min(1) }),
+    canvas_duplicate_node: z.object({ id: z.string(), dx: z.number().optional(), dy: z.number().optional() }),
     canvas_delete_nodes: z.object({ ids: z.array(z.string()).min(1) }),
     canvas_connect_nodes: z.object({ connections: z.array(z.object({ fromNodeId: z.string(), toNodeId: z.string() })).min(1) }),
     canvas_select_nodes: z.object({ ids: z.array(z.string()) }),
@@ -139,6 +152,12 @@ export const toolDescriptions: Record<ToolName, string> = {
     canvas_update_node_text: "更新文本节点内容和标题。",
     canvas_move_nodes: "移动一个或多个节点，支持绝对坐标或 dx/dy 偏移。",
     canvas_resize_node: "调整节点尺寸。",
+    canvas_set_node_flags: "设置一个或多个节点的锁定 / 隐藏状态，locked 与 hidden 至少填写一个。",
+    canvas_bulk_rename: "批量重命名节点：多个节点按给定顺序编号为「标题 1」「标题 2」…，单个节点直接使用标题。",
+    canvas_align_nodes: "按选区包围盒对齐或分布节点：left/center-x/right/top/center-y/bottom 对齐，distribute-x/distribute-y 等距分布（分布需 3 个以上节点）。",
+    canvas_group_nodes: "把多个节点组合为分组节点：分组框包裹这些节点，成员记录 groupId，并选中新分组。",
+    canvas_ungroup_nodes: "取消节点分组：清除给定节点的 groupId，并删除没有成员的分组节点。",
+    canvas_duplicate_node: "复制节点：按 dx/dy 偏移（默认 40）创建同类型、大小与 metadata 的副本并选中。",
     canvas_delete_nodes: "删除指定节点及相关连线。",
     canvas_connect_nodes: "批量连接节点。",
     canvas_select_nodes: "设置当前选中节点。",

@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
-import { Compass, Focus, Frame, Hand, HelpCircle, Image as ImageIcon, LayoutDashboard, ListTree, MessageSquareText, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
+import { Compass, Focus, Frame, Hand, HelpCircle, Image as ImageIcon, LayoutDashboard, ListTree, MessageSquareText, MousePointer2, Music2, Puzzle, Radio, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -25,6 +25,7 @@ export function CanvasToolbar({
     onAddAudio,
     onAddFrame,
     onAddSmartCanvas,
+    onAddOutput,
     onAddExtensionNode,
     onUndo,
     onRedo,
@@ -49,6 +50,7 @@ export function CanvasToolbar({
     onAddAudio: () => void;
     onAddFrame: () => void;
     onAddSmartCanvas: () => void;
+    onAddOutput: () => void;
     onAddExtensionNode: (type: string) => void;
     onUndo: () => void;
     onRedo: () => void;
@@ -139,6 +141,9 @@ export function CanvasToolbar({
                 </ToolbarButton>
                 <ToolbarButton id="tool-smart-canvas" label={t("canvas.nodeTypes.smartCanvas")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddSmartCanvas}>
                     <LayoutDashboard className="size-4.5" />
+                </ToolbarButton>
+                <ToolbarButton id="tool-output" label={t("canvas.nodeTypes.output")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddOutput}>
+                    <Radio className="size-4.5" />
                 </ToolbarButton>
                 {extensionDefs.length ? (
                     <ToolbarButton
@@ -393,6 +398,7 @@ function toolLabel(id: string, t: (key: string) => string) {
     if (id === "tool-audio") return t("canvas.toolbar.audio");
     if (id === "tool-frame") return t("canvas.nodeTypes.frame");
     if (id === "tool-smart-canvas") return t("canvas.nodeTypes.smartCanvas");
+    if (id === "tool-output") return t("canvas.nodeTypes.output");
     if (id === "tool-extensions") return t("canvas.toolbar.extensions");
     if (id === "tool-zoom") return t("canvas.toolbar.zoom");
     if (id === "tool-node-list") return t("canvas.nodeList.title");

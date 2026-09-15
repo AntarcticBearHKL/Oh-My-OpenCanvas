@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { App } from "antd";
 
 import i18n from "@/i18n";
 import { useAgentStore } from "@/stores/use-agent-store";
+import { recordAgentAudit, useAgentAuditStore } from "@/stores/use-agent-audit-store";
+import { filterPermittedOps } from "@/lib/canvas/agent-permissions";
 import { applyCanvasAgentOps, type CanvasAgentOp, type CanvasAgentSnapshot } from "@/lib/canvas/canvas-agent-ops";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasConnection, CanvasNodeData, ViewportTransform } from "@/types/canvas";
@@ -34,19 +37,22 @@ type AgentBridgeParams = {
 export function useAgentBridge(params: AgentBridgeParams) {
     const { projectId, title, nodes, connections, selectedNodeIds, viewport, nodesRef, connectionsRef, selectedNodeIdsRef, viewportRef, generateNodeRef, setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setViewport } =
         params;
+    const { message } = App.useApp();
     const setAgentCanvasContext = useAgentStore((state) => state.setCanvasContext);
+    const permissions = useAgentAuditStore((state) => state.permissions);
     const [agentUndoSnapshot, setAgentUndoSnapshot] = useState<CanvasAgentSnapshot | null>(null);
     const projectTitle = title || i18n.t("canvas.project.untitled");
 
     const agentSnapshot = useMemo<CanvasAgentSnapshot>(() => ({ projectId, title: projectTitle, nodes, connections, selectedNodeIds: Array.from(selectedNodeIds), viewport }), [connections, projectTitle, nodes, projectId, selectedNodeIds, viewport]);
     const applyAgentOps = useCallback(
-        (ops?: CanvasAgentOp[]) => {
+        (ops?: CanvasAgentOp[], replayedFrom?: string) => {
             const safeOps = Array.isArray(ops) ? ops.filter((op) => op?.type) : [];
+            const { permitted, blocked } = filterPermittedOps(safeOps, permissions);
             const before = { projectId, title: projectTitle, nodes: nodesRef.current, connections: connectionsRef.current, selectedNodeIds: Array.from(selectedNodeIdsRef.current), viewport: viewportRef.current };
-            const generationOps = safeOps.filter((op): op is Extract<CanvasAgentOp, { type: "run_generation" }> => op.type === "run_generation" && Boolean(op.nodeId));
+            const generationOps = permitted.filter((op): op is Extract<CanvasAgentOp, { type: "run_generation" }> => op.type === "run_generation" && Boolean(op.nodeId));
             const next = applyCanvasAgentOps(
                 before,
-                safeOps.filter((op) => op.type !== "run_generation"),
+                permitted.filter((op) => op.type !== "run_generation"),
             );
             nodesRef.current = next.nodes;
             connectionsRef.current = next.connections;
@@ -67,9 +73,20 @@ export function useAgentBridge(params: AgentBridgeParams) {
                     }),
                 );
             }
+            if (safeOps.length) recordAgentAudit({ ops: permitted, blocked: blocked.length, replayedFrom });
+            if (blocked.length) void message.warning(i18n.t("config.agent.blockedNotice", { count: blocked.length }));
             return { ...next, projectId, title: projectTitle };
         },
-        [projectTitle, projectId],
+        [message, permissions, projectTitle, projectId],
+    );
+    const replayAgentEntry = useCallback(
+        (id: string) => {
+            const entry = useAgentAuditStore.getState().records.find((record) => record.id === id);
+            if (!entry || !entry.ops.length) return false;
+            applyAgentOps(entry.ops, id);
+            return true;
+        },
+        [applyAgentOps],
     );
     const undoAgentOps = useCallback(() => {
         if (!agentUndoSnapshot) return null;
@@ -87,9 +104,9 @@ export function useAgentBridge(params: AgentBridgeParams) {
     }, [agentUndoSnapshot, projectTitle, projectId]);
 
     useEffect(() => {
-        setAgentCanvasContext({ snapshot: agentSnapshot, applyOps: applyAgentOps, undoOps: undoAgentOps, canUndo: Boolean(agentUndoSnapshot) });
+        setAgentCanvasContext({ snapshot: agentSnapshot, applyOps: applyAgentOps, undoOps: undoAgentOps, canUndo: Boolean(agentUndoSnapshot), replayAgentEntry });
         return () => setAgentCanvasContext(null);
-    }, [agentSnapshot, applyAgentOps, agentUndoSnapshot, setAgentCanvasContext, undoAgentOps]);
+    }, [agentSnapshot, applyAgentOps, agentUndoSnapshot, replayAgentEntry, setAgentCanvasContext, undoAgentOps]);
 
-    return { applyAgentOps };
+    return { applyAgentOps, replayAgentEntry };
 }
