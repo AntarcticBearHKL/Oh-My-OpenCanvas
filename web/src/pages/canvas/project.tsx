@@ -618,6 +618,19 @@ function InfiniteCanvasPage() {
         nodes.forEach((node) => map.set(node.id, buildNodeMentionReferences(node, nodes, connections)));
         return map;
     }, [connections, nodes]);
+    const promptReferenceIndexByConnectionId = useMemo(() => {
+        const map = new Map<string, number>();
+        nodes.forEach((node) => {
+            if (node.type !== CanvasNodeType.Prompt) return;
+            (mentionReferencesByNodeId.get(node.id) || EMPTY_REFERENCES)
+                .filter((reference) => reference.kind === "image")
+                .forEach((reference, index) => {
+                    const connection = connections.find((item) => item.toNodeId === node.id && item.fromNodeId === reference.nodeId);
+                    if (connection) map.set(connection.id, index);
+                });
+        });
+        return map;
+    }, [connections, mentionReferencesByNodeId, nodes]);
     const connectedNodesByNodeId = useMemo(() => {
         const map = new Map<string, CanvasNodeData[]>();
         connections.forEach((connection) => {
@@ -1951,7 +1964,7 @@ function InfiniteCanvasPage() {
 
     const renderNodeContentPanel = useCallback(
         (contentNode: CanvasNodeData) => {
-            if (contentNode.type === CanvasNodeType.Prompt) return <PromptNodePanel node={contentNode} onContentChange={handleNodeContentChange} />;
+            if (contentNode.type === CanvasNodeType.Prompt) return <PromptNodePanel node={contentNode} references={mentionReferencesByNodeId.get(contentNode.id) || EMPTY_REFERENCES} onContentChange={handleNodeContentChange} />;
             if (contentNode.type === CanvasNodeType.Assets)
                 return <AssetsNodeContent node={contentNode} onInsert={(file) => void insertFolderFile(file)} onOutputFolderBind={() => handleOutputFolderBind(contentNode.id)} onOutputFolderUnbind={() => handleOutputFolderUnbind(contentNode.id)} />;
             return (
@@ -1971,7 +1984,7 @@ function InfiniteCanvasPage() {
             />
             );
         },
-        [configInputsById, confirmStopGeneration, dropTargetPromptNodeId, handleConfigNodeChange, handleGenerateMatrix, handleNodeContentChange, handleOutputFolderBind, handleOutputFolderUnbind, handleReplayNode, insertFolderFile, runningNodeId],
+        [configInputsById, confirmStopGeneration, dropTargetPromptNodeId, handleConfigNodeChange, handleGenerateMatrix, handleNodeContentChange, handleOutputFolderBind, handleOutputFolderUnbind, handleReplayNode, insertFolderFile, mentionReferencesByNodeId, runningNodeId],
     );
 
     if (!projectLoaded && !loadedOnceRef.current) return <CanvasRefreshShell />;
@@ -2025,6 +2038,7 @@ function InfiniteCanvasPage() {
                                         from={fromPreview ? { ...from, position: fromPreview } : from}
                                         to={toPreview ? { ...to, position: toPreview } : to}
                                         active={selectedConnectionId === connection.id || relatedHighlight.connectionIds.has(connection.id)}
+                                        referenceIndex={promptReferenceIndexByConnectionId.get(connection.id)}
                                         scale={viewport.k}
                                         onSelect={() => {
                                             setSelectedConnectionId(connection.id);

@@ -15,7 +15,7 @@ import { SmartCanvasNodeContent } from "./smart-canvas-node";
 import { PromptContent } from "./nodes/prompt-node-content";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeImage, type CanvasNodeMetadata, type CanvasNodeText, type Position } from "@/types/canvas";
 import type { CanvasNodeContext, CanvasPluginHost } from "@/types/canvas-plugin";
-import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import { CANVAS_REFERENCE_DRAG_TYPE, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { useTranslation } from "react-i18next";
 
 type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
@@ -395,6 +395,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                     )}
                 </div>
             )}
+
+            {!referenceSelectionState && data.type === CanvasNodeType.Prompt ? <PromptReferenceChips references={mentionReferences} /> : null}
 
             <div
                 className={`relative h-full w-full overflow-visible rounded-3xl border-2 ${frostedCard ? `canvas-glass-card ${frostedSurfaceClass}` : ""} ${enteredImage ? "canvas-node-enter" : ""}`}
@@ -1069,6 +1071,41 @@ function ConnectionHandleDot({ side, visible, onMouseDown }: { side: "left" | "r
             onMouseDown={onMouseDown}
         >
             <div className="size-3 rounded-full border-2 transition-all hover:scale-125" style={{ background: theme.node.panel, borderColor: theme.node.muted }} />
+        </div>
+    );
+}
+
+function PromptReferenceChips({ references }: { references: CanvasResourceReference[] }) {
+    const theme = useCanvasTheme();
+    const { t } = useTranslation();
+    const images = references.filter((reference) => reference.kind === "image");
+    if (!images.length) return null;
+
+    return (
+        <div
+            className="absolute -top-16 left-0 z-[65] flex max-w-full flex-wrap items-center gap-1"
+            title={t("canvas.promptNode.dragHint")}
+            onMouseDown={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+        >
+            {images.map((reference) => (
+                <div
+                    key={reference.id}
+                    draggable
+                    className="canvas-prompt-ref-chip flex h-7 max-w-32 cursor-grab items-center gap-1 overflow-hidden rounded-md border px-1 text-[11px] leading-none"
+                    style={{ background: theme.toolbar.panel, borderColor: theme.node.stroke, color: theme.node.text }}
+                    title={reference.title || reference.label}
+                    onDragStart={(event) => {
+                        event.dataTransfer.setData(CANVAS_REFERENCE_DRAG_TYPE, reference.id);
+                        event.dataTransfer.effectAllowed = "copy";
+                        event.currentTarget.classList.add("canvas-prompt-ref-chip-dragging");
+                    }}
+                    onDragEnd={(event) => event.currentTarget.classList.remove("canvas-prompt-ref-chip-dragging")}
+                >
+                    {reference.previewUrl ? <img src={reference.previewUrl} alt="" draggable={false} className="size-5 shrink-0 rounded object-cover" /> : null}
+                    <span className="truncate">{reference.label}</span>
+                </div>
+            ))}
         </div>
     );
 }

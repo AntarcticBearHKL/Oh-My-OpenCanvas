@@ -707,3 +707,42 @@
         animation: none;
     }
 }
+
+.canvas-prompt-ref-chip {
+    transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.canvas-prompt-ref-chip-dragging {
+    opacity: 0.55;
+    transform: translateY(-3px) scale(1.08);
+}
+
+.canvas-connection-label-in {
+    animation: canvas-connection-label-in 220ms cubic-bezier(0.2, 0.85, 0.18, 1) both;
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+@keyframes canvas-connection-label-in {
+    from {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .canvas-prompt-ref-chip,
+    .canvas-prompt-ref-chip-dragging {
+        transition: none;
+        transform: none;
+    }
+
+    .canvas-connection-label-in {
+        animation: none;
+    }
+}

@@ -34,15 +34,22 @@ export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData
     const sourceNode = nodes.find((node) => node.id === nodeId);
     if (sourceNode?.type === CanvasNodeType.ImageGeneration) {
         const boundPrompt = boundPromptText(sourceNode, nodes);
+        const boundNode = boundPromptNode(sourceNode, nodes);
+        const resourceInputs = boundNode ? flattenGenerationInputs(buildNodeGenerationInputs(boundNode.id, nodes, connections)) : [];
+        let textIndex = 0;
+        const upstreamText = resourceInputs.flatMap((input) => (input.text ? [textBlock(generationLabel("text", textIndex++), input.text)] : [])).join("\n\n");
+        const referenceImages = resourceInputs.map((input) => input.image).filter((image): image is ReferenceImage => Boolean(image));
+        const referenceVideos = resourceInputs.map((input) => input.video).filter((video): video is ReferenceVideo => Boolean(video));
+        const referenceAudios = resourceInputs.map((input) => input.audio).filter((audio): audio is ReferenceAudio => Boolean(audio));
         return {
-            prompt: [prompt, boundPrompt].filter(Boolean).join("\n\n"),
-            referenceImages: [],
-            referenceVideos: [],
-            referenceAudios: [],
+            prompt: [prompt, boundPrompt, upstreamText].filter(Boolean).join("\n\n"),
+            referenceImages,
+            referenceVideos,
+            referenceAudios,
             textCount: boundPrompt ? 1 : 0,
-            imageCount: 0,
-            videoCount: 0,
-            audioCount: 0,
+            imageCount: referenceImages.length,
+            videoCount: referenceVideos.length,
+            audioCount: referenceAudios.length,
         };
     }
     const inputs = buildNodeGenerationInputs(nodeId, nodes, connections);

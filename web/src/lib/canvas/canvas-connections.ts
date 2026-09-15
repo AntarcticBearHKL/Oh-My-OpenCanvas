@@ -11,7 +11,8 @@ const SOURCE_RELATIONS: Record<string, string> = {
     [CanvasNodeType.Image]: "reference",
 };
 
-export function connectionRelationLabel(connection: CanvasConnection, from: CanvasNodeData, to: CanvasNodeData): string {
+export function connectionRelationLabel(connection: CanvasConnection, from: CanvasNodeData, to: CanvasNodeData, referenceIndex?: number): string {
     const relation = connection.relation || SOURCE_RELATIONS[from.type] || "linked";
+    if (relation === "reference" && to.type === CanvasNodeType.Prompt && referenceIndex !== undefined) return i18n.t("canvas.relations.referenceNumbered", { index: referenceIndex + 1 });
     return i18n.t(`canvas.relations.${relation}`);
 }

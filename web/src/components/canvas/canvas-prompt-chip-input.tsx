@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "react";
+import type { CSSProperties, DragEvent, KeyboardEvent, MouseEvent, PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { Image } from "antd";
 import { FileText, Image as ImageIcon, Music2, Video } from "lucide-react";
@@ -8,7 +8,7 @@ import i18n from "@/i18n";
 import { canvasThemes, frostedSurfaceClass } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { isImeComposing, isPlainEnterKey } from "@/lib/keyboard-event";
-import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import { CANVAS_REFERENCE_DRAG_TYPE, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 
 type Props = {
     value: string;
@@ -16,6 +16,7 @@ type Props = {
     onChange: (value: string) => void;
     onSubmit?: () => void;
     className?: string;
+    containerClassName?: string;
     style?: CSSProperties;
     placeholder?: string;
 };
@@ -31,7 +32,7 @@ type Token =
 
 // Prompt-panel contentEditable input: @ references embed thumbnail chips instead of plain label text.
 // Serialization converts chips back to reference labels so the generated value matches the former textarea semantics.
-export function CanvasPromptChipInput({ value, references, onChange, onSubmit, className, style, placeholder }: Props) {
+export function CanvasPromptChipInput({ value, references, onChange, onSubmit, className, containerClassName, style, placeholder }: Props) {
     const theme = useCanvasTheme();
     const editorRef = useRef<HTMLDivElement>(null);
     const composingRef = useRef(false);
@@ -40,6 +41,7 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
     const lastEmittedRef = useRef(value);
     const [mention, setMention] = useState<MentionState | null>(null);
     const [activeIndex, setActiveIndex] = useState(0);
+    const [isDropTarget, setIsDropTarget] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
 
     const activeReferences = useMemo(() => references.filter((item) => item.active), [references]);
@@ -124,10 +126,24 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
         emit(serializeEditor(editor));
     };
 
+    const isReferenceDrag = (event: DragEvent<HTMLDivElement>) => event.dataTransfer.types.includes(CANVAS_REFERENCE_DRAG_TYPE);
+
+    const dropReference = (event: DragEvent<HTMLDivElement>) => {
+        if (!isReferenceDrag(event)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        setIsDropTarget(false);
+        const reference = references.find((item) => item.id === event.dataTransfer.getData(CANVAS_REFERENCE_DRAG_TYPE));
+        if (!reference) return;
+        editorRef.current?.focus();
+        placeCaretFromPoint(event.clientX, event.clientY, editorRef.current);
+        insertReference(reference);
+    };
+
     const showPlaceholder = !value.trim();
 
     return (
-        <div className="relative w-full">
+        <div className={`relative w-full ${containerClassName || ""}`}>
             {showPlaceholder && placeholder ? (
                 <div className="pointer-events-none absolute left-3 top-2 text-sm leading-5" style={{ color: theme.node.placeholder }}>
                     {placeholder}
@@ -140,10 +156,25 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
                 role="textbox"
                 aria-multiline="true"
                 className={`${className || ""} overflow-y-auto whitespace-pre-wrap break-words outline-none`}
-                style={{ ...style, cursor: "text" }}
+                style={{ ...style, cursor: "text", ...(isDropTarget ? { outline: `2px dashed ${theme.node.activeStroke}`, outlineOffset: 2 } : {}) }}
                 onInput={() => {
                     if (!composingRef.current) syncFromEditor();
                 }}
+                onDragEnter={(event) => {
+                    if (!isReferenceDrag(event)) return;
+                    event.preventDefault();
+                    setIsDropTarget(true);
+                }}
+                onDragOver={(event) => {
+                    if (!isReferenceDrag(event)) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "copy";
+                }}
+                onDragLeave={(event) => {
+                    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+                    setIsDropTarget(false);
+                }}
+                onDrop={dropReference}
                 onCompositionStart={() => {
                     composingRef.current = true;
                 }}
@@ -394,6 +425,19 @@ function placeCaretAtEnd(element: HTMLElement) {
     const range = document.createRange();
     range.selectNodeContents(element);
     range.collapse(false);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+}
+
+function placeCaretFromPoint(x: number, y: number, editor: HTMLDivElement | null) {
+    if (!editor) return;
+    const rangeFromPoint = document.caretRangeFromPoint?.bind(document);
+    const range = rangeFromPoint?.(x, y) || null;
+    if (!range || !editor.contains(range.startContainer)) {
+        placeCaretAtEnd(editor);
+        return;
+    }
     const selection = window.getSelection();
     selection?.removeAllRanges();
     selection?.addRange(range);

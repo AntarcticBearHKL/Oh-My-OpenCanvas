@@ -3,6 +3,8 @@ import i18n from "@/i18n";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "@/types/canvas";
 
+export const CANVAS_REFERENCE_DRAG_TYPE = "application/x-canvas-reference";
+
 export type CanvasResourceKind = "image" | "video" | "audio" | "text";
 
 export type CanvasResourceReference = {

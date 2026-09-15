@@ -6,9 +6,11 @@ import { useTranslation } from "react-i18next";
 import { usePromptList } from "@/components/prompts/use-prompt-list";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { ALL_PROMPTS_OPTION, type Prompt } from "@/services/api/prompts";
+import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import type { CanvasNodeData } from "@/types/canvas";
+import { CanvasPromptChipInput } from "./canvas-prompt-chip-input";
 
-export function PromptNodePanel({ node, onContentChange }: { node: CanvasNodeData; onContentChange: (nodeId: string, content: string) => void }) {
+export function PromptNodePanel({ node, references = [], onContentChange }: { node: CanvasNodeData; references?: CanvasResourceReference[]; onContentChange: (nodeId: string, content: string) => void }) {
     const { t } = useTranslation();
     const theme = useCanvasTheme();
     const [pickerOpen, setPickerOpen] = useState(false);
@@ -29,16 +31,17 @@ export function PromptNodePanel({ node, onContentChange }: { node: CanvasNodeDat
                     {t("canvas.promptNode.pick")}
                 </button>
             </div>
-            <textarea
-                value={node.metadata?.prompt || ""}
-                placeholder={t("canvas.promptNode.placeholder")}
-                className="thin-scrollbar min-h-0 w-full flex-1 cursor-text resize-none rounded-xl px-2 py-1.5 text-sm leading-6 outline-none"
-                style={{ background: "transparent", color: theme.node.text }}
-                onMouseDown={(event) => event.stopPropagation()}
-                onPointerDown={(event) => event.stopPropagation()}
-                onWheel={(event) => event.stopPropagation()}
-                onChange={(event) => onContentChange(node.id, event.target.value)}
-            />
+            <div className="flex min-h-0 flex-1 flex-col" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
+                <CanvasPromptChipInput
+                    value={node.metadata?.prompt || ""}
+                    references={references}
+                    onChange={(value) => onContentChange(node.id, value)}
+                    containerClassName="min-h-0 flex-1"
+                    className="thin-scrollbar h-full min-h-0 w-full cursor-text rounded-xl px-2 py-1.5 text-sm leading-6"
+                    style={{ background: "transparent", color: theme.node.text }}
+                    placeholder={t("canvas.promptNode.placeholder")}
+                />
+            </div>
             <PromptLibraryPicker open={pickerOpen} onSelect={(item) => (onContentChange(node.id, item.prompt), setPickerOpen(false))} onClose={() => setPickerOpen(false)} />
         </div>
     );

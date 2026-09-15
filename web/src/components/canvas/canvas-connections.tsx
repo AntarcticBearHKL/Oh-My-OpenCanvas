@@ -7,6 +7,7 @@ export function ConnectionPath({
     from,
     to,
     active,
+    referenceIndex,
     onSelect,
     scale,
 }: {
@@ -14,6 +15,7 @@ export function ConnectionPath({
     from: CanvasNodeData;
     to: CanvasNodeData;
     active: boolean;
+    referenceIndex?: number;
     onSelect: () => void;
     scale: number;
 }) {
@@ -25,7 +27,7 @@ export function ConnectionPath({
     const dx = Math.abs(endX - startX);
     const curvature = Math.max(dx * 0.5, 50);
     const pathD = `M ${startX} ${startY} C ${startX + curvature} ${startY}, ${endX - curvature} ${endY}, ${endX} ${endY}`;
-    const label = connectionRelationLabel(connection, from, to);
+    const label = connectionRelationLabel(connection, from, to, referenceIndex);
 
     return (
         <g>
@@ -52,6 +54,7 @@ export function ConnectionPath({
             {label ? (
                 <text
                     data-connection-id={connection.id}
+                    className={referenceIndex !== undefined ? "canvas-connection-label-in" : undefined}
                     x={(startX + endX) / 2}
                     y={(startY + endY) / 2}
                     textAnchor="middle"
