@@ -335,6 +335,38 @@ const LIB_ASSERTIONS = `(async () => {
     ok("plan workspace maps project file names", workspacePlan[0].fileName === "Alpha.json" && workspacePlan[1].fileName === "Beta.json", workspacePlan.map((item) => item.fileName).join(","));
     ok("plan workspace appends remote-only files last", workspacePlan.length === 3 && workspacePlan[2].projectId === "" && workspacePlan[2].fileName === "Orphan.json", JSON.stringify(workspacePlan[2]));
 
+    const outputFile = await import("/src/lib/workspace/output-file.ts");
+    ok("output file name uses the source title", outputFile.outputFileName("My Image", "img1", "image/png") === "My Image.png", outputFile.outputFileName("My Image", "img1", "image/png"));
+    ok("output file name falls back to the source id", outputFile.outputFileName("   ", "img1", "image/png") === "img1.png", outputFile.outputFileName("   ", "img1", "image/png"));
+    ok("output file name strips path-illegal characters", outputFile.outputFileName('a/b:c*d?e"f<g>h|i', "x", "image/jpeg") === "abcdefghi.jpg", outputFile.outputFileName('a/b:c*d?e"f<g>h|i', "x", "image/jpeg"));
+    ok("output file name defaults the extension to png", outputFile.outputFileName("shot", "x") === "shot.png", outputFile.outputFileName("shot", "x"));
+    ok(
+        "output extension maps the mime type",
+        outputFile.outputFileExtension("video/webm") === "webm" && outputFile.outputFileExtension("audio/mpeg") === "mp3" && outputFile.outputFileExtension("image/webp") === "webp",
+        outputFile.outputFileExtension("video/webm") + "," + outputFile.outputFileExtension("audio/mpeg"),
+    );
+    ok(
+        "output extension falls back to the storage key",
+        outputFile.outputFileExtension(undefined, "video:1") === "mp4" && outputFile.outputFileExtension(undefined, "audio:1") === "mp3" && outputFile.outputFileExtension(undefined, "image:1") === "png",
+        outputFile.outputFileExtension(undefined, "video:1"),
+    );
+    ok("output fingerprint uses the storage key when present", outputFile.outputSourceFingerprint("s1", "image:1", "ignored") === "s1:image:1", outputFile.outputSourceFingerprint("s1", "image:1", "ignored"));
+    ok("output fingerprint falls back to the content length and prefix", outputFile.outputSourceFingerprint("s1", undefined, "abcdef") === "s1:6:abcdef", outputFile.outputSourceFingerprint("s1", undefined, "abcdef"));
+    ok(
+        "output fingerprint changes when the content changes",
+        outputFile.outputSourceFingerprint("s1", undefined, "aaaa") !== outputFile.outputSourceFingerprint("s1", undefined, "bbbb"),
+        outputFile.outputSourceFingerprint("s1", undefined, "aaaa"),
+    );
+
+    const outputStore = await import("/src/stores/use-output-folder-store.ts");
+    ok("output folder uses its own handle key", outputStore.OUTPUT_FOLDER_HANDLE_KEY === "output-folder", outputStore.OUTPUT_FOLDER_HANDLE_KEY);
+    const unwritten = await outputStore.useOutputFolderStore.getState().writeOutput("noop.png", new Blob(["x"], { type: "image/png" }));
+    ok(
+        "output write without a bound folder never throws and reports unbound",
+        unwritten === false && outputStore.useOutputFolderStore.getState().status === "unbound" && outputStore.useOutputFolderStore.getState().lastWritten === null,
+        unwritten + "," + outputStore.useOutputFolderStore.getState().status,
+    );
+
     const algorithms = await import("/src/lib/image/image-algorithms.ts");
     const cropClamped = algorithms.resolveSmartCropArea(100, 80, 1, { x: -5, y: -3, width: 200, height: 200 });
     ok("smart crop clamps into image bounds", cropClamped.x === 0 && cropClamped.y === 0 && cropClamped.width === 100 && cropClamped.height === 80, JSON.stringify(cropClamped));

@@ -123,6 +123,7 @@ export type CanvasNodeMetadata = {
     locked?: boolean;
     hidden?: boolean;
     assetFolderName?: string;
+    outputFolderName?: string;
     seed?: number;
     generationVersions?: CanvasGenerationVersion[];
     matrix?: GenerationMatrix;

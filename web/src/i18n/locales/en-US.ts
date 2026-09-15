@@ -165,7 +165,7 @@ export default {
         miniMapClose: "Close minimap",
         resetView: "Reset view",
         nodeTypes: { image: "Image", text: "Text", prompt: "Prompt", config: "Generation config", imageGeneration: "Image generation", video: "Video", audio: "Audio", smartCanvas: "Smart Canvas", output: "Output", assetInput: "Asset input" },
-        output: { empty: "No input connected", source: "Source: {{name}}", defaultBadge: "Default output", conflictHint: "Multiple output nodes exist; the default is \"{{name}}\"" },
+        output: { empty: "No input connected", source: "Source: {{name}}", defaultBadge: "Default output", conflictHint: "Multiple output nodes exist; the default is \"{{name}}\"", folderBind: "Bind folder", folderRebind: "Change folder", folderUnbind: "Unbind", folderUnbound: "No folder bound", folderUnsupported: "Not supported in this browser", folderWriting: "Writing…", folderFailed: "Write failed" },
         relations: { reference: "Reference image", "video-reference": "Reference video", "audio-reference": "Reference audio", prompt: "Prompt", composite: "Composite", generation: "Generation result", crop: "Cropped", split: "Split", upscale: "Upscaled", "ai-upscale": "Enhanced", mask: "Mask edited", "background-removal": "Background removed", frame: "Video frame", linked: "Linked" },
         toolbar: {
             select: "Select", pan: "Move", text: "Text", image: "Image", video: "Video", audio: "Audio", config: "Generation config", extensions: "Extension nodes", upload: "Upload assets", zoom: "Zoom",

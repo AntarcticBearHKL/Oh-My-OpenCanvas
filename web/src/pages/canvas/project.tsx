@@ -77,6 +77,8 @@ import {
 } from "@/lib/canvas/canvas-generation-helpers";
 import { getNodeDefinition, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
 import { describeOutputSource, outputNodesConflict, pickDefaultOutput, resolveLatestUpstream } from "@/lib/canvas/output-resolution";
+import { outputFileName, outputSourceFingerprint, resolveOutputBlob } from "@/lib/workspace/output-file";
+import { useOutputFolderStore } from "@/stores/use-output-folder-store";
 import { registerBuiltinNodes } from "@/components/canvas/nodes/builtin-nodes";
 import { CanvasPluginManagerModal } from "@/components/canvas/canvas-plugin-manager-modal";
 import { CanvasRefreshShell } from "@/components/canvas/canvas-refresh-shell";
@@ -179,6 +181,10 @@ function InfiniteCanvasPage() {
     const renameProject = useCanvasStore((state) => state.renameProject);
     const currentProject = useCanvasStore((state) => state.projects.find((project) => project.id === projectId));
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
+    const outputFolderName = useOutputFolderStore((state) => state.folderName);
+    const outputFolderStatus = useOutputFolderStore((state) => state.status);
+    const outputFolderSupported = useOutputFolderStore((state) => state.supported);
+    const outputWriteFingerprints = useRef(new Map<string, string>());
     const [nodes, setNodes] = useState<CanvasNodeData[]>([]);
     const [connections, setConnections] = useState<CanvasConnection[]>([]);
     const [chatSessions, setChatSessions] = useState<CanvasAssistantSession[]>([]);
@@ -1218,6 +1224,40 @@ function InfiniteCanvasPage() {
         setNodes((prev) => prev.map((node) => (node.id === nodeId ? applyNodeConfigPatch(node, patch) : node)));
     }, []);
 
+    const handleOutputFolderBind = useCallback(async (nodeId: string) => {
+        if (!(await useOutputFolderStore.getState().bindFolder())) return;
+        handleConfigNodeChange(nodeId, { outputFolderName: useOutputFolderStore.getState().folderName });
+    }, [handleConfigNodeChange]);
+
+    const handleOutputFolderUnbind = useCallback((nodeId: string) => {
+        handleConfigNodeChange(nodeId, { outputFolderName: undefined });
+        void useOutputFolderStore.getState().clear();
+    }, [handleConfigNodeChange]);
+
+    useEffect(() => {
+        void useOutputFolderStore.getState().restore();
+    }, []);
+
+    useEffect(() => {
+        if (!outputFolderName) return;
+        outputSourceById.forEach((source, outputId) => {
+            if (!source || source.type === CanvasNodeType.Text) return;
+            if (!nodeById.get(outputId)?.metadata?.outputFolderName) return;
+            const fingerprint = outputSourceFingerprint(source.id, source.metadata?.storageKey, source.metadata?.content);
+            if (outputWriteFingerprints.current.get(outputId) === fingerprint) return;
+            outputWriteFingerprints.current.set(outputId, fingerprint);
+            void (async () => {
+                try {
+                    const blob = await resolveOutputBlob(source);
+                    if (!blob) return;
+                    await useOutputFolderStore.getState().writeOutput(outputFileName(source.title, source.id, source.metadata?.mimeType, source.metadata?.storageKey), blob);
+                } catch {
+                    useOutputFolderStore.setState({ status: "error" });
+                }
+            })();
+        });
+    }, [nodeById, outputFolderName, outputSourceById]);
+
     const handleSmartCanvasChange = useCallback((nodeId: string, patch: Partial<CanvasNodeMetadata>) => {
         setNodes((prev) =>
             prev.map((node) => {
@@ -1897,6 +1937,11 @@ function InfiniteCanvasPage() {
                             isDefaultOutput={defaultOutputNode?.id === node.id}
                             defaultOutputTitle={defaultOutputNode ? describeOutputSource(defaultOutputNode) : ""}
                             outputConflict={hasOutputConflict}
+                            outputFolderName={node.metadata?.outputFolderName}
+                            outputFolderStatus={node.type === CanvasNodeType.Output ? outputFolderStatus : undefined}
+                            outputFolderSupported={outputFolderSupported}
+                            onOutputFolderBind={handleOutputFolderBind}
+                            onOutputFolderUnbind={handleOutputFolderUnbind}
                             onBoardTextsChange={handleBoardTextsChange}
                             batchExpanded={expandedBatchNodeIds.has(node.id)}
                             mentionReferences={mentionReferencesByNodeId.get(node.id) || EMPTY_REFERENCES}

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ChevronRight, Copy, Download, Image as ImageIcon, Info, LayoutDashboard, Lock, Music2, Puzzle, Radio, RefreshCw, Sparkles, Star, Trash2, Video } from "lucide-react";
+import { ChevronRight, Copy, Download, FolderInput, Image as ImageIcon, Info, LayoutDashboard, Lock, Music2, Puzzle, Radio, RefreshCw, Sparkles, Star, Trash2, Video, X } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { isCanvasOverlayTarget } from "@/lib/canvas/canvas-overlays";
@@ -17,6 +17,7 @@ import { PromptContent } from "./nodes/prompt-node-content";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeImage, type CanvasNodeMetadata, type CanvasNodeText, type Position } from "@/types/canvas";
 import type { CanvasNodeContext, CanvasPluginHost } from "@/types/canvas-plugin";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import type { OutputFolderStatus } from "@/stores/use-output-folder-store";
 import { useTranslation } from "react-i18next";
 
 type ResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
@@ -49,6 +50,11 @@ type CanvasNodeProps = {
     isDefaultOutput?: boolean;
     defaultOutputTitle?: string | null;
     outputConflict?: boolean;
+    outputFolderName?: string;
+    outputFolderStatus?: OutputFolderStatus;
+    outputFolderSupported?: boolean;
+    onOutputFolderBind?: (nodeId: string) => void;
+    onOutputFolderUnbind?: (nodeId: string) => void;
     batchExpanded?: boolean;
     onBoardTextsChange?: (nodeId: string, texts: NonNullable<CanvasNodeMetadata["boardTexts"]>) => void;
     onMouseDown: (event: React.MouseEvent, nodeId: string) => void;
@@ -100,6 +106,11 @@ type NodeContentRendererProps = {
     isDefaultOutput?: boolean;
     defaultOutputTitle?: string | null;
     outputConflict?: boolean;
+    outputFolderName?: string;
+    outputFolderStatus?: OutputFolderStatus;
+    outputFolderSupported?: boolean;
+    onOutputFolderBind?: () => void;
+    onOutputFolderUnbind?: () => void;
     onBoardTextsChange?: (nodeId: string, texts: NonNullable<CanvasNodeMetadata["boardTexts"]>) => void;
 };
 
@@ -125,6 +136,11 @@ export const CanvasNode = React.memo(function CanvasNode({
     isDefaultOutput,
     defaultOutputTitle,
     outputConflict,
+    outputFolderName,
+    outputFolderStatus,
+    outputFolderSupported,
+    onOutputFolderBind,
+    onOutputFolderUnbind,
     batchExpanded = false,
     onBoardTextsChange,
     onMouseDown,
@@ -467,6 +483,11 @@ export const CanvasNode = React.memo(function CanvasNode({
                         isDefaultOutput={isDefaultOutput}
                         defaultOutputTitle={defaultOutputTitle}
                         outputConflict={outputConflict}
+                        outputFolderName={outputFolderName}
+                        outputFolderStatus={outputFolderStatus}
+                        outputFolderSupported={outputFolderSupported}
+                        onOutputFolderBind={() => onOutputFolderBind?.(data.id)}
+                        onOutputFolderUnbind={() => onOutputFolderUnbind?.(data.id)}
                         onBoardTextsChange={onBoardTextsChange}
                     />
                 </div>
@@ -802,10 +823,12 @@ function AudioNodeContent({ node, theme }: NodeContentRendererProps) {
     );
 }
 
-function OutputContent({ theme, outputSource, isDefaultOutput, defaultOutputTitle, outputConflict }: NodeContentRendererProps) {
+function OutputContent({ theme, outputSource, isDefaultOutput, defaultOutputTitle, outputConflict, outputFolderName, outputFolderStatus, outputFolderSupported, onOutputFolderBind, onOutputFolderUnbind }: NodeContentRendererProps) {
     const { t } = useTranslation();
     const source = outputSource || null;
     const content = source?.metadata?.content || source?.metadata?.prompt || "";
+    const folderStatus = outputFolderStatus === "writing" ? t("canvas.output.folderWriting") : outputFolderStatus === "error" ? t("canvas.output.folderFailed") : "";
+    const folderLabel = outputFolderName || t("canvas.output.folderUnbound");
     return (
         <div className="flex h-full w-full flex-col overflow-hidden rounded-[inherit]">
             {isDefaultOutput || source ? (
@@ -841,6 +864,38 @@ function OutputContent({ theme, outputSource, isDefaultOutput, defaultOutputTitl
                         <Radio className="size-6 opacity-35" />
                         <span className="text-sm">{t("canvas.output.empty")}</span>
                     </div>
+                )}
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5 pl-3 pr-6 pb-2 pt-1 text-[11px]" style={{ color: theme.node.muted }}>
+                <FolderInput className="size-3.5 shrink-0" />
+                <span className="min-w-0 flex-1 truncate">{folderStatus ? `${folderLabel} · ${folderStatus}` : folderLabel}</span>
+                {outputFolderSupported ? (
+                    <>
+                        <button
+                            type="button"
+                            className="flex h-6 shrink-0 items-center rounded-md px-1.5 text-[10px] font-medium transition hover:bg-black/5 dark:hover:bg-white/10"
+                            style={{ color: theme.node.text }}
+                            onClick={onOutputFolderBind}
+                            onMouseDown={(event) => event.stopPropagation()}
+                        >
+                            {outputFolderName ? t("canvas.output.folderRebind") : t("canvas.output.folderBind")}
+                        </button>
+                        {outputFolderName ? (
+                            <button
+                                type="button"
+                                className="grid size-6 shrink-0 place-items-center rounded-md transition hover:bg-black/5 dark:hover:bg-white/10"
+                                style={{ color: theme.node.text }}
+                                aria-label={t("canvas.output.folderUnbind")}
+                                title={t("canvas.output.folderUnbind")}
+                                onClick={onOutputFolderUnbind}
+                                onMouseDown={(event) => event.stopPropagation()}
+                            >
+                                <X className="size-3.5" />
+                            </button>
+                        ) : null}
+                    </>
+                ) : (
+                    <span className="shrink-0 text-[10px]">{t("canvas.output.folderUnsupported")}</span>
                 )}
             </div>
         </div>
