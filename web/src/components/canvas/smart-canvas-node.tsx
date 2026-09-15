@@ -60,7 +60,7 @@ export function SmartCanvasNodeContent({ node, boardLayers = EMPTY_BOARD_LAYERS,
 
     return (
         <div
-            className={`relative h-full w-full overflow-hidden rounded-[inherit] ${frostedSurfaceClass}`}
+            className={`relative h-full w-full overflow-hidden rounded-[inherit] canvas-glass-card ${frostedSurfaceClass}`}
             style={{ backgroundColor: background === "transparent" ? theme.toolbar.panel : background, backgroundImage: `linear-gradient(${gridColor} 1px, transparent 1px), linear-gradient(90deg, ${gridColor} 1px, transparent 1px)`, backgroundSize: "24px 24px", isolation: "isolate" }}
         >
             <BoardLayersView node={node} layers={boardLayers} byId={boardLayersById} visited={new Set([node.id])} />

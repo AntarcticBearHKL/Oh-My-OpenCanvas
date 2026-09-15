@@ -30,6 +30,9 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
         startedOnBackground: false,
     });
     const scaleRef = useRef(viewport.k);
+    const viewportRef = useRef(viewport);
+    const wheelRef = useRef({ delta: 0, clientX: 0, clientY: 0 });
+    const zoomMarkerRef = useRef<number | null>(null);
     const frameRef = useRef<number | null>(null);
     const nextViewportRef = useRef<ViewportTransform | null>(null);
     const [isSpacePressed, setIsSpacePressed] = useState(false);
@@ -38,11 +41,13 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
 
     useEffect(() => {
         scaleRef.current = viewport.k;
-    }, [viewport.k]);
+        viewportRef.current = viewport;
+    }, [viewport]);
 
     useEffect(
         () => () => {
             if (frameRef.current) cancelAnimationFrame(frameRef.current);
+            if (zoomMarkerRef.current) window.clearTimeout(zoomMarkerRef.current);
         },
         [],
     );
@@ -85,24 +90,43 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
     }, []);
 
     const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-        const target = event.target instanceof Element ? event.target : null;
         if (isCanvasOverlayTarget(event.target)) return;
+        const container = containerRef.current;
+        if (!container) return;
 
-        const delta = -event.deltaY;
-        const factor = Math.pow(1.1, delta / 100);
-        const newScale = Math.min(Math.max(viewport.k * factor, 0.05), 5);
-        const rect = containerRef.current?.getBoundingClientRect();
-        if (!rect) return;
+        const wheel = wheelRef.current;
+        wheel.delta += -event.deltaY;
+        wheel.clientX = event.clientX;
+        wheel.clientY = event.clientY;
 
-        const mouseX = event.clientX - rect.left;
-        const mouseY = event.clientY - rect.top;
-        const worldX = (mouseX - viewport.x) / viewport.k;
-        const worldY = (mouseY - viewport.y) / viewport.k;
+        container.dataset.canvasZooming = "true";
+        if (zoomMarkerRef.current) window.clearTimeout(zoomMarkerRef.current);
+        zoomMarkerRef.current = window.setTimeout(() => {
+            zoomMarkerRef.current = null;
+            delete containerRef.current?.dataset.canvasZooming;
+        }, 160);
 
-        onViewportChange({
-            x: mouseX - worldX * newScale,
-            y: mouseY - worldY * newScale,
-            k: newScale,
+        if (frameRef.current) return;
+        frameRef.current = requestAnimationFrame(() => {
+            frameRef.current = null;
+            const rect = containerRef.current?.getBoundingClientRect();
+            if (!rect) return;
+            const pending = wheelRef.current;
+            const delta = pending.delta;
+            pending.delta = 0;
+            if (!delta) return;
+            const current = viewportRef.current;
+            const factor = Math.pow(1.1, delta / 100);
+            const newScale = Math.min(Math.max(current.k * factor, 0.05), 5);
+            const mouseX = pending.clientX - rect.left;
+            const mouseY = pending.clientY - rect.top;
+            const worldX = (mouseX - current.x) / current.k;
+            const worldY = (mouseY - current.y) / current.k;
+            onViewportChange({
+                x: mouseX - worldX * newScale,
+                y: mouseY - worldY * newScale,
+                k: newScale,
+            });
         });
     };
 

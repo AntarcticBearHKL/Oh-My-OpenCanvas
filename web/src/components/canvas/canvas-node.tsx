@@ -387,7 +387,7 @@ export const CanvasNode = React.memo(function CanvasNode({
             )}
 
             <div
-                className={`relative h-full w-full overflow-visible rounded-3xl border-2 ${frostedCard ? frostedSurfaceClass : ""}`}
+                className={`relative h-full w-full overflow-visible rounded-3xl border-2 ${frostedCard ? `canvas-glass-card ${frostedSurfaceClass}` : ""}`}
                 style={{
                     background: hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.toolbar.panel,
                     borderColor: hasImageContent ? imageBorderColor : isBoard && isBoardDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : "transparent",
