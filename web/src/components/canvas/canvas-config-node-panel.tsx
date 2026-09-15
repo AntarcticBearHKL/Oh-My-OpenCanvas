@@ -3,6 +3,7 @@ import { Braces, Grid3x3, Image as ImageIcon, LoaderCircle, MessageSquare, Music
 import { Button, Segmented } from "antd";
 import { useTranslation } from "react-i18next";
 
+import { ImageSettingsPanel } from "@/components/image-settings-panel";
 import { ModelPicker } from "@/components/model-picker";
 import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -107,9 +108,9 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                 {summaryParts.length ? summaryParts.join(" · ") : t("canvas.configNode.noInputs")}
             </div>
 
-            <div className="mb-1.5 grid min-w-0 cursor-default grid-cols-[minmax(0,1fr)_148px] items-center gap-2" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="mb-1.5 flex min-w-0 cursor-default items-center gap-2" onMouseDown={(event) => event.stopPropagation()}>
                 <ModelPicker
-                    className="canvas-compact-control h-9 !rounded-lg !border-transparent !bg-transparent hover:!bg-black/5 dark:hover:!bg-white/10"
+                    className="canvas-compact-control h-9 min-w-0 flex-1 !rounded-lg !border-transparent !bg-transparent hover:!bg-black/5 dark:hover:!bg-white/10"
                     config={config}
                     value={config.model}
                     onChange={(model) => onConfigChange(node.id, { model })}
@@ -124,14 +125,6 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                         buttonClassName="canvas-compact-control !h-9 !w-full !justify-start !rounded-lg !px-2"
                         onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value))}
                     />
-                ) : mode === "image" ? (
-                    <CanvasImageSettingsPopover
-                        config={config}
-                        placement="topRight"
-                        autoAdjustOverflow={false}
-                        buttonClassName="canvas-compact-control !h-9 !w-full !justify-start !rounded-lg !px-2"
-                        onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })}
-                    />
                 ) : mode === "audio" ? (
                     <CanvasAudioSettingsPopover
                         config={config}
@@ -139,7 +132,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                         buttonClassName="canvas-compact-control !h-9 !w-full !justify-start !rounded-lg !px-2"
                         onConfigChange={(key, value) => onConfigChange(node.id, audioConfigPatch(key, value))}
                     />
-                ) : (
+                ) : mode === "text" ? (
                     <CanvasTextSettingsPopover
                         config={config}
                         count={node.metadata?.textCount || 1}
@@ -148,8 +141,21 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                         onConfigChange={(_, value) => onConfigChange(node.id, { reasoningEffort: value })}
                         onCountChange={(textCount) => onConfigChange(node.id, { textCount })}
                     />
-                )}
+                ) : null}
             </div>
+
+            {mode === "image" ? (
+                <div className="thin-scrollbar mb-1.5 min-h-0 flex-1 overflow-y-auto pr-0.5" onWheel={(event) => event.stopPropagation()}>
+                    <ImageSettingsPanel
+                        config={config}
+                        compact
+                        showTitle={false}
+                        className="space-y-2"
+                        theme={theme}
+                        onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })}
+                    />
+                </div>
+            ) : null}
 
             <div className="mt-auto flex min-w-0 flex-wrap items-center gap-1" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                 {isImageGenerationNode ? null : (

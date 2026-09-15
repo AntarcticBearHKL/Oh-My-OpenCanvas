@@ -15,7 +15,7 @@ export const NODE_DEFAULT_SIZE = {
     [CanvasNodeType.Text]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.text"); } },
     [CanvasNodeType.Prompt]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.prompt"); } },
     [CanvasNodeType.Config]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.config"); } },
-    [CanvasNodeType.ImageGeneration]: { width: 340, height: 180, get title() { return i18n.t("canvas.nodeTypes.imageGeneration"); } },
+    [CanvasNodeType.ImageGeneration]: { width: 340, height: 560, get title() { return i18n.t("canvas.nodeTypes.imageGeneration"); } },
     [CanvasNodeType.Video]: { width: 420, height: 236, get title() { return i18n.t("canvas.nodeTypes.video"); } },
     [CanvasNodeType.Audio]: { width: 340, height: 120, get title() { return i18n.t("canvas.nodeTypes.audio"); } },
     [CanvasNodeType.SmartCanvas]: { width: 640, height: 360, get title() { return i18n.t("canvas.nodeTypes.smartCanvas"); } },
@@ -41,7 +41,7 @@ export const NODE_SPECS = {
         metadata: { content: "", status: "idle", generationMode: "image" },
     },
     [CanvasNodeType.ImageGeneration]: {
-        width: 340, height: 180, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.ImageGeneration].title; },
+        width: 340, height: 560, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.ImageGeneration].title; },
         metadata: { status: "idle", generationMode: "image" },
     },
     [CanvasNodeType.Video]: {
