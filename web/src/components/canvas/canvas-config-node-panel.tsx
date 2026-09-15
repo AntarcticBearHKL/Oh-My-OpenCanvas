@@ -103,12 +103,20 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                 </div>
             )}
 
-            <div className="mb-1.5 min-w-0 truncate text-[11px]" style={{ color: theme.node.muted }}>
+            <div className="mb-1.5 min-w-0 truncate text-[11px]" style={{ color: theme.node.label }}>
                 {summaryParts.length ? summaryParts.join(" · ") : t("canvas.configNode.noInputs")}
             </div>
 
             <div className="mb-1.5 grid min-w-0 cursor-default grid-cols-[minmax(0,1fr)_148px] items-center gap-2" onMouseDown={(event) => event.stopPropagation()}>
-                <ModelPicker className="canvas-compact-control h-9" config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability={mode} onMissingConfig={() => openConfigDialog()} fullWidth />
+                <ModelPicker
+                    className="canvas-compact-control h-9 !rounded-lg !border-transparent !bg-transparent hover:!bg-black/5 dark:hover:!bg-white/10"
+                    config={config}
+                    value={config.model}
+                    onChange={(model) => onConfigChange(node.id, { model })}
+                    capability={mode}
+                    onMissingConfig={() => openConfigDialog()}
+                    fullWidth
+                />
                 {mode === "video" ? (
                     <CanvasVideoSettingsPopover
                         config={config}
@@ -143,7 +151,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                 )}
             </div>
 
-            <div className="mb-2 flex min-w-0 flex-wrap items-center gap-1" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+            <div className="mt-auto flex min-w-0 flex-wrap items-center gap-1" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                 {isImageGenerationNode ? null : (
                     <button type="button" className={flatButtonClass} style={{ color: theme.node.text }} onClick={onComposerToggle}>
                         <Settings2 className="size-3.5" />
@@ -167,31 +175,31 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                 ) : null}
             </div>
 
-            <div className="flex-1" />
-
-            <Button
-                type="primary"
-                className="!h-9 !w-full !cursor-pointer !rounded-lg"
-                danger={isRunning}
-                disabled={!isRunning && !canGenerate}
-                onMouseDown={(event) => event.stopPropagation()}
-                onClick={() => (isRunning ? onStop(node.id) : onGenerate(node.id))}
-            >
-                <span className="inline-flex items-center gap-1.5">
-                    {isRunning ? (
-                        <>
-                            <LoaderCircle className="size-4 animate-spin" />
-                            <Square className="size-3.5 fill-current" />
-                            <span>{t("canvas.configNode.stop")}</span>
-                        </>
-                    ) : (
-                        <>
-                            <Play className="size-4" />
-                            <span>{matrixVariantCount > 1 ? t("canvas.configNode.generateVariants", { count: matrixVariantCount }) : t("canvas.configNode.generate")}</span>
-                        </>
-                    )}
-                </span>
-            </Button>
+            <div className="ml-auto shrink-0">
+                <Button
+                    type="primary"
+                    className="!h-9 !cursor-pointer !rounded-full !px-4"
+                    danger={isRunning}
+                    disabled={!isRunning && !canGenerate}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onClick={() => (isRunning ? onStop(node.id) : onGenerate(node.id))}
+                >
+                    <span className="inline-flex items-center gap-1.5">
+                        {isRunning ? (
+                            <>
+                                <LoaderCircle className="size-4 animate-spin" />
+                                <Square className="size-3.5 fill-current" />
+                                <span>{t("canvas.configNode.stop")}</span>
+                            </>
+                        ) : (
+                            <>
+                                <Play className="size-4" />
+                                <span>{matrixVariantCount > 1 ? t("canvas.configNode.generateVariants", { count: matrixVariantCount }) : t("canvas.configNode.generate")}</span>
+                            </>
+                        )}
+                    </span>
+                </Button>
+            </div>
             <CanvasGenerationMatrixDialog
                 open={matrixOpen}
                 matrix={node.metadata?.matrix}
