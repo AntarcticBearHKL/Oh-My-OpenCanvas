@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ChevronRight, Copy, Download, Image as ImageIcon, Info, LayoutDashboard, Lock, Music2, Puzzle, Radio, RefreshCw, Sparkles, Star, Trash2, Video } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
+import { isCanvasOverlayTarget } from "@/lib/canvas/canvas-overlays";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
 import { ensureThumbnailUrl } from "@/services/image-storage";
@@ -345,6 +346,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 onHoverEnd(data.id);
             }}
             onMouseDownCapture={(event) => {
+                if (isCanvasOverlayTarget(event.target)) return;
                 if (!referenceSelectionState) onSelectCapture?.(event, data.id);
             }}
         >
@@ -395,6 +397,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                     boxShadow: isActive ? `0 0 0 1px ${selectionBlue}55` : isRelated ? `0 0 0 1px ${theme.node.muted}55` : undefined,
                 }}
                 onMouseDown={(event) => {
+                    if (isCanvasOverlayTarget(event.target)) return;
                     if (!referenceSelectionState) onMouseDown(event, data.id);
                     else if (event.button === 0 && referenceSelectionState === "available") {
                         event.stopPropagation();
@@ -402,6 +405,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                     }
                 }}
                 onDoubleClick={(event) => {
+                    if (isCanvasOverlayTarget(event.target)) return;
                     if (referenceSelectionState) {
                         event.stopPropagation();
                         return;
