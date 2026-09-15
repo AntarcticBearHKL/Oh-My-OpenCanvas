@@ -11,21 +11,21 @@ function openDatabase(): Promise<IDBDatabase> {
     });
 }
 
-export async function saveDirectoryHandle(handle: FileSystemDirectoryHandle): Promise<void> {
+export async function saveDirectoryHandle(handle: FileSystemDirectoryHandle, key = HANDLE_KEY): Promise<void> {
     const database = await openDatabase();
     await new Promise<void>((resolve, reject) => {
         const transaction = database.transaction(STORE_NAME, "readwrite");
-        transaction.objectStore(STORE_NAME).put(handle, HANDLE_KEY);
+        transaction.objectStore(STORE_NAME).put(handle, key);
         transaction.oncomplete = () => resolve();
         transaction.onerror = () => reject(transaction.error);
     });
     database.close();
 }
 
-export async function loadDirectoryHandle(): Promise<FileSystemDirectoryHandle | null> {
+export async function loadDirectoryHandle(key = HANDLE_KEY): Promise<FileSystemDirectoryHandle | null> {
     const database = await openDatabase();
     const handle = await new Promise<FileSystemDirectoryHandle | null>((resolve, reject) => {
-        const request = database.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).get(HANDLE_KEY);
+        const request = database.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).get(key);
         request.onsuccess = () => resolve(request.result || null);
         request.onerror = () => reject(request.error);
     });
@@ -33,11 +33,11 @@ export async function loadDirectoryHandle(): Promise<FileSystemDirectoryHandle |
     return handle;
 }
 
-export async function clearDirectoryHandle(): Promise<void> {
+export async function clearDirectoryHandle(key = HANDLE_KEY): Promise<void> {
     const database = await openDatabase();
     await new Promise<void>((resolve, reject) => {
         const transaction = database.transaction(STORE_NAME, "readwrite");
-        transaction.objectStore(STORE_NAME).delete(HANDLE_KEY);
+        transaction.objectStore(STORE_NAME).delete(key);
         transaction.oncomplete = () => resolve();
         transaction.onerror = () => reject(transaction.error);
     });

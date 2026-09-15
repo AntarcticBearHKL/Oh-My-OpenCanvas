@@ -26,6 +26,7 @@ import { NODE_DEFAULT_SIZE, getNodeSpec } from "@/constant/canvas";
 import { ActiveConnectionPath, ConnectionPath } from "@/components/canvas/canvas-connections";
 import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
 import { CanvasConfigNodePanel } from "@/components/canvas/canvas-config-node-panel";
+import { AssetInputNodeContent } from "@/components/canvas/nodes/asset-input-node-content";
 import { CanvasImageAnalysisDialog } from "@/components/canvas/canvas-image-analysis-dialog";
 import { CanvasNodeAngleDialog } from "@/components/canvas/canvas-node-angle-dialog";
 import { CanvasNodeCropDialog, type CanvasImageCropRect } from "@/components/canvas/canvas-node-crop-dialog";
@@ -995,7 +996,7 @@ function InfiniteCanvasPage() {
         };
     }, [finishNodeDrag, handleGlobalMouseMove, handleGlobalMouseUp, handleGlobalPointerMove]);
 
-    const { handleUploadRequest, handleImageInputChange, handleAssetInsert, handleDrop, pasteSystemClipboard } = useCanvasInsertion({
+    const { handleUploadRequest, handleImageInputChange, handleAssetInsert, insertFolderFile, handleDrop, pasteSystemClipboard } = useCanvasInsertion({
         containerRef,
         imageInputRef,
         uploadTargetRef,
@@ -1795,6 +1796,7 @@ function InfiniteCanvasPage() {
     const renderNodeContentPanel = useCallback(
         (contentNode: CanvasNodeData) => {
             if (contentNode.type === CanvasNodeType.Prompt) return <PromptNodePanel node={contentNode} onContentChange={handleNodeContentChange} />;
+            if (contentNode.type === CanvasNodeType.AssetInput) return <AssetInputNodeContent node={contentNode} onInsert={(file) => void insertFolderFile(file)} />;
             return (
             <CanvasConfigNodePanel
                 node={contentNode}
@@ -1811,7 +1813,7 @@ function InfiniteCanvasPage() {
             />
             );
         },
-        [configInputsById, confirmStopGeneration, handleConfigNodeChange, handleGenerateMatrix, handleNodeContentChange, handleReplayNode, runningNodeId],
+        [configInputsById, confirmStopGeneration, handleConfigNodeChange, handleGenerateMatrix, handleNodeContentChange, handleReplayNode, insertFolderFile, runningNodeId],
     );
 
     if (!projectLoaded) return <CanvasRefreshShell />;
@@ -1821,7 +1823,7 @@ function InfiniteCanvasPage() {
 
     return (
         <main className="relative flex h-full min-h-0 overflow-hidden" style={{ background: theme.canvas.background, color: theme.node.text }}>
-            <CanvasSidePanel onInsertAsset={handleAssetInsert} />
+            <CanvasSidePanel />
             <section className="relative min-w-0 flex-1 overflow-hidden">
                 <CanvasTopBar
                     title={currentProject?.title || t("canvas.projectPage.untitledCanvas")}
@@ -2011,6 +2013,7 @@ function InfiniteCanvasPage() {
                     onAddAudio={() => createNode(CanvasNodeType.Audio)}
                     onAddSmartCanvas={() => createNode(CanvasNodeType.SmartCanvas)}
                     onAddOutput={() => createNode(CanvasNodeType.Output)}
+                    onAddAssetInput={() => createNode(CanvasNodeType.AssetInput)}
                     onAddExtensionNode={(type) => createNode(type)}
                     onUndo={undoCanvas}
                     onRedo={redoCanvas}

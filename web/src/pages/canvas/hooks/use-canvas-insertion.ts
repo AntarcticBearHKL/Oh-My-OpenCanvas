@@ -10,7 +10,9 @@ import { fitNodeSize } from "@/lib/canvas/canvas-node-size";
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { createCanvasNode, audioMetadata, imageMetadata, videoMetadata } from "@/lib/canvas/canvas-node-factory";
 import { isAudioFile } from "@/lib/canvas/canvas-generation-helpers";
+import { ASSET_FOLDER_DRAG_MIME, classifyAssetFolderFile } from "@/lib/canvas/asset-folder";
 import { NODE_STATUS_SUCCESS, VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH } from "@/lib/canvas/canvas-node-constants";
+import { useAssetFolderStore } from "@/stores/use-asset-folder-store";
 import type { InsertAssetPayload } from "@/components/canvas/asset-picker-modal";
 import { CanvasNodeType, type CanvasAssistantImage, type CanvasNodeData, type Position } from "@/types/canvas";
 
@@ -343,6 +345,29 @@ export function useCanvasInsertion(params: CanvasInsertionParams) {
         [insertAssistantImage, insertAssistantText, screenToCanvas, size.height, size.width],
     );
 
+    const insertFolderFile = useCallback(
+        async (file: File, position?: Position) => {
+            const kind = classifyAssetFolderFile(file);
+            if (!kind) return;
+            if (kind === "text") {
+                insertAssistantText(await file.text(), file.name, position);
+                return;
+            }
+            if (kind === "audio") {
+                void createAudioFileNode(file, position || getCanvasCenter());
+                return;
+            }
+            if (kind === "video") {
+                const video = await uploadMediaFile(file, "video");
+                handleAssetInsert({ kind: "video", url: video.url, storageKey: video.storageKey, title: file.name, width: video.width, height: video.height }, position);
+                return;
+            }
+            const image = await uploadImage(file);
+            handleAssetInsert({ kind: "image", dataUrl: image.url, storageKey: image.storageKey, title: file.name }, position);
+        },
+        [createAudioFileNode, getCanvasCenter, handleAssetInsert, insertAssistantText],
+    );
+
     const handleDrop = useCallback(
         (event: ReactDragEvent<HTMLDivElement>) => {
             event.preventDefault();
@@ -355,6 +380,13 @@ export function useCanvasInsertion(params: CanvasInsertionParams) {
                         // Ignore malformed drag payloads.
                     }
                 }
+                return;
+            }
+
+            if (event.dataTransfer.types.includes(ASSET_FOLDER_DRAG_MIME)) {
+                const id = event.dataTransfer.getData(ASSET_FOLDER_DRAG_MIME);
+                const entry = useAssetFolderStore.getState().files.find((item) => item.id === id);
+                if (entry) void insertFolderFile(entry.file, screenToCanvas(event.clientX, event.clientY));
                 return;
             }
 
@@ -377,8 +409,8 @@ export function useCanvasInsertion(params: CanvasInsertionParams) {
                 }
             }
         },
-        [createAudioFileNode, createImageFileNode, createVideoFileNode, handleAssetInsert, screenToCanvas],
+        [createAudioFileNode, createImageFileNode, createVideoFileNode, handleAssetInsert, insertFolderFile, screenToCanvas],
     );
 
-    return { handleUploadRequest, handleImageInputChange, handleAssetInsert, handleDrop, pasteSystemClipboard };
+    return { handleUploadRequest, handleImageInputChange, handleAssetInsert, insertFolderFile, handleDrop, pasteSystemClipboard };
 }

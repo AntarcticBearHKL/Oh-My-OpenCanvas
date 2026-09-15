@@ -22,6 +22,7 @@ export enum CanvasNodeType {
     Audio = "audio",
     SmartCanvas = "smart-canvas",
     Output = "output",
+    AssetInput = "asset-input",
 }
 
 // Node types are open strings: built-ins use CanvasNodeType and plugins use "<pluginId>:<name>".
@@ -121,6 +122,7 @@ export type CanvasNodeMetadata = {
     interactive?: boolean; // Plugin node interaction/move state; see CanvasNodeDefinition.interactionToggle.
     locked?: boolean;
     hidden?: boolean;
+    assetFolderName?: string;
     seed?: number;
     generationVersions?: CanvasGenerationVersion[];
     matrix?: GenerationMatrix;

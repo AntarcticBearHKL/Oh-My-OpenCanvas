@@ -496,7 +496,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 {!referenceSelectionState && !locked ? <ResizeGrip active={hovered || isSelected} onMouseDown={handleResizeMouseDown} /> : null}
             </div>
 
-            {!referenceSelectionState ? <ConnectionHandleDot side="left" visible={hovered || isSelected || isConnecting} onMouseDown={(event) => onConnectStart(event, data.id, "target")} /> : null}
+            {!referenceSelectionState && data.type !== CanvasNodeType.AssetInput ? <ConnectionHandleDot side="left" visible={hovered || isSelected || isConnecting} onMouseDown={(event) => onConnectStart(event, data.id, "target")} /> : null}
             {!referenceSelectionState && (definition?.hasSourceHandle ?? true) && data.type !== CanvasNodeType.Config ? <ConnectionHandleDot side="right" visible={hovered || isSelected || isConnecting} onMouseDown={(event) => onConnectStart(event, data.id, "source")} /> : null}
 
             {showPanel && renderPanel ? <div className="absolute left-1/2 top-full z-[70] w-[600px] -translate-x-1/2 pt-4">{renderPanel(data)}</div> : null}
@@ -505,7 +505,7 @@ export const CanvasNode = React.memo(function CanvasNode({
 });
 
 function NodeContent(props: NodeContentRendererProps) {
-    if ((props.node.type === CanvasNodeType.Config || props.node.type === CanvasNodeType.ImageGeneration || props.node.type === CanvasNodeType.Prompt) && props.renderNodeContent) return props.renderNodeContent(props.node);
+    if ((props.node.type === CanvasNodeType.Config || props.node.type === CanvasNodeType.ImageGeneration || props.node.type === CanvasNodeType.Prompt || props.node.type === CanvasNodeType.AssetInput) && props.renderNodeContent) return props.renderNodeContent(props.node);
     if (props.isBatchRoot && props.node.type === CanvasNodeType.Image) return <ImageNodeContent {...props} />;
     if (props.node.type === CanvasNodeType.Text && props.node.metadata?.texts?.length && (props.node.metadata.status !== "error" || props.node.metadata.texts.some((text) => text.content))) return <TextContent {...props} />;
     if (props.node.metadata?.status === "loading") return <LoadingContent theme={props.theme} />;
@@ -523,7 +523,7 @@ function NodeContent(props: NodeContentRendererProps) {
     return <MissingPluginContent theme={props.theme} type={props.node.type} />;
 }
 
-const nodeContentRenderers = {
+const nodeContentRenderers: Partial<Record<CanvasNodeType, (props: NodeContentRendererProps) => ReactNode>> = {
     [CanvasNodeType.Text]: TextContent,
     [CanvasNodeType.Prompt]: PromptContent,
     [CanvasNodeType.Image]: ImageNodeContent,
@@ -533,7 +533,7 @@ const nodeContentRenderers = {
     [CanvasNodeType.Audio]: AudioNodeContent,
     [CanvasNodeType.SmartCanvas]: SmartCanvasNodeContent,
     [CanvasNodeType.Output]: OutputContent,
-} satisfies Record<CanvasNodeType, (props: NodeContentRendererProps) => ReactNode>;
+};
 
 function LoadingContent({ theme }: Pick<NodeContentRendererProps, "theme">) {
     const { t } = useTranslation();

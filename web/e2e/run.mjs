@@ -372,6 +372,21 @@ const LIB_ASSERTIONS = `(async () => {
     ok("local model registry lists background-removal", localModels.some((model) => model.id === "background-removal"), JSON.stringify(localModels.map((model) => model.id)));
     ok("local model descriptor exposes title/description/prepare/clear/read", localModels.every((model) => typeof model.titleKey === "string" && typeof model.descriptionKey === "string" && typeof model.prepare === "function" && typeof model.clear === "function" && typeof model.read === "function"), JSON.stringify(localModels.map((model) => Object.keys(model))));
 
+    const assetFolder = await import("/src/lib/canvas/asset-folder.ts");
+    ok("asset folder classifies image", assetFolder.classifyAssetFolderFile({ type: "image/png", name: "a.png" }) === "image");
+    ok("asset folder classifies video", assetFolder.classifyAssetFolderFile({ type: "video/mp4", name: "a.mp4" }) === "video");
+    ok("asset folder classifies audio", assetFolder.classifyAssetFolderFile({ type: "audio/mpeg", name: "a.mp3" }) === "audio");
+    ok("asset folder classifies plain text", assetFolder.classifyAssetFolderFile({ type: "text/plain", name: "a.txt" }) === "text");
+    ok("asset folder classifies text by extension", assetFolder.classifyAssetFolderFile({ type: "", name: "notes.md" }) === "text");
+    ok("asset folder drops unknown files", assetFolder.classifyAssetFolderFile({ type: "application/zip", name: "a.zip" }) === null);
+    ok("asset folder cap is 200", assetFolder.ASSET_FOLDER_FILE_LIMIT === 200);
+    ok("asset folder drag mime", assetFolder.ASSET_FOLDER_DRAG_MIME === "application/x-infinite-canvas-folder-file");
+
+    const assetInputNode = { id: "asset", type: "asset-input", title: "asset", position: { x: 0, y: 0 }, width: 360, height: 320, metadata: {} };
+    const plainImage = image("plain", 100, 100, { x: 500, y: 0 });
+    ok("connection rejects asset-input as target", geo.normalizeConnection(plainImage.id, assetInputNode.id, [plainImage, assetInputNode], "source") === null);
+    ok("connection rejects asset-input as source", geo.normalizeConnection(assetInputNode.id, plainImage.id, [assetInputNode, plainImage], "source") === null);
+
     return results;
 })()`;
 
