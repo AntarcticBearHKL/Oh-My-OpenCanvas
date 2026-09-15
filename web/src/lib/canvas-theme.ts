@@ -20,6 +20,8 @@ export const canvasThemes = {
             text: "#292524",
             muted: "#78716c",
             faint: "#a8a29e",
+            primary: "#e0cbb0",
+            primaryText: "#4a3a2a",
         },
         toolbar: {
             panel: "rgba(251,250,247,.72)",
@@ -48,6 +50,8 @@ export const canvasThemes = {
             text: "#f5f5f4",
             muted: "#d6d3d1",
             faint: "#78716c",
+            primary: "#c9ac8b",
+            primaryText: "#2a2118",
         },
         toolbar: {
             panel: "rgba(31,29,26,.72)",
