@@ -1142,8 +1142,8 @@ function ResizeGrip({ active, onMouseDown }: { active: boolean; onMouseDown: (ev
     const theme = useCanvasTheme();
 
     return (
-        <div className="absolute -bottom-3 -right-3 z-30 grid size-8 cursor-nwse-resize place-items-center" onMouseDown={(event) => onMouseDown(event, "bottom-right")}>
-            <div className="size-5 rounded-br-[18px] border-b-[3px] border-r-[3px] transition-opacity duration-150" style={{ borderColor: active ? theme.node.muted : theme.node.stroke, opacity: active ? 1 : 0.85 }} />
+            <div className="absolute -bottom-7 -right-7 z-30 grid size-12 cursor-nwse-resize place-items-center" onMouseDown={(event) => onMouseDown(event, "bottom-right")}>
+                <div className="size-8 rounded-br-[22px] border-b-[6px] border-r-[6px] transition-opacity duration-150" style={{ borderColor: active ? theme.node.muted : theme.node.faint, opacity: active ? 1 : 0.95 }} />
         </div>
     );
 }
