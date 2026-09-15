@@ -41,6 +41,7 @@ type CanvasStore = {
     renameProject: (id: string, title: string) => void;
     deleteProjects: (ids: string[]) => void;
     replaceProjects: (projects: CanvasProject[], deletedProjects?: CanvasDeletedProject[]) => void;
+    reorderProjects: (orderedIds: string[]) => void;
     updateProject: (id: string, patch: Partial<Pick<CanvasProject, "nodes" | "connections" | "chatSessions" | "activeChatId" | "viewport" | "groupId">>) => void;
     createGroup: (name?: string) => string;
     renameGroup: (id: string, name: string) => void;
@@ -134,6 +135,14 @@ export const useCanvasStore = create<CanvasStore>()(
                     return { projects, deletedProjects };
                 }),
             replaceProjects: (projects, deletedProjects = []) => set({ projects, deletedProjects }),
+            reorderProjects: (orderedIds) =>
+                set((state) => {
+                    const byId = new Map(state.projects.map((project) => [project.id, project]));
+                    const moving = new Set(orderedIds);
+                    const ordered = orderedIds.map((id) => byId.get(id)).filter((project): project is CanvasProject => Boolean(project));
+                    let cursor = 0;
+                    return { projects: state.projects.map((project) => (moving.has(project.id) ? ordered[cursor++] : project)) };
+                }),
             updateProject: (id, patch) =>
                 set((state) => ({
                     projects: state.projects.map((project) => (project.id === id ? { ...project, ...patch, updatedAt: new Date().toISOString() } : project)),

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { Input } from "antd";
 import { Folder, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -14,7 +14,11 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
     const { id: currentId } = useParams();
     const projects = useCanvasStore((state) => state.projects);
     const groups = useCanvasStore((state) => state.groups);
+    const reorderProjects = useCanvasStore((state) => state.reorderProjects);
     const [keyword, setKeyword] = useState("");
+    const [dragId, setDragId] = useState<string | null>(null);
+    const [dropIndex, setDropIndex] = useState<number | null>(null);
+    const draggingRef = useRef(false);
 
     const current = projects.find((project) => project.id === currentId) || null;
     const groupId = current?.groupId || null;
@@ -24,6 +28,20 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
         const query = keyword.trim().toLowerCase();
         return [...inGroup].filter((project) => !query || (project.title || "").toLowerCase().includes(query));
     }, [groupId, keyword, projects]);
+
+    const handleDrop = () => {
+        if (dragId && dropIndex !== null) {
+            const ids = items.map((project) => project.id);
+            const from = ids.indexOf(dragId);
+            if (from >= 0) {
+                ids.splice(from, 1);
+                ids.splice(dropIndex > from ? dropIndex - 1 : dropIndex, 0, dragId);
+                reorderProjects(ids);
+            }
+        }
+        setDragId(null);
+        setDropIndex(null);
+    };
 
     return (
         <div className="flex h-full min-h-0 flex-col gap-2 px-3 pb-3">
@@ -38,30 +56,71 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
                     </span>
                 </div>
             ) : null}
-            <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto">
+            <div
+                className="thin-scrollbar min-h-0 flex-1 overflow-y-auto"
+                onDragOver={(event) => {
+                    if (dragId && event.target === event.currentTarget) {
+                        event.preventDefault();
+                        setDropIndex(items.length);
+                    }
+                }}
+                onDrop={(event) => {
+                    event.preventDefault();
+                    handleDrop();
+                }}
+            >
                 {items.length ? (
-                    items.map((project) => {
+                    items.map((project, index) => {
                         const isCurrent = project.id === currentId;
                         return (
-                            <button
-                                key={project.id}
-                                type="button"
-                                className={cn("flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition", !isCurrent && "hover:bg-black/5 dark:hover:bg-white/10")}
-                                style={{ background: isCurrent ? theme.toolbar.activeBg : "transparent", color: theme.node.text }}
-                                onClick={() => {
-                                    if (!isCurrent) navigate(`/canvas/${project.id}`);
-                                }}
-                            >
-                                <span className="min-w-0 flex-1 truncate">{project.title || t("canvas.untitledCanvas")}</span>
-                                <span className="shrink-0 text-[10px]" style={{ color: theme.node.muted }}>
-                                    {t("canvas.switcher.nodes", { count: project.nodes.length })}
-                                </span>
-                            </button>
+                            <Fragment key={project.id}>
+                                {dropIndex === index ? <div className="h-0.5 rounded-full" style={{ background: theme.node.activeStroke }} /> : null}
+                                <button
+                                    type="button"
+                                    draggable
+                                    className={cn(
+                                        "flex w-full min-w-0 cursor-grab items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition",
+                                        !isCurrent && "hover:bg-black/5 dark:hover:bg-white/10",
+                                        dragId === project.id && "opacity-40",
+                                    )}
+                                    style={{ background: isCurrent ? theme.toolbar.activeBg : "transparent", color: theme.node.text }}
+                                    onDragStart={(event) => {
+                                        draggingRef.current = true;
+                                        setDragId(project.id);
+                                        event.dataTransfer.effectAllowed = "move";
+                                        event.dataTransfer.setData("text/plain", project.id);
+                                    }}
+                                    onDragOver={(event) => {
+                                        if (!dragId) return;
+                                        event.preventDefault();
+                                        event.dataTransfer.dropEffect = "move";
+                                        const rect = event.currentTarget.getBoundingClientRect();
+                                        setDropIndex(index + (event.clientY > rect.top + rect.height / 2 ? 1 : 0));
+                                    }}
+                                    onDragEnd={() => {
+                                        setDragId(null);
+                                        setDropIndex(null);
+                                        setTimeout(() => {
+                                            draggingRef.current = false;
+                                        }, 0);
+                                    }}
+                                    onClick={() => {
+                                        if (draggingRef.current) return;
+                                        if (!isCurrent) navigate(`/canvas/${project.id}`);
+                                    }}
+                                >
+                                    <span className="min-w-0 flex-1 truncate">{project.title || t("canvas.untitledCanvas")}</span>
+                                    <span className="shrink-0 text-[10px]" style={{ color: theme.node.muted }}>
+                                        {t("canvas.switcher.nodes", { count: project.nodes.length })}
+                                    </span>
+                                </button>
+                            </Fragment>
                         );
                     })
                 ) : (
                     <div className="py-3 text-center text-xs opacity-45">{t("canvas.switcher.empty")}</div>
                 )}
+                {dropIndex === items.length ? <div className="h-0.5 rounded-full" style={{ background: theme.node.activeStroke }} /> : null}
             </div>
         </div>
     );
