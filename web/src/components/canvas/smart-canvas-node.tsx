@@ -118,7 +118,7 @@ export function SmartCanvasNodeContent({ node, boardLayers = EMPTY_BOARD_LAYERS,
                     </button>
                 </div>
             ))}
-            <div className="pointer-events-none absolute inset-0 rounded-[inherit] border border-dashed" style={{ borderColor: theme.node.stroke }} />
+            <div className="pointer-events-none absolute inset-0 rounded-[inherit] border border-dashed" style={{ borderColor: theme.toolbar.border }} />
             {boardLayers.length ? null : (
                 <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center" style={{ color: theme.node.placeholder }}>
                     <Frame className="size-6 opacity-40" />

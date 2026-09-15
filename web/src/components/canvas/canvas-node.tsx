@@ -390,7 +390,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 className={`relative h-full w-full overflow-visible rounded-3xl border-2 ${frostedCard ? frostedSurfaceClass : ""}`}
                 style={{
                     background: hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.toolbar.panel,
-                    borderColor: hasImageContent ? imageBorderColor : isBoard && isBoardDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : transparentBg ? "transparent" : theme.toolbar.border,
+                    borderColor: hasImageContent ? imageBorderColor : isBoard && isBoardDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : "transparent",
                     borderStyle: "solid",
                     outline: isBoard && isBoardDropTarget ? `2px solid ${selectionBlue}66` : isPlacedOnBoard ? `2px dashed ${selectionBlue}88` : undefined,
                     outlineOffset: (isBoard && isBoardDropTarget) || isPlacedOnBoard ? 2 : undefined,
