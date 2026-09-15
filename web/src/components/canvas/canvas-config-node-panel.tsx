@@ -27,8 +27,8 @@ type CanvasConfigNodePanelProps = {
     onComposerToggle: () => void;
 };
 
-const IMAGE_GEN_DESIGN_WIDTH = 340;
-const IMAGE_GEN_DESIGN_HEIGHT = 560;
+const IMAGE_GEN_DESIGN_WIDTH = 412;
+const IMAGE_GEN_DESIGN_HEIGHT = 608;
 
 export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigChange, onGenerate, onReplay, onStop, onComposerToggle }: CanvasConfigNodePanelProps) {
     const { t } = useTranslation();
