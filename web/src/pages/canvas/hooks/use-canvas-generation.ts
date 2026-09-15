@@ -473,7 +473,6 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                         ),
                         ...(isEmptyImageNode ? [] : [rootNode]),
                     ]);
-                    if (!isEmptyImageNode) setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: nodeId, toNodeId: rootId, relation: "generation" }]);
                     setSelectedNodeIds(new Set([nodeId]));
                     setSelectedConnectionId(null);
                     setDialogNodeId(nodeId);

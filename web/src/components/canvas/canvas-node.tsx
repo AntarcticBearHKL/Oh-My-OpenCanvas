@@ -178,6 +178,16 @@ export const CanvasNode = React.memo(function CanvasNode({
     const isBoard = data.type === CanvasNodeType.SmartCanvas;
     const locked = Boolean(data.metadata?.locked);
     const isPlacedOnBoard = (data.type === CanvasNodeType.Image || data.type === CanvasNodeType.SmartCanvas) && Boolean(data.metadata?.boardId);
+    const [enteredImage, setEnteredImage] = useState(false);
+    const previousStatusRef = useRef(data.metadata?.status);
+    useEffect(() => {
+        const previous = previousStatusRef.current;
+        previousStatusRef.current = data.metadata?.status;
+        if (!data.metadata?.generationType || previous !== "loading" || data.metadata?.status !== "success") return;
+        setEnteredImage(true);
+        const timer = window.setTimeout(() => setEnteredImage(false), 460);
+        return () => window.clearTimeout(timer);
+    }, [data.metadata?.generationType, data.metadata?.status]);
     const batchCount = data.type === CanvasNodeType.Image ? data.metadata?.images?.length || 0 : data.type === CanvasNodeType.Text ? data.metadata?.texts?.length || 0 : 0;
     const isBatchRoot = batchCount > 1;
     // Nodes with the interaction/move toggle ignore content pointer events in move mode and allow interaction in interactive mode.
@@ -403,7 +413,7 @@ export const CanvasNode = React.memo(function CanvasNode({
             )}
 
             <div
-                className={`relative h-full w-full overflow-visible rounded-3xl border-2 ${frostedCard ? `canvas-glass-card ${frostedSurfaceClass}` : ""}`}
+                className={`relative h-full w-full overflow-visible rounded-3xl border-2 ${frostedCard ? `canvas-glass-card ${frostedSurfaceClass}` : ""} ${enteredImage ? "canvas-node-enter" : ""}`}
                 style={{
                     background: hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.toolbar.panel,
                     borderColor: hasImageContent ? imageBorderColor : isBoard && isBoardDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : "transparent",
