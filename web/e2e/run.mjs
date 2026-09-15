@@ -46,6 +46,11 @@ const LIB_ASSERTIONS = `(async () => {
     const missed = geo.snapDragToGuides([{ id: "d", x: 0, y: 0 }], [image("t2", 100, 100, { x: 900, y: 900 }), dragged], 10, 10, 6);
     ok("snap no match keeps delta", missed.dx === 10 && missed.dy === 10 && missed.guides.x.length === 0, JSON.stringify(missed));
     ok("center inside", geo.nodeCenterInside(image("i", 100, 100, { x: 50, y: 50 }), board) === true);
+    const gridSnapped = geo.snapDragToGuides([{ id: "d", x: 7, y: 9 }], [dragged], 3, 3, 0, 16);
+    ok("grid snap rounds to 16", gridSnapped.dx === 9 && gridSnapped.dy === 7, JSON.stringify(gridSnapped));
+    const guideBeatsGrid = geo.snapDragToGuides([{ id: "d", x: 0, y: 0 }], [target, dragged], 197, 0, 6, 16);
+    ok("grid defers to guides", guideBeatsGrid.dx === 200 && guideBeatsGrid.guides.x[0] === 300, JSON.stringify(guideBeatsGrid));
+    ok("grid off by default", geo.snapDragToGuides([{ id: "d", x: 7, y: 9 }], [dragged], 3, 3, 0).dx === 3);
 
     const align = await import("/src/lib/canvas/alignment.ts");
     const trio = [

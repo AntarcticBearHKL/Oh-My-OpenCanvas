@@ -56,7 +56,7 @@ import { buildNodeMentionReferences, getGroupResourceNodes, isCanvasReferenceNod
 import { applyNodeConfigPatch, createCanvasNode } from "@/lib/canvas/canvas-node-factory";
 import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
 import { arrangeBoardImages, composeSmartCanvas, SMART_CANVAS_DEFAULT_FONT_SIZE, smartCanvasBackground, smartCanvasSizeForRatio, smartCanvasTexts } from "@/lib/canvas/smart-canvas";
-import { canGroupSelectedNodes, canUngroupSelectedNodes, findBoardDropTarget, findContainingGroupId, findGroupDropTarget, getConnectionTargetAnchor, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides, snapNodesIntoGroup } from "@/lib/canvas/canvas-node-geometry";
+import { CANVAS_GRID_SIZE, canGroupSelectedNodes, canUngroupSelectedNodes, findBoardDropTarget, findContainingGroupId, findGroupDropTarget, getConnectionTargetAnchor, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides, snapNodesIntoGroup } from "@/lib/canvas/canvas-node-geometry";
 import {
     audioExtension,
     buildGenerationConfig,
@@ -736,7 +736,7 @@ function InfiniteCanvasPage() {
         dragMoveRef.current = null;
         if (dragRef.current.hasMoved && clientX != null && clientY != null) {
             const movedIds = new Set(initialPositions.map((item) => item.id));
-            const snapped = snapDragToGuides(initialPositions, nodesRef.current, dx, dy, 6 / currentViewport.k);
+            const snapped = snapDragToGuides(initialPositions, nodesRef.current, dx, dy, 6 / currentViewport.k, CANVAS_GRID_SIZE);
             setNodes((prev) => {
                 const moved = prev.map((node) => {
                     const initial = initialPositions.find((item) => item.id === node.id);
@@ -808,7 +808,7 @@ function InfiniteCanvasPage() {
                     }
 
                     const movedIds = new Set(initialPositions.map((item) => item.id));
-                    const snap = dragRef.current.hasMoved ? snapDragToGuides(initialPositions, nodesRef.current, dx, dy, 6 / currentViewport.k) : null;
+                    const snap = dragRef.current.hasMoved ? snapDragToGuides(initialPositions, nodesRef.current, dx, dy, 6 / currentViewport.k, CANVAS_GRID_SIZE) : null;
                     const finalDx = snap?.dx ?? dx;
                     const finalDy = snap?.dy ?? dy;
                     setSnapGuides(snap?.guides ?? EMPTY_SNAP_GUIDES);

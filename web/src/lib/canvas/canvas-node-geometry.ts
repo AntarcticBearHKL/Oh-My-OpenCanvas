@@ -12,7 +12,9 @@ export function nodeBounds(nodes: CanvasNodeData[]) {
     );
 }
 
-export function snapDragToGuides(initialNodes: { id: string; x: number; y: number }[], nodes: CanvasNodeData[], dx: number, dy: number, threshold: number) {
+export const CANVAS_GRID_SIZE = 16;
+
+export function snapDragToGuides(initialNodes: { id: string; x: number; y: number }[], nodes: CanvasNodeData[], dx: number, dy: number, threshold: number, gridSize = 0) {
     const movedIds = new Set(initialNodes.map((item) => item.id));
     const moved = nodes.filter((node) => movedIds.has(node.id));
     if (!moved.length) return { dx, dy, guides: { x: [], y: [] } };
@@ -47,7 +49,8 @@ export function snapDragToGuides(initialNodes: { id: string; x: number; y: numbe
             }
         }
     }
-    return { dx: dx + (snapX?.diff ?? 0), dy: dy + (snapY?.diff ?? 0), guides: { x: snapX ? [snapX.line] : [], y: snapY ? [snapY.line] : [] } };
+    const applyAxis = (delta: number, edge: number, snap: { diff: number } | null) => (snap ? delta + snap.diff : gridSize > 0 ? delta + (Math.round(edge / gridSize) * gridSize - edge) : delta);
+    return { dx: applyAxis(dx, bounds.left, snapX), dy: applyAxis(dy, bounds.top, snapY), guides: { x: snapX ? [snapX.line] : [], y: snapY ? [snapY.line] : [] } };
 }
 
 export function nodeCenterInside(node: CanvasNodeData, rect: CanvasNodeData) {

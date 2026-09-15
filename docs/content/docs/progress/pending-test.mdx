@@ -7,6 +7,7 @@ description: Implemented changes that still need manual verification
 
 The current release needs manual verification in these areas:
 
+- Canvas grid snap: dragging nodes should snap to a 16px canvas grid while alignment guides still win - when an edge or centre comes within 6 screen pixels of another node, the guide takes priority over the grid. The grid is measured in canvas units, so the same drag feels consistent at every zoom level. Verify by dragging a node with no neighbours nearby (it should land on 16px multiples) and then dragging it next to another node (it should snap flush to that node's edge instead).
 - Alignment and distribution: with two or more nodes selected, the selection toolbar should show six align actions (left, horizontal centres, right, top, vertical centres, bottom) as icon-only buttons with tooltips, plus horizontal and vertical distribution once three or more nodes are selected. Each action should move only the selected nodes to the selection's bounding box (or equalise gaps for distribution), and a single undo should revert the whole move. Verify with 2 selected nodes (no distribute buttons) and with 3+ nodes at different sizes.
 - Canvas quick switcher: opening a canvas should show a searchable switcher at the top of the left panel, listing canvases with their node counts, most recently updated first. The current canvas should be highlighted, typing should filter by title, and selecting another canvas should navigate to it without returning to the canvas library.
 
