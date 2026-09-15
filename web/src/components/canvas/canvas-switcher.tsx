@@ -22,7 +22,7 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
     const items = useMemo(() => {
         const inGroup = groupId ? projects.filter((project) => project.groupId === groupId) : projects;
         const query = keyword.trim().toLowerCase();
-        return [...inGroup].filter((project) => !query || (project.title || "").toLowerCase().includes(query)).sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+        return [...inGroup].filter((project) => !query || (project.title || "").toLowerCase().includes(query));
     }, [groupId, keyword, projects]);
 
     return (
