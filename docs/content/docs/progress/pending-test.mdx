@@ -177,4 +177,5 @@ Pending verification:
 Pending verification:
 
 - Smart Canvas layer stack: each placed layer row (images and nested boards) should show a blend-mode dropdown with all 16 Photoshop-equivalent modes labelled in the current language (never a raw id) and a compact opacity slider (0-100%). Picking a non-default blend mode or reducing opacity should update the board preview immediately with no hardcoded colours or shadows, persist in the node metadata after a refresh, and keep the existing visibility and move forward / backward controls working. Preview must use CSS `mix-blend-mode` scoped to the board via `isolation: isolate`, and "Preview composite" / download must apply the same layer order, opacity and blend mode through canvas `globalCompositeOperation` with the state reset between layers and before text annotations.
+- Canvas popover motion: the image/video/audio settings, Smart Canvas settings, layer stack and text style popovers should all play the same short entrance animation when they open, and skip it entirely when the operating system requests reduced motion.
 
