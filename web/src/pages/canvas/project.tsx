@@ -1278,25 +1278,58 @@ function InfiniteCanvasPage() {
         setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...patch } } : node)));
     }, []);
 
-    const handleComposeBoard = useCallback(
+    const composeBoardImage = useCallback(
         async (board: CanvasNodeData) => {
             const placed = nodesRef.current.filter((node) => (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.SmartCanvas) && node.metadata?.boardId === board.id);
             if (!placed.length) {
                 message.warning(t("canvas.smartCanvas.noContent"));
-                return;
+                return null;
             }
             try {
                 const composite = await composeSmartCanvas(board, placed, nodesRef.current);
                 if (!composite.dataUrl) {
                     message.warning(t("canvas.smartCanvas.noContent"));
-                    return;
+                    return null;
                 }
-                setBoardPreview({ ...composite, title: board.title || t("canvas.nodeTypes.smartCanvas"), boardId: board.id });
+                return composite;
             } catch {
                 message.error(t("canvas.smartCanvas.composeFailed"));
+                return null;
             }
         },
         [message, t],
+    );
+
+    const handleComposeBoard = useCallback(
+        async (board: CanvasNodeData) => {
+            const composite = await composeBoardImage(board);
+            if (composite) setBoardPreview({ ...composite, title: board.title || t("canvas.nodeTypes.smartCanvas"), boardId: board.id });
+        },
+        [composeBoardImage, t],
+    );
+
+    const handleSaveBoardAsNode = useCallback(
+        async (board: CanvasNodeData) => {
+            const composite = await composeBoardImage(board);
+            if (!composite) return;
+            try {
+                const uploaded = await uploadImage(composite.dataUrl);
+                const size = fitNodeSize(composite.width, composite.height, NODE_DEFAULT_SIZE[CanvasNodeType.Image].width, NODE_DEFAULT_SIZE[CanvasNodeType.Image].height);
+                insertDerivedAsset(
+                    {
+                        source: board,
+                        children: [{ image: uploaded, title: board.title || t("canvas.nodeTypes.smartCanvas"), size, position: { x: board.position.x + board.width + 40, y: board.position.y }, metadata: { naturalWidth: composite.width, naturalHeight: composite.height } }],
+                        select: "children",
+                        clearSelectedConnection: true,
+                    },
+                    { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+                );
+                message.success(t("canvas.smartCanvas.savedAsNode"));
+            } catch {
+                message.error(t("common.imageReadFailed"));
+            }
+        },
+        [composeBoardImage, message, t],
     );
 
     const handleArrangeBoard = useCallback(
@@ -1771,8 +1804,8 @@ function InfiniteCanvasPage() {
             ) : panelNode.type === CanvasNodeType.SmartCanvas ? (
                 <div className="flex items-center gap-2" style={{ color: theme.node.text }}>
                     <SmartCanvasSettingsPopover ratio={panelNode.metadata?.boardRatio || "16:9"} resolution={panelNode.metadata?.boardResolution || "2k"} background={smartCanvasBackground(panelNode)} onChange={(patch) => handleSmartCanvasChange(panelNode.id, patch)} />
-                    <Button size="small" type="text" className="!h-8 !rounded-full !px-2.5" style={{ color: theme.node.text }} icon={<LayoutDashboard className="size-3.5" />} onClick={() => void handleComposeBoard(panelNode)}>
-                        {t("canvas.smartCanvas.preview")}
+                    <Button size="small" type="text" className="!h-8 !rounded-full !px-2.5" style={{ color: theme.node.text }} icon={<ImagePlus className="size-3.5" />} onClick={() => void handleSaveBoardAsNode(panelNode)}>
+                        {t("canvas.smartCanvas.saveAsNode")}
                     </Button>
                     <Dropdown
                         trigger={["click"]}
@@ -1968,6 +2001,7 @@ function InfiniteCanvasPage() {
                             onRetry={handleNodeRetry}
                             onViewImage={handleNodeViewImage}
                             onInfo={handleNodeInfo}
+                        onBoardPreview={(board) => void handleComposeBoard(board)}
                             onSelectReference={selectNodeReference}
                         />
                     ))}

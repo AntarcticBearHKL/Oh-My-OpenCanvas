@@ -76,6 +76,7 @@ type CanvasNodeProps = {
     onRetry?: (node: CanvasNodeData) => void;
     onViewImage?: (node: CanvasNodeData, imageId?: string) => void;
     onInfo?: (node: CanvasNodeData) => void;
+    onBoardPreview?: (node: CanvasNodeData) => void;
     onSelectReference?: (nodeId: string) => void;
 };
 
@@ -162,6 +163,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     onRetry,
     onViewImage,
     onInfo,
+    onBoardPreview,
     onSelectReference,
 }: CanvasNodeProps) {
     const theme = useCanvasTheme();
@@ -437,6 +439,11 @@ export const CanvasNode = React.memo(function CanvasNode({
                         return;
                     }
                     if (locked) return;
+                    if (isBoard && onBoardPreview) {
+                        event.stopPropagation();
+                        onBoardPreview(data);
+                        return;
+                    }
                     if (definition?.onDoubleClick && pluginContext) {
                         if (definition.onDoubleClick(pluginContext)) event.stopPropagation();
                         return;
