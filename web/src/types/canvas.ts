@@ -1,3 +1,5 @@
+import type { GenerationMatrix, GenerationMatrixVariant } from "@/lib/canvas/generation-matrix";
+
 export type Position = {
     x: number;
     y: number;
@@ -56,6 +58,8 @@ export type CanvasGenerationVersion = {
     seed: number;
     model?: string;
     size?: string;
+    count?: number;
+    matrixTrace?: GenerationMatrixVariant;
     createdAt: number;
 };
 
@@ -111,6 +115,8 @@ export type CanvasNodeMetadata = {
     hidden?: boolean;
     seed?: number;
     generationVersions?: CanvasGenerationVersion[];
+    matrix?: GenerationMatrix;
+    matrixTrace?: GenerationMatrixVariant;
 };
 
 export type CanvasNodeData = {

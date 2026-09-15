@@ -56,7 +56,7 @@ export type AiConfig = {
     canvasBackgroundMode: CanvasBackgroundMode;
 };
 
-export type ConfigTabKey = "channels" | "appearance" | "models" | "generation" | "local-models" | "prompt-sources" | "local-storage" | "about";
+export type ConfigTabKey = "channels" | "appearance" | "models" | "generation" | "local-models" | "prompt-sources" | "local-storage" | "cost" | "about";
 
 type ChannelCredentialsImportResult = {
     status: "created" | "updated" | "missing-base-url" | "invalid-base-url";

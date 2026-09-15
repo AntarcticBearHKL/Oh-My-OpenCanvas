@@ -15,12 +15,14 @@ import { audioMetadata, buildAudioGenerationMetadata, buildImageGenerationMetada
 import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
 import { NODE_STATUS_ERROR, NODE_STATUS_IDLE, NODE_STATUS_LOADING, NODE_STATUS_SUCCESS, VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH } from "@/lib/canvas/canvas-node-constants";
 import { buildAngleLabel, buildAnglePrompt, buildGenerationConfig, createGenerationSeed, findRetrySourceNode, generationQueue, generationReferenceUrls, getGenerationCount, hasResumableVideoTask, isGenerationCanceled, pushGenerationVersion, resolveGenerationSeed, resolveMetadataReferences, runGenerationTaskWithRetry, sourceNodeReferenceImages } from "@/lib/canvas/canvas-generation-helpers";
+import { buildMatrixVariants, type GenerationMatrixVariant } from "@/lib/canvas/generation-matrix";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasImageAngleParams } from "@/components/canvas/canvas-node-angle-dialog";
 import type { CanvasImageMaskEditPayload } from "@/components/canvas/canvas-node-mask-edit-dialog";
 import type { UploadedFile } from "@/services/file-storage";
 import type { AiConfig } from "@/stores/use-config-store";
+import { recordGenerationCost } from "@/stores/use-generation-cost-store";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type CanvasNodeImage, type CanvasNodeText } from "@/types/canvas";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 
@@ -108,6 +110,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                 setNodes((prev) => prev.map((item) => (item.id === nodeId ? { ...item, metadata: { ...item.metadata, videoTaskId: task.id, videoTaskProvider: task.provider, model: config.model } } : item)));
             }
             const video = await storeGeneratedVideo(await waitForVideoGenerationTask(config, task, { signal }));
+            recordGenerationCost({ nodeId, model: config.model, unit: "video-second", quantity: Number(config.videoSeconds) || 0 });
             setNodes((prev) => prev.map((item) => (item.id === nodeId ? applyGeneratedVideo(item, video, { prompt, model: config.model, ...extra }) : item)));
         },
         [],
@@ -133,6 +136,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                 setNodes((prev) => prev.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_LOADING, errorDetails: undefined } } : item)));
                 controller = startGenerationRequest(node.id, node.id, node.id);
                 const video = await storeGeneratedVideo(await waitForVideoGenerationTask(generationConfig, { id: taskId, provider: node.metadata?.videoTaskProvider ?? "openai", model: generationConfig.model }, { signal: controller.signal }));
+                recordGenerationCost({ nodeId: node.id, model: generationConfig.model, unit: "video-second", quantity: Number(generationConfig.videoSeconds) || 0 });
                 setNodes((prev) =>
                     prev.map((item) =>
                         item.id === node.id
@@ -260,6 +264,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
             try {
                 const image = await requestEdit(generationConfig, prompt, references, { signal: controller.signal }).then((items) => items[0]);
                 const uploaded = await uploadImage(image.dataUrl, { signal: controller.signal });
+                recordGenerationCost({ nodeId: childId, model: generationConfig.model, unit: "image", quantity: 1 });
                 const size = fitNodeSize(uploaded.width, uploaded.height, node.width, node.height);
                 setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, width: size.width, height: size.height, metadata: { ...item.metadata, ...imageMetadata(uploaded), prompt, ...generationMetadata } } : item)));
             } catch (error) {
@@ -311,6 +316,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                     { signal: controller.signal },
                 ).then((items) => items[0]);
                 const uploaded = await uploadImage(image.dataUrl, { signal: controller.signal });
+                recordGenerationCost({ nodeId: childId, model: generationConfig.model, unit: "image", quantity: 1 });
                 const size = fitNodeSize(uploaded.width, uploaded.height, imageConfig.width, imageConfig.height);
                 setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, width: size.width, height: size.height, metadata: { ...item.metadata, ...imageMetadata(uploaded), prompt, ...generationMetadata } } : item)));
             } catch (error) {
@@ -326,9 +332,10 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
     );
 
     const handleGenerateNode = useCallback(
-        async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, replaySeed?: number) => {
+        async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, replaySeed?: number, variant?: GenerationMatrixVariant, options?: { deferRunningState?: boolean }) => {
+            if (variant?.prompt) prompt = variant.prompt;
             const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
-            const generationConfig = buildGenerationConfig(effectiveConfig, sourceNode, mode);
+            const generationConfig = { ...buildGenerationConfig(effectiveConfig, sourceNode, mode), ...(variant?.size ? { size: variant.size } : {}), ...(variant?.count ? { count: String(variant.count) } : {}) };
             if (!isAiConfigReady(generationConfig, generationConfig.model)) {
                 openConfigDialog();
                 return;
@@ -351,6 +358,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                         ? await requestEdit({ ...generationConfig, count: "1" }, context.prompt, refs, { signal: controller.signal }).then((items) => items[0])
                         : await requestGeneration({ ...generationConfig, count: "1" }, context.prompt, { signal: controller.signal }).then((items) => items[0]);
                     const uploaded = await uploadImage(image.dataUrl, { signal: controller.signal });
+                    recordGenerationCost({ nodeId, model: generationConfig.model, unit: "image", quantity: 1 });
                     setNodes((prev) =>
                         prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...imageMetadata(uploaded), prompt: scene, model: generationConfig.model, status: NODE_STATUS_SUCCESS, errorDetails: undefined } } : node)),
                     );
@@ -367,7 +375,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                 return;
             }
 
-            setRunningNodeId(nodeId);
+            if (!options?.deferRunningState) setRunningNodeId(nodeId);
             const runController = startGenerationRequest(nodeId, nodeId, nodeId);
             const sourceTextContent = sourceNode?.type === CanvasNodeType.Text ? sourceNode.metadata?.content?.trim() || "" : "";
             const editingTextNode = mode === "text" && Boolean(sourceTextContent);
@@ -378,13 +386,13 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
             const effectivePrompt = generationContext.prompt.trim();
             if (runController.signal.aborted) {
                 finishGenerationRequest(nodeId, runController);
-                setRunningNodeId(null);
+                if (!options?.deferRunningState) setRunningNodeId(null);
                 return;
             }
             const markSourceStatus = sourceNode?.type !== CanvasNodeType.Image && !editingTextNode;
             if (!effectivePrompt && (mode === "text" || mode === "audio")) {
                 finishGenerationRequest(nodeId, runController);
-                setRunningNodeId(null);
+                if (!options?.deferRunningState) setRunningNodeId(null);
                 return;
             }
             let pendingChildIds: string[] = [];
@@ -426,6 +434,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                             status: NODE_STATUS_LOADING,
                             images: imageIds.map((id) => ({ id, status: NODE_STATUS_LOADING, content: "", naturalWidth: 0, naturalHeight: 0, bytes: 0, mimeType: "" })),
                             ...generationMetadata,
+                            ...(variant ? { matrixTrace: variant } : {}),
                         },
                     };
 
@@ -486,6 +495,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                                         { signal: controller.signal },
                                     );
                                     const uploaded = await uploadImage(image.dataUrl, { signal: controller.signal });
+                                    recordGenerationCost({ nodeId: rootId, model: generationConfig.model, unit: "image", quantity: 1 });
                                     const imageSize = fitNodeSize(uploaded.width, uploaded.height, imageConfig.width, imageConfig.height);
                                     const item: CanvasNodeImage = { id: imageId, status: NODE_STATUS_SUCCESS, content: uploaded.url, storageKey: uploaded.storageKey, thumbnail: uploaded.thumbnail, thumbnailKey: uploaded.thumbnailKey, naturalWidth: uploaded.width, naturalHeight: uploaded.height, bytes: uploaded.bytes, mimeType: uploaded.mimeType };
                                     setNodes((prev) =>
@@ -544,7 +554,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                                           status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR,
                                           errorDetails: hasSuccess ? undefined : t("canvas.projectPage.generationFailed"),
                                           ...(hasSuccess
-                                              ? { seed: baseSeed, generationVersions: pushGenerationVersion(node.metadata?.generationVersions, { id: nanoid(), prompt: effectivePrompt, seed: baseSeed, model: generationConfig.model, size: generationConfig.size, createdAt: Date.now() }) }
+                                              ? { seed: baseSeed, generationVersions: pushGenerationVersion(node.metadata?.generationVersions, { id: nanoid(), prompt: effectivePrompt, seed: baseSeed, model: generationConfig.model, size: generationConfig.size, createdAt: Date.now(), ...(variant ? { count, matrixTrace: variant } : {}) }) }
                                               : {}),
                                       },
                                   }
@@ -579,6 +589,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                             watermark: generationConfig.videoWatermark,
                             videoMode: generationConfig.videoMode,
                             references: generationReferenceUrls(generationContext),
+                            ...(variant ? { matrixTrace: variant } : {}),
                         },
                     };
                     pendingChildIds = [videoId];
@@ -617,7 +628,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                         position: isEmptyAudioNode ? sourceNode.position : { x: parent.x + (sourceNode?.width || spec.width) + 96, y: parent.y + ((sourceNode?.height || spec.height) - spec.height) / 2 },
                         width: isEmptyAudioNode ? sourceNode.width : spec.width,
                         height: isEmptyAudioNode ? sourceNode.height : spec.height,
-                        metadata: { prompt: effectivePrompt, status: NODE_STATUS_LOADING, ...buildAudioGenerationMetadata(generationConfig) },
+                        metadata: { prompt: effectivePrompt, status: NODE_STATUS_LOADING, ...buildAudioGenerationMetadata(generationConfig), ...(variant ? { matrixTrace: variant } : {}) },
                     };
                     pendingChildIds = [audioId];
                     setNodes((prev) =>
@@ -629,6 +640,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                     const controller = startGenerationRequest(audioId, nodeId, nodeId, runController);
                     try {
                         const audio = await storeGeneratedAudio(await requestAudioGeneration(generationConfig, effectivePrompt, { signal: controller.signal }), generationConfig.audioFormat);
+                        recordGenerationCost({ nodeId: audioId, model: generationConfig.model, unit: "call", quantity: 1 });
                         setNodes((prev) => prev.map((node) => (node.id === audioId ? { ...node, metadata: { ...node.metadata, ...audioMetadata(audio), prompt: effectivePrompt, ...buildAudioGenerationMetadata(generationConfig) } } : node)));
                     } finally {
                         finishGenerationRequest(audioId, controller);
@@ -660,6 +672,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                         textCount,
                         texts: textIds.map((id) => ({ id, status: NODE_STATUS_LOADING, content: "" })),
                         primaryTextId: textIds[0],
+                        ...(variant ? { matrixTrace: variant } : {}),
                     },
                 };
                 pendingChildIds = [rootId];
@@ -727,6 +740,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                 if (rootId !== nodeId) finishGenerationRequest(rootId, controller);
                 if (controller.signal.aborted) return;
                 const completedTexts = results.flatMap((item) => (item?.status === NODE_STATUS_SUCCESS ? [item] : []));
+                completedTexts.forEach(() => recordGenerationCost({ nodeId: rootId, model: generationConfig.model, unit: "call", quantity: 1 }));
                 const failedTexts = results.filter((item) => item?.status === NODE_STATUS_ERROR);
                 const firstText = completedTexts[0];
                 if (completedTexts.length <= 1) setExpandedBatchNodeIds((current) => new Set([...current].filter((id) => id !== rootId)));
@@ -773,10 +787,28 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                 );
             } finally {
                 finishGenerationRequest(nodeId, runController);
-                setRunningNodeId(null);
+                if (!options?.deferRunningState) setRunningNodeId(null);
             }
         },
         [completeVideoNodeTask, effectiveConfig, finishGenerationRequest, isAiConfigReady, message, openConfigDialog, startGenerationRequest, t],
+    );
+
+    const handleGenerateMatrix = useCallback(
+        async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string) => {
+            const node = nodesRef.current.find((item) => item.id === nodeId);
+            const variants = buildMatrixVariants(node?.metadata?.matrix);
+            if (variants.length <= 1) {
+                await handleGenerateNode(nodeId, mode, prompt, undefined, variants[0]);
+                return;
+            }
+            setRunningNodeId(nodeId);
+            try {
+                await Promise.all(variants.map((variant) => handleGenerateNode(nodeId, mode, prompt, undefined, variant, { deferRunningState: true })));
+            } finally {
+                setRunningNodeId(null);
+            }
+        },
+        [handleGenerateNode, setRunningNodeId],
     );
 
     const handleReplayNode = useCallback(
@@ -945,5 +977,5 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
         [completeVideoNodeTask, effectiveConfig, finishGenerationRequest, isAiConfigReady, message, openConfigDialog, pollVideoNodeTask, startGenerationRequest, t],
     );
 
-    return { handleGenerateNode, handleRetryNode, handleReplayNode, pollVideoNodeTask, confirmStopGeneration, maskEditImageNode, generateAngleNode };
+    return { handleGenerateNode, handleGenerateMatrix, handleRetryNode, handleReplayNode, pollVideoNodeTask, confirmStopGeneration, maskEditImageNode, generateAngleNode };
 }

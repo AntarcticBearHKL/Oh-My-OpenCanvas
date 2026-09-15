@@ -1,11 +1,13 @@
-import type { CSSProperties } from "react";
-import { Image as ImageIcon, LoaderCircle, MessageSquare, Music2, Play, RefreshCw, Settings2, Square, Video } from "lucide-react";
+import { useState, type CSSProperties } from "react";
+import { Grid3x3, Image as ImageIcon, LoaderCircle, MessageSquare, Music2, Play, RefreshCw, Settings2, Square, Video } from "lucide-react";
 import { Button, Segmented } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
 import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
+import { buildMatrixVariants } from "@/lib/canvas/generation-matrix";
+import { CanvasGenerationMatrixDialog } from "./canvas-generation-matrix-dialog";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
@@ -36,6 +38,8 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
     const hasComposerContent = Boolean((node.metadata?.composerContent ?? node.metadata?.prompt ?? "").trim());
     const canGenerate = hasComposerContent || (mode === "audio" ? inputSummary.textCount > 0 : hasAnyInput);
     const canReplay = mode === "image" && typeof node.metadata?.seed === "number";
+    const matrixVariantCount = buildMatrixVariants(node.metadata?.matrix).length;
+    const [matrixOpen, setMatrixOpen] = useState(false);
 
     return (
         <div className="flex h-full w-full cursor-move flex-col px-3 pb-3 pt-7 text-sm" style={{ color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
@@ -100,6 +104,18 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                     <Settings2 className="size-3.5" />
                     {t("canvas.configNode.compose")}
                 </button>
+                <button
+                    type="button"
+                    data-matrix-button
+                    className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border px-2 text-[11px]"
+                    style={chipStyle}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    onClick={() => setMatrixOpen(true)}
+                >
+                    <Grid3x3 className="size-3.5" />
+                    {t("canvas.configNode.matrix")}
+                    {matrixVariantCount > 0 ? ` · ${matrixVariantCount}` : ""}
+                </button>
                 {canReplay ? (
                     <button
                         type="button"
@@ -145,11 +161,20 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                     ) : (
                         <>
                             <Play className="size-4" />
-                            <span>{t("canvas.configNode.generate")}</span>
+                            <span>{matrixVariantCount > 1 ? t("canvas.configNode.generateVariants", { count: matrixVariantCount }) : t("canvas.configNode.generate")}</span>
                         </>
                     )}
                 </span>
             </Button>
+            <CanvasGenerationMatrixDialog
+                open={matrixOpen}
+                matrix={node.metadata?.matrix}
+                onClose={() => setMatrixOpen(false)}
+                onConfirm={(matrix) => {
+                    onConfigChange(node.id, { matrix });
+                    setMatrixOpen(false);
+                }}
+            />
         </div>
     );
 }

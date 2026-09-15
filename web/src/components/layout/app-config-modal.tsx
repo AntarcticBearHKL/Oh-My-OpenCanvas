@@ -1,10 +1,11 @@
 import { Button, Form, Input, Modal, Select, Tabs, theme as antdTheme } from "antd";
-import { Bot, Cloud, Cpu, Database, Info, Palette, Pencil, Plus, Rss, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Bot, CircleDollarSign, Cloud, Cpu, Database, Info, Palette, Pencil, Plus, Rss, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ModelPicker } from "@/components/model-picker";
 import { ChannelEditorDrawer } from "@/components/layout/channel-editor-drawer";
+import { ConfigGenerationCost } from "@/components/layout/config-generation-cost";
 import { ConfigPromptSources } from "@/components/layout/config-prompt-sources";
 import { ConfigLocalModels } from "@/components/layout/config-local-models";
 import { ConfigLocalStorage } from "@/components/layout/config-local-storage";
@@ -189,6 +190,12 @@ export function AppConfigPanel() {
                         label: t("config.tabs.localStorage"),
                         icon: <Database className="size-4" />,
                         children: <ConfigLocalStorage active={configTab === "local-storage"} />,
+                    },
+                    {
+                        key: "cost",
+                        label: t("config.tabs.cost"),
+                        icon: <CircleDollarSign className="size-4" />,
+                        children: <ConfigGenerationCost />,
                     },
                     {
                         key: "about",

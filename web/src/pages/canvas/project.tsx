@@ -243,7 +243,7 @@ function InfiniteCanvasPage() {
         [cleanupAssetImages],
     );
 
-    const { handleGenerateNode, handleRetryNode, handleReplayNode, pollVideoNodeTask, confirmStopGeneration, maskEditImageNode, generateAngleNode } = useCanvasGeneration({
+    const { handleGenerateNode, handleGenerateMatrix, handleRetryNode, handleReplayNode, pollVideoNodeTask, confirmStopGeneration, maskEditImageNode, generateAngleNode } = useCanvasGeneration({
         effectiveConfig,
         isAiConfigReady,
         openConfigDialog,
@@ -1675,11 +1675,11 @@ function InfiniteCanvasPage() {
                 onReplay={handleReplayNode}
                 onGenerate={(nodeId) => {
                     const target = nodesRef.current.find((item) => item.id === nodeId);
-                    void handleGenerateNode(nodeId, target?.metadata?.generationMode || "image", target?.metadata?.composerContent ?? target?.metadata?.prompt ?? "");
+                    void handleGenerateMatrix(nodeId, target?.metadata?.generationMode || "image", target?.metadata?.composerContent ?? target?.metadata?.prompt ?? "");
                 }}
             />
         ),
-        [configInputsById, confirmStopGeneration, handleConfigNodeChange, handleGenerateNode, handleReplayNode, runningNodeId],
+        [configInputsById, confirmStopGeneration, handleConfigNodeChange, handleGenerateMatrix, handleReplayNode, runningNodeId],
     );
 
     if (!projectLoaded) return <CanvasRefreshShell />;

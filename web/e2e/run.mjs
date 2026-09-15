@@ -132,6 +132,34 @@ const LIB_ASSERTIONS = `(async () => {
     const version = { id: "v", prompt: "p", seed: 12345, createdAt: 1 };
     ok("seed round-trips through versions", generation.resolveGenerationSeed(generation.pushGenerationVersion(undefined, version)) === 12345, generation.resolveGenerationSeed(generation.pushGenerationVersion(undefined, version)));
 
+    const cost = await import("/src/lib/canvas/generation-cost.ts");
+    const unpriced = cost.estimateGenerationCost("openrouter::mystery-model", "image", 1);
+    ok("cost unpriced model is explicit", unpriced.priced === false && unpriced.usd === 0 && unpriced.reason === "unpriced-model", JSON.stringify(unpriced));
+    const mismatched = cost.estimateGenerationCost("openrouter::gpt-image-1", "video-second", 1);
+    ok("cost unit mismatch is explicit", mismatched.priced === false && mismatched.usd === 0 && mismatched.reason === "unpriced-unit", JSON.stringify(mismatched));
+    ok("cost decodes channel model id", cost.priceModelId("openrouter:: GPT-Image-1 ") === "gpt-image-1", cost.priceModelId("openrouter:: GPT-Image-1 "));
+    const billed = cost.estimateGenerationCost("openrouter::gpt-image-1", "image", 3);
+    ok("cost prices known model by quantity", billed.priced === true && billed.usd === Number((cost.MODEL_PRICES["gpt-image-1"].usd * 3).toFixed(6)), JSON.stringify(billed));
+    const invalid = cost.estimateGenerationCost("gpt-image-1", "image", 0);
+    ok("cost rejects non-positive quantity", invalid.priced === false && invalid.reason === "unpriced-unit", JSON.stringify(invalid));
+    ok("cost formatUsd uses two decimals", cost.formatUsd(1.234) === "$1.23" && cost.formatUsd(0.037) === "$0.04" && cost.formatUsd(0) === "$0.00", cost.formatUsd(1.234) + "," + cost.formatUsd(0.037) + "," + cost.formatUsd(0));
+
+    const matrix = await import("/src/lib/canvas/generation-matrix.ts");
+    const variants = matrix.buildMatrixVariants({ sizes: ["1024x1024", "512x512"], counts: [1, 2], prompts: ["sunset", "city"] });
+    const labels = variants.map((variant) => variant.prompt + "|" + variant.count + "|" + variant.size).join(",");
+    ok("matrix 2x2x2 yields eight variants", variants.length === 8, variants.length);
+    ok("matrix order prompts outer sizes inner", labels === "sunset|1|1024x1024,sunset|1|512x512,sunset|2|1024x1024,sunset|2|512x512,city|1|1024x1024,city|1|512x512,city|2|1024x1024,city|2|512x512", labels);
+    ok("matrix empty input yields none", matrix.buildMatrixVariants(undefined).length === 0 && matrix.buildMatrixVariants({}).length === 0 && matrix.buildMatrixVariants({ sizes: ["  "], counts: [0, -1, Number.NaN] }).length === 0);
+    const single = matrix.buildMatrixVariants({ prompts: ["a", " b ", "  "] });
+    ok("matrix single dimension expands once", single.length === 2 && single[0].prompt === "a" && single[1].prompt === "b" && single[0].size === undefined && single[0].count === undefined, JSON.stringify(single));
+    ok("matrix describes variant", matrix.describeMatrixVariant({ size: "1024x1024", count: 2, prompt: "sunset" }) === "1024x1024 · x2 · sunset", matrix.describeMatrixVariant({ size: "1024x1024", count: 2, prompt: "sunset" }));
+    const blankOnly = matrix.buildMatrixVariants({ prompts: ["keep", " ", "\\n"], sizes: ["   "], counts: [] });
+    ok("matrix drops blank-only entries", blankOnly.length === 1 && blankOnly[0].prompt === "keep" && blankOnly[0].size === undefined && blankOnly[0].count === undefined, JSON.stringify(blankOnly));
+    const badCounts = matrix.buildMatrixVariants({ counts: [2, 0, -4, Number.NaN, Number.POSITIVE_INFINITY, 2] });
+    ok("matrix drops bad counts and keeps duplicates", badCounts.length === 2 && badCounts.every((variant) => variant.count === 2), JSON.stringify(badCounts));
+    const sizeOnly = matrix.buildMatrixVariants({ sizes: ["1024x1024", "512x512"] });
+    ok("matrix sizes-only product", sizeOnly.length === 2 && sizeOnly[0].size === "1024x1024" && sizeOnly[1].size === "512x512" && sizeOnly.every((variant) => variant.prompt === undefined && variant.count === undefined), JSON.stringify(sizeOnly));
+
     return results;
 })()`;
 
