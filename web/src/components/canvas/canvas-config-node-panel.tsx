@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 import { Braces, Grid3x3, Image as ImageIcon, LoaderCircle, MessageSquare, Music2, Play, RefreshCw, Settings2, Square, Video } from "lucide-react";
 import { Button, Segmented } from "antd";
 import { useTranslation } from "react-i18next";
@@ -34,7 +34,6 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
     const mode = node.metadata?.generationMode || "image";
     const isImageGenerationNode = node.type === CanvasNodeType.ImageGeneration;
     const config = buildNodeConfig(globalConfig, node, mode);
-    const chipStyle = { background: theme.node.fill, borderColor: theme.node.stroke, color: theme.node.text };
     const hasAnyInput = Boolean(inputSummary.textCount || inputSummary.imageCount || inputSummary.videoCount || inputSummary.audioCount);
     const hasComposerContent = Boolean((node.metadata?.composerContent ?? node.metadata?.prompt ?? "").trim());
     const canGenerate = hasComposerContent || (mode === "audio" ? inputSummary.textCount > 0 : hasAnyInput);
@@ -42,125 +41,137 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
     const matrixVariantCount = buildMatrixVariants(node.metadata?.matrix).length;
     const [matrixOpen, setMatrixOpen] = useState(false);
     const [variablesOpen, setVariablesOpen] = useState(false);
+    const flatButtonClass = "inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 text-[11px] transition hover:bg-black/5 dark:hover:bg-white/10";
+    const summaryParts = [
+        inputSummary.textCount ? `${t("canvas.configNode.prompt")} ${inputSummary.textCount}` : "",
+        inputSummary.imageCount ? `${t("canvas.configNode.references")} ${inputSummary.imageCount}` : "",
+        inputSummary.videoCount ? `${t("canvas.configNode.videoReferences")} ${inputSummary.videoCount}` : "",
+        inputSummary.audioCount ? `${t("canvas.configNode.audioReferences")} ${inputSummary.audioCount}` : "",
+    ].filter(Boolean);
 
     return (
         <div className="flex h-full w-full cursor-move flex-col px-3 pb-3 pt-7 text-sm" style={{ color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
-            <div className="mb-2 flex items-center justify-between gap-3">
-                <div className="shrink-0 text-sm font-semibold">{t(isImageGenerationNode ? "canvas.nodeTypes.imageGeneration" : "canvas.configNode.title")}</div>
-                {isImageGenerationNode ? null : (
+            {isImageGenerationNode ? null : (
+                <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="shrink-0 text-sm font-semibold">{t("canvas.configNode.title")}</div>
                     <div className="cursor-default" onMouseDown={(event) => event.stopPropagation()}>
                         <Segmented
-                        size="small"
-                        className="canvas-config-mode !rounded-md !p-0.5"
-                        value={mode}
-                        onChange={(value) => onConfigChange(node.id, { generationMode: value as CanvasGenerationMode })}
-                        options={[
-                            {
-                                value: "image",
-                                label: (
-                                    <span className="inline-flex items-center gap-1">
-                                        <ImageIcon className="size-3.5" />
-                                        {t("canvas.configNode.image")}
-                                    </span>
-                                ),
-                            },
-                            {
-                                value: "text",
-                                label: (
-                                    <span className="inline-flex items-center gap-1">
-                                        <MessageSquare className="size-3.5" />
-                                        {t("canvas.configNode.text")}
-                                    </span>
-                                ),
-                            },
-                            {
-                                value: "video",
-                                label: (
-                                    <span className="inline-flex items-center gap-1">
-                                        <Video className="size-3.5" />
-                                        {t("canvas.configNode.video")}
-                                    </span>
-                                ),
-                            },
-                            {
-                                value: "audio",
-                                label: (
-                                    <span className="inline-flex items-center gap-1">
-                                        <Music2 className="size-3.5" />
-                                        {t("canvas.configNode.audio")}
-                                    </span>
-                                ),
-                            },
-                        ]}
+                            size="small"
+                            className="canvas-config-mode !rounded-md !p-0.5"
+                            value={mode}
+                            onChange={(value) => onConfigChange(node.id, { generationMode: value as CanvasGenerationMode })}
+                            options={[
+                                {
+                                    value: "image",
+                                    label: (
+                                        <span className="inline-flex items-center gap-1">
+                                            <ImageIcon className="size-3.5" />
+                                            {t("canvas.configNode.image")}
+                                        </span>
+                                    ),
+                                },
+                                {
+                                    value: "text",
+                                    label: (
+                                        <span className="inline-flex items-center gap-1">
+                                            <MessageSquare className="size-3.5" />
+                                            {t("canvas.configNode.text")}
+                                        </span>
+                                    ),
+                                },
+                                {
+                                    value: "video",
+                                    label: (
+                                        <span className="inline-flex items-center gap-1">
+                                            <Video className="size-3.5" />
+                                            {t("canvas.configNode.video")}
+                                        </span>
+                                    ),
+                                },
+                                {
+                                    value: "audio",
+                                    label: (
+                                        <span className="inline-flex items-center gap-1">
+                                            <Music2 className="size-3.5" />
+                                            {t("canvas.configNode.audio")}
+                                        </span>
+                                    ),
+                                },
+                            ]}
                         />
                     </div>
+                </div>
+            )}
+
+            <div className="mb-1.5 min-w-0 truncate text-[11px]" style={{ color: theme.node.muted }}>
+                {summaryParts.length ? summaryParts.join(" · ") : t("canvas.configNode.noInputs")}
+            </div>
+
+            <div className="mb-1.5 grid min-w-0 cursor-default grid-cols-[minmax(0,1fr)_148px] items-center gap-2" onMouseDown={(event) => event.stopPropagation()}>
+                <ModelPicker className="canvas-compact-control h-9" config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability={mode} onMissingConfig={() => openConfigDialog()} fullWidth />
+                {mode === "video" ? (
+                    <CanvasVideoSettingsPopover
+                        config={config}
+                        placement="topRight"
+                        buttonClassName="canvas-compact-control !h-9 !w-full !justify-start !rounded-lg !px-2"
+                        onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value))}
+                    />
+                ) : mode === "image" ? (
+                    <CanvasImageSettingsPopover
+                        config={config}
+                        placement="topRight"
+                        autoAdjustOverflow={false}
+                        buttonClassName="canvas-compact-control !h-9 !w-full !justify-start !rounded-lg !px-2"
+                        onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })}
+                    />
+                ) : mode === "audio" ? (
+                    <CanvasAudioSettingsPopover
+                        config={config}
+                        placement="topRight"
+                        buttonClassName="canvas-compact-control !h-9 !w-full !justify-start !rounded-lg !px-2"
+                        onConfigChange={(key, value) => onConfigChange(node.id, audioConfigPatch(key, value))}
+                    />
+                ) : (
+                    <CanvasTextSettingsPopover
+                        config={config}
+                        count={node.metadata?.textCount || 1}
+                        placement="topRight"
+                        buttonClassName="canvas-compact-control !h-9 !w-full !justify-start !rounded-lg !px-2"
+                        onConfigChange={(_, value) => onConfigChange(node.id, { reasoningEffort: value })}
+                        onCountChange={(textCount) => onConfigChange(node.id, { textCount })}
+                    />
                 )}
             </div>
 
-            <div className="mb-2 flex flex-wrap gap-1.5">
-                <InputChip label={t("canvas.configNode.prompt")} value={t("canvas.configNode.items", { count: inputSummary.textCount })} style={chipStyle} />
-                <InputChip label={t("canvas.configNode.references")} value={t("canvas.configNode.images", { count: inputSummary.imageCount })} style={chipStyle} />
-                <InputChip label={t("canvas.configNode.videoReferences")} value={t("canvas.configNode.items", { count: inputSummary.videoCount })} style={chipStyle} />
-                <InputChip label={t("canvas.configNode.audioReferences")} value={t("canvas.configNode.items", { count: inputSummary.audioCount })} style={chipStyle} />
+            <div className="mb-2 flex min-w-0 flex-wrap items-center gap-1" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                 {isImageGenerationNode ? null : (
-                    <button type="button" className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border px-2 text-[11px]" style={chipStyle} onMouseDown={(event) => event.stopPropagation()} onClick={onComposerToggle}>
+                    <button type="button" className={flatButtonClass} style={{ color: theme.node.text }} onClick={onComposerToggle}>
                         <Settings2 className="size-3.5" />
                         {t("canvas.configNode.compose")}
                     </button>
                 )}
-                <button
-                    type="button"
-                    data-matrix-button
-                    className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border px-2 text-[11px]"
-                    style={chipStyle}
-                    onMouseDown={(event) => event.stopPropagation()}
-                    onClick={() => setMatrixOpen(true)}
-                >
+                <button type="button" data-matrix-button className={flatButtonClass} style={{ color: theme.node.text }} onClick={() => setMatrixOpen(true)}>
                     <Grid3x3 className="size-3.5" />
                     {t("canvas.configNode.matrix")}
                     {matrixVariantCount > 0 ? ` · ${matrixVariantCount}` : ""}
                 </button>
-                <button
-                    type="button"
-                    data-variables-button
-                    className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border px-2 text-[11px] transition hover:bg-black/5 dark:hover:bg-white/10"
-                    style={{ borderColor: theme.node.stroke, color: theme.node.text }}
-                    onMouseDown={(event) => event.stopPropagation()}
-                    onClick={() => setVariablesOpen(true)}
-                >
+                <button type="button" data-variables-button className={flatButtonClass} style={{ color: theme.node.text }} onClick={() => setVariablesOpen(true)}>
                     <Braces className="size-3.5" />
                     {t("canvas.promptPanel.variables")}
                 </button>
                 {canReplay ? (
-                    <button
-                        type="button"
-                        className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-md border px-2 text-[11px] transition hover:bg-black/5 dark:hover:bg-white/10"
-                        style={{ borderColor: theme.node.stroke, color: theme.node.text }}
-                        onMouseDown={(event) => event.stopPropagation()}
-                        onClick={() => onReplay(node.id)}
-                    >
+                    <button type="button" className={flatButtonClass} style={{ color: theme.node.text }} onClick={() => onReplay(node.id)}>
                         <RefreshCw className="size-3.5" />
                         {t("canvas.configNode.replaySeed")}
                     </button>
                 ) : null}
             </div>
 
-            <div className="mb-2 grid min-w-0 cursor-default grid-cols-[minmax(0,1fr)_148px] items-center gap-2" onMouseDown={(event) => event.stopPropagation()}>
-                <ModelPicker className="canvas-compact-control h-10" config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability={mode} onMissingConfig={() => openConfigDialog()} fullWidth />
-                {mode === "video" ? (
-                    <CanvasVideoSettingsPopover config={config} placement="topRight" buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value))} />
-                ) : mode === "image" ? (
-                    <CanvasImageSettingsPopover config={config} placement="topRight" autoAdjustOverflow={false} buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })} />
-                ) : mode === "audio" ? (
-                    <CanvasAudioSettingsPopover config={config} placement="topRight" buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(key, value) => onConfigChange(node.id, audioConfigPatch(key, value))} />
-                ) : (
-                    <CanvasTextSettingsPopover config={config} count={node.metadata?.textCount || 1} placement="topRight" buttonClassName="canvas-compact-control !h-10 !w-full !justify-start !rounded-lg !px-2" onConfigChange={(_, value) => onConfigChange(node.id, { reasoningEffort: value })} onCountChange={(textCount) => onConfigChange(node.id, { textCount })} />
-                )}
-            </div>
+            <div className="flex-1" />
 
             <Button
                 type="primary"
-                className="mt-auto !h-9 !w-full !cursor-pointer !rounded-lg"
+                className="!h-9 !w-full !cursor-pointer !rounded-lg"
                 danger={isRunning}
                 disabled={!isRunning && !canGenerate}
                 onMouseDown={(event) => event.stopPropagation()}
@@ -200,15 +211,6 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                     setVariablesOpen(false);
                 }}
             />
-        </div>
-    );
-}
-
-function InputChip({ label, value, style }: { label: string; value: string; style: CSSProperties }) {
-    return (
-        <div className="inline-flex h-7 items-center gap-1 rounded-md border px-2 text-[11px]" style={style}>
-            <span>{label}</span>
-            <span className="font-medium">{value}</span>
         </div>
     );
 }
