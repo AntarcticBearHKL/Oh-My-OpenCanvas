@@ -186,8 +186,8 @@ export default {
         },
         promptNode: { pick: "Pick from library", pickerTitle: "Pick a prompt", search: "Search prompts", placeholder: "Type a prompt or pick one from the library", empty: "No prompts", panelHint: "Pick or edit the prompt in the panel below" },
         videoFrames: { first: "Capture first frame", last: "Capture last frame", current: "Capture current frame", firstTitle: "{{name}} first frame", lastTitle: "{{name}} last frame", currentTitle: "{{name}} current frame", captured: "Image node created", failed: "Could not capture this frame. Try again." },
-        switcher: { placeholder: "Switch canvas", nodes: "{{count}} nodes" }, align: { left: "Align left", centerX: "Align horizontal centres", right: "Align right", top: "Align top", centerY: "Align vertical centres", bottom: "Align bottom", distributeX: "Distribute horizontally", distributeY: "Distribute vertically" }, sidePanel: {
-            assets: "Assets", resize: "Resize left panel", exportFailed: "Export failed. Try again.",
+        switcher: { placeholder: "Switch canvas", nodes: "{{count}} nodes", nodes_one: "{{count}} node", search: "Search canvases", new: "New canvas", empty: "No canvases in this group", group: "Group: {{name}}" }, align: { left: "Align left", centerX: "Align horizontal centres", right: "Align right", top: "Align top", centerY: "Align vertical centres", bottom: "Align bottom", distributeX: "Distribute horizontally", distributeY: "Distribute vertically" }, sidePanel: {
+            assets: "Assets", canvases: "Canvases", resize: "Resize left panel", exportFailed: "Export failed. Try again.",
             addingAssets: "Adding assets…", addedAssets: "Added {{count}} assets", mediaOnly: "Only image and video files are supported", addFailed: "Failed to add assets. Try again.", searchAssets: "Search assets", add: "Add", noAssets: "No assets", inserted: "Insert into canvas", removeAssetTitle: "Remove this asset?", remove: "Remove", removeAsset: "Remove asset", assetRemoved: "Asset removed",
             group: {
                 create: "New group",

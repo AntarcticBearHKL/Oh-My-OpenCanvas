@@ -1,5 +1,5 @@
 import { memo, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { App, Button, Dropdown, Empty, Input, Popconfirm, Tag } from "antd";
+import { App, Button, Dropdown, Empty, Input, Popconfirm, Segmented, Tag } from "antd";
 import { Check, ChevronRight, FolderInput, FolderPlus, PanelLeftClose, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useTranslation } from "react-i18next";
@@ -13,7 +13,7 @@ import { useAssetStore, type Asset } from "@/stores/use-asset-store";
 import { CANVAS_SIDE_PANEL_MAX_WIDTH, CANVAS_SIDE_PANEL_MIN_WIDTH, CANVAS_SIDE_PANEL_MOTION_MS, useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
 
 import type { InsertAssetPayload } from "./asset-picker-modal";
-import { CanvasSwitcher } from "./canvas-switcher";
+import { CanvasSwitcherTab } from "./canvas-switcher";
 
 const PANEL_MOTION_SECONDS = CANVAS_SIDE_PANEL_MOTION_MS / 1000;
 const PANEL_EASE = [0.22, 1, 0.36, 1] as const;
@@ -32,6 +32,7 @@ export function CanvasSidePanel({ onInsertAsset }: Props) {
     const setWidth = useCanvasSidePanelStore((state) => state.setWidth);
     const closePanel = useCanvasSidePanelStore((state) => state.closePanel);
     const [resizing, setResizing] = useState(false);
+    const [panelTab, setPanelTab] = useState<"assets" | "canvases">("assets");
 
     const startResize = (event: ReactPointerEvent<HTMLButtonElement>) => {
         event.preventDefault();
@@ -71,18 +72,21 @@ export function CanvasSidePanel({ onInsertAsset }: Props) {
                 style={{ width, background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.node.text }}
                 data-canvas-no-zoom
             >
-                <div className="flex items-center gap-5 px-4 pt-3.5">
-                    <span className="pb-1.5 text-sm font-semibold" style={{ color: theme.node.text }}>{t("canvas.sidePanel.assets")}</span>
+                <div className="flex items-center gap-2 px-3 pt-3.5">
+                    <Segmented
+                        size="small"
+                        value={panelTab}
+                        onChange={(value) => setPanelTab(value as "assets" | "canvases")}
+                        options={[
+                            { value: "assets", label: t("canvas.sidePanel.assets") },
+                            { value: "canvases", label: t("canvas.sidePanel.canvases") },
+                        ]}
+                    />
                     <button type="button" onClick={closePanel} className="ml-auto grid size-7 place-items-center rounded-md opacity-55 transition hover:bg-black/5 hover:opacity-100 md:hidden dark:hover:bg-card/10" aria-label={t("canvas.collapsePanel")}>
                         <PanelLeftClose className="size-4" />
                     </button>
                 </div>
-                <div className="px-3 pb-1">
-                    <CanvasSwitcher />
-                </div>
-                <div className="mt-2 min-h-0 flex-1 overflow-hidden">
-                    <CanvasAssetsTab onInsert={onInsertAsset} theme={theme} />
-                </div>
+                <div className="mt-2 min-h-0 flex-1 overflow-hidden">{panelTab === "assets" ? <CanvasAssetsTab onInsert={onInsertAsset} theme={theme} /> : <CanvasSwitcherTab theme={theme} />}</div>
                 <button type="button" className="absolute inset-y-0 right-0 z-40 w-4 translate-x-1/2 cursor-col-resize" onPointerDown={startResize} aria-label={t("canvas.sidePanel.resize")} />
             </motion.aside>
         </motion.div>
