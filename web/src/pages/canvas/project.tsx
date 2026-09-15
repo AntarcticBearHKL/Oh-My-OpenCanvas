@@ -34,6 +34,7 @@ import { CanvasNodeResolutionDialog, type CanvasImageResolutionPayload } from "@
 import { buildNodeGenerationInputs, type NodeGenerationInput } from "@/components/canvas/canvas-node-generation";
 import { CanvasNodeHoverToolbar, CanvasNodeInfoModal } from "@/components/canvas/canvas-node-hover-toolbar";
 import { CanvasSelectionToolbar } from "@/components/canvas/canvas-selection-toolbar";
+import { alignNodes, type AlignAxis } from "@/lib/canvas/alignment";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import { Minimap } from "@/components/canvas/canvas-mini-map";
 import { CanvasNode, selectionBlue } from "@/components/canvas/canvas-node";
@@ -489,6 +490,11 @@ function InfiniteCanvasPage() {
     const selectedNodes = useMemo(() => nodes.filter((node) => selectedNodeIds.has(node.id)), [nodes, selectedNodeIds]);
     const canGroupSelection = canGroupSelectedNodes(selectedNodeIds, nodes);
     const canUngroupSelection = canUngroupSelectedNodes(selectedNodeIds, nodes);
+    const alignSelection = (axis: AlignAxis) => {
+        const positions = alignNodes(nodes, selectedNodeIds, axis);
+        if (!positions.size) return;
+        setNodes((prev) => prev.map((node) => { const next = positions.get(node.id); return next ? { ...node, position: next } : node; }));
+    };
     const activeNodeId = hasMultipleSelectedNodes ? null : hoveredNodeId || (selectedNodeIds.size === 1 ? Array.from(selectedNodeIds)[0] : null);
     const groupChildCountById = useMemo(() => {
         const map = new Map<string, number>();
@@ -1815,6 +1821,7 @@ function InfiniteCanvasPage() {
                         canUngroup={canUngroupSelection}
                         onGroup={groupSelection}
                         onUngroup={ungroupSelection}
+                        onAlign={alignSelection}
                     />
                 ) : null}
 
