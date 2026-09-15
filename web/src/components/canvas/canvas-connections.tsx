@@ -51,6 +51,7 @@ export function ConnectionPath({
             />
             {label ? (
                 <text
+                    data-connection-id={connection.id}
                     x={(startX + endX) / 2}
                     y={(startY + endY) / 2}
                     textAnchor="middle"
@@ -62,7 +63,11 @@ export function ConnectionPath({
                     strokeWidth={4 / scale}
                     strokeOpacity={active ? 1 : 0.82}
                     paintOrder="stroke"
-                    style={{ pointerEvents: "none" }}
+                    style={{ pointerEvents: "all", cursor: "pointer" }}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onSelect();
+                    }}
                 >
                     {label}
                 </text>
