@@ -2195,9 +2195,16 @@ function InfiniteCanvasPage() {
                     onCancel={() => setPreviewNodeId(null)}
                     footer={null}
                     width="auto"
-                    styles={{ body: { padding: 0, display: "flex", justifyContent: "center", alignItems: "center", maxHeight: "80vh" } }}
+                    styles={{ body: { padding: 0, display: "flex", flexDirection: "column", gap: 12, alignItems: "center", maxHeight: "80vh" } }}
                 >
-                    {previewContent ? <img src={previewContent} alt={previewNode?.title || t("assets.kinds.image")} style={{ maxWidth: "100%", maxHeight: "80vh", objectFit: "contain" }} /> : null}
+                    {previewContent ? (
+                        <>
+                            <img src={previewContent} alt={previewNode?.title || t("assets.kinds.image")} style={{ maxWidth: "100%", maxHeight: "72vh", objectFit: "contain" }} />
+                            <Button className="!border-black !bg-black !text-white hover:!border-black hover:!bg-black/85 hover:!text-white" icon={<Download className="size-4" />} onClick={() => saveAs(previewContent, `canvas-image-${previewNode?.id}.${imageExtension(previewContent)}`)}>
+                                {t("common.download")}
+                            </Button>
+                        </>
+                    ) : null}
                 </Modal>
 
                 <Modal
