@@ -297,7 +297,6 @@ function InfiniteCanvasPage() {
         nodesRef,
         connectionsRef,
         setNodes,
-        setConnections,
         setSelectedNodeIds,
         setSelectedConnectionId,
         setDialogNodeId,
@@ -1384,7 +1383,7 @@ function InfiniteCanvasPage() {
                         select: "children",
                         clearSelectedConnection: true,
                     },
-                    { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+                    { setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
                 );
                 message.success(t("canvas.smartCanvas.savedAsNode"));
             } catch {
@@ -1445,12 +1444,11 @@ function InfiniteCanvasPage() {
                     {
                         source: node,
                         children: [{ id, image, title: t(`canvas.videoFrames.${position}Title`, { name: node.title || t("assets.kinds.video") }), size, position: { x, y } }],
-                        relation: "frame",
                         select: "children",
                         clearSelectedConnection: true,
                         openDialog: id,
                     },
-                    { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+                    { setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
                 );
                 message.success(t("canvas.videoFrames.captured"));
             } catch {
@@ -1516,11 +1514,10 @@ function InfiniteCanvasPage() {
             {
                 source: node,
                 children: [{ id: childId, image, title: "Cropped Image", size: { width, height: width * (image.height / image.width) }, metadata: { prompt: node.metadata?.prompt } }],
-                relation: "crop",
                 select: "children",
                 openDialog: childId,
             },
-            { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+            { setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
         );
         setCropNodeId(null);
     }, []);
@@ -1534,11 +1531,10 @@ function InfiniteCanvasPage() {
                 {
                     source: node,
                     children: [{ id: childId, image, title: t("canvas.imageAnalysis.smartCrop"), size: { width, height: width * (image.height / image.width) }, metadata: { prompt: node.metadata?.prompt } }],
-                    relation: "crop",
                     select: "children",
                     openDialog: childId,
                 },
-                { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+                { setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
             );
         },
         [t],
@@ -1573,10 +1569,9 @@ function InfiniteCanvasPage() {
                 {
                     source: node,
                     children: [{ image, title: t("canvas.imageTools.removeBackgroundResult"), size: { width, height: width * (image.height / image.width) }, metadata: { prompt: node.metadata?.prompt } }],
-                    relation: "background-removal",
                     select: "children",
                 },
-                { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+                { setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
             );
             message.success({ content: t("canvas.imageTools.removeBackgroundDone"), key });
         } catch {
@@ -1605,12 +1600,11 @@ function InfiniteCanvasPage() {
                         position: { x: startX + piece.column * (cellWidth + gap), y: startY + piece.row * (cellHeight + gap) },
                         metadata: { prompt: node.metadata?.prompt },
                     })),
-                    relation: "split",
                     select: "children",
                     clearSelectedConnection: true,
                     openDialog: null,
                 },
-                { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+                { setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
             );
             message.success(t("canvas.projectPage.splitSuccess", { count: childNodes.length }));
         },
@@ -1628,11 +1622,10 @@ function InfiniteCanvasPage() {
             {
                 source: node,
                 children: [{ id: childId, image, title: t("canvas.imageTools.resolutionResult"), metadata: { prompt: node.metadata?.prompt } }],
-                relation: "upscale",
                 select: "children",
                 openDialog: childId,
             },
-            { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+            { setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
         );
     }, [t]);
 
@@ -1657,11 +1650,10 @@ function InfiniteCanvasPage() {
                 {
                     source: node,
                     children: [{ id: childId, image: uploaded, title: t("canvas.imageTools.resolutionAiResult"), metadata: { prompt, model: generationConfig.model } }],
-                    relation: "ai-upscale",
                     select: "children",
                     openDialog: childId,
                 },
-                { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+                { setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
             );
             message.success({ content: t("canvas.imageTools.resolutionAiDone"), key });
         } catch (error) {
@@ -1687,7 +1679,7 @@ function InfiniteCanvasPage() {
                     children: [{ type: CanvasNodeType.Text, title: text.slice(0, 32) || t("canvas.imageTools.ocrResult"), metadata: { content: text, prompt: ocrPrompt(), status: "success" } }],
                     select: "children",
                 },
-                { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+                { setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
             );
             message.success({ content: t("canvas.imageTools.ocrResult"), key });
         } catch (error) {
@@ -1707,10 +1699,9 @@ function InfiniteCanvasPage() {
                 {
                     source: node,
                     children: [{ image, title: t("canvas.segment.result"), size: { width, height: width * (image.height / image.width) }, metadata: { prompt: node.metadata?.prompt } }],
-                    relation: "segment",
                     select: "children",
                 },
-                { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+                { setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
             );
             setSegmentNodeId(null);
         },

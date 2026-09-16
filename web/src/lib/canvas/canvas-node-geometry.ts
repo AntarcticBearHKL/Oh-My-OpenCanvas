@@ -126,8 +126,7 @@ export function normalizeConnection(firstNodeId: string, secondNodeId: string, n
     if (!first || !second || first.id === second.id) return null;
     const isGenerationSink = (type: CanvasNodeTypeId) => type === CanvasNodeType.Config || type === CanvasNodeType.ImageGeneration;
     if (isGenerationSink(first.type) && isGenerationSink(second.type)) return null;
-    if (isGenerationSink(second.type)) return { fromNodeId: first.id, toNodeId: second.id };
-    if (isGenerationSink(first.type) && firstHandleType === "target") return { fromNodeId: second.id, toNodeId: first.id };
-    if (isGenerationSink(first.type)) return { fromNodeId: first.id, toNodeId: second.id };
-    return { fromNodeId: first.id, toNodeId: second.id };
+    const toSecond = isGenerationSink(second.type) || !isGenerationSink(first.type) || firstHandleType === "source";
+    if ((toSecond ? second : first).type === CanvasNodeType.Image) return null;
+    return toSecond ? { fromNodeId: first.id, toNodeId: second.id } : { fromNodeId: second.id, toNodeId: first.id };
 }

@@ -53,7 +53,6 @@ type CanvasGenerationParams = {
     nodesRef: MutableRefObject<CanvasNodeData[]>;
     connectionsRef: MutableRefObject<CanvasConnection[]>;
     setNodes: Dispatch<SetStateAction<CanvasNodeData[]>>;
-    setConnections: Dispatch<SetStateAction<CanvasConnection[]>>;
     setSelectedNodeIds: Dispatch<SetStateAction<Set<string>>>;
     setSelectedConnectionId: Dispatch<SetStateAction<string | null>>;
     setDialogNodeId: Dispatch<SetStateAction<string | null>>;
@@ -78,7 +77,6 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
         nodesRef,
         connectionsRef,
         setNodes,
-        setConnections,
         setSelectedNodeIds,
         setSelectedConnectionId,
         setDialogNodeId,
@@ -248,14 +246,12 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                 {
                     source: node,
                     children: [{ id: childId, title: userPrompt.slice(0, 32) || t("canvas.projectPage.maskResult"), size: { width: node.width, height: node.height }, metadata: childMetadata }],
-                    relation: "mask",
                     extraNodes: [{ id: maskNodeId, type: CanvasNodeType.Image, title: t("canvas.projectPage.maskNodeTitle"), position: { x: node.position.x, y: node.position.y + node.height + 96 }, width: node.width, height: node.height, metadata: imageMetadata(maskImage) }],
-                    extraConnections: [{ id: nanoid(), fromNodeId: maskNodeId, toNodeId: childId, relation: "generation" }],
                     select: "children",
                     clearSelectedConnection: true,
                     openDialog: childId,
                 },
-                { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+                { setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
             );
             if (!payload.generate) return;
             setRunningNodeId(childId);
@@ -304,7 +300,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                     select: "children",
                     openDialog: childId,
                 },
-                { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+                { setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
             );
             const controller = startGenerationRequest(childId, node.id, childId);
             try {

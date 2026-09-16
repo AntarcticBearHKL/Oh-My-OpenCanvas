@@ -5,7 +5,7 @@ import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { imageMetadata } from "@/lib/canvas/canvas-node-factory";
 import { fitNodeSize } from "@/lib/canvas/canvas-node-size";
 import type { UploadedImage } from "@/services/image-storage";
-import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type CanvasNodeMetadata, type Position } from "@/types/canvas";
+import { CanvasNodeType, type CanvasNodeData, type CanvasNodeMetadata, type Position } from "@/types/canvas";
 
 type DerivedAssetChild = {
     id?: string;
@@ -20,9 +20,7 @@ type DerivedAssetChild = {
 type DerivedAssetSpec = {
     source: CanvasNodeData;
     children: DerivedAssetChild[];
-    relation?: string;
     extraNodes?: CanvasNodeData[];
-    extraConnections?: CanvasConnection[];
     select?: "children" | "source" | "none";
     clearSelectedConnection?: boolean;
     openDialog?: string | null;
@@ -30,14 +28,13 @@ type DerivedAssetSpec = {
 
 type DerivedAssetState = {
     setNodes: Dispatch<SetStateAction<CanvasNodeData[]>>;
-    setConnections: Dispatch<SetStateAction<CanvasConnection[]>>;
     setSelectedNodeIds: Dispatch<SetStateAction<Set<string>>>;
     setSelectedConnectionId: Dispatch<SetStateAction<string | null>>;
     setDialogNodeId: Dispatch<SetStateAction<string | null>>;
 };
 
 export function insertDerivedAsset(spec: DerivedAssetSpec, state: DerivedAssetState): CanvasNodeData[] {
-    const { source, children, relation, extraNodes = [], extraConnections = [], select, clearSelectedConnection = false, openDialog } = spec;
+    const { source, children, extraNodes = [], select, clearSelectedConnection = false, openDialog } = spec;
     const childNodes = children.map((child): CanvasNodeData => {
         const type = child.type ?? CanvasNodeType.Image;
         const size = child.size ?? (child.image ? fitNodeSize(child.image.width, child.image.height) : NODE_DEFAULT_SIZE[type]);
@@ -52,8 +49,6 @@ export function insertDerivedAsset(spec: DerivedAssetSpec, state: DerivedAssetSt
         };
     });
     state.setNodes((prev) => [...prev, ...extraNodes, ...childNodes]);
-    const connections = [...(relation ? childNodes.map((child) => ({ id: nanoid(), fromNodeId: source.id, toNodeId: child.id, relation })) : []), ...extraConnections];
-    if (connections.length) state.setConnections((prev) => [...prev, ...connections]);
     if (select === "children") state.setSelectedNodeIds(new Set(childNodes.map((child) => child.id)));
     else if (select === "source") state.setSelectedNodeIds(new Set([source.id]));
     if (clearSelectedConnection) state.setSelectedConnectionId(null);
