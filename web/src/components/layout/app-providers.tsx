@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { ClientRootInit } from "@/components/layout/client-root-init";
 import type { AppLocale } from "@/i18n";
 import { getAntThemeConfig } from "@/lib/app-theme";
+import { installCanvasPointerToolHost } from "@/lib/canvas/canvas-pointer-tools";
 import { useThemeStore } from "@/stores/use-theme-store";
 
 const queryClient = new QueryClient({
@@ -28,6 +29,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
     const theme = useThemeStore((state) => state.theme);
     const dark = theme === "dark";
     const locale = i18n.resolvedLanguage as AppLocale;
+
+    useEffect(() => installCanvasPointerToolHost(), []);
 
     useEffect(() => {
         document.documentElement.classList.toggle("dark", dark);

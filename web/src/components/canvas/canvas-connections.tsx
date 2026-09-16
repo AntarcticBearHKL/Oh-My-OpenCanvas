@@ -1,4 +1,4 @@
-import { connectionRelationLabel } from "@/lib/canvas/canvas-connections";
+import { connectionGeometry, connectionRelationLabel } from "@/lib/canvas/canvas-connections";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import type { CanvasConnection, CanvasNodeData, ConnectionHandle, Position } from "@/types/canvas";
 
@@ -20,13 +20,7 @@ export function ConnectionPath({
     scale: number;
 }) {
     const theme = useCanvasTheme();
-    const startX = from.position.x + from.width;
-    const startY = from.position.y + from.height / 2;
-    const endX = to.position.x;
-    const endY = to.position.y + to.height / 2;
-    const dx = Math.abs(endX - startX);
-    const curvature = Math.max(dx * 0.5, 50);
-    const pathD = `M ${startX} ${startY} C ${startX + curvature} ${startY}, ${endX - curvature} ${endY}, ${endX} ${endY}`;
+    const { startX, startY, endX, endY, pathD } = connectionGeometry(from, to);
     const label = connectionRelationLabel(connection, from, to, referenceIndex);
 
     return (

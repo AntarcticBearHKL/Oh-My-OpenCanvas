@@ -40,6 +40,9 @@ import { CanvasNodeListPanel } from "@/components/canvas/canvas-node-layer-popov
 import { CanvasRulers } from "@/components/canvas/canvas-rulers";
 import { CanvasSelectionToolbar } from "@/components/canvas/canvas-selection-toolbar";
 import { alignNodes, type AlignAxis } from "@/lib/canvas/alignment";
+import { connectionCrossesStroke } from "@/lib/canvas/canvas-connections";
+import { isCanvasOverlayTarget } from "@/lib/canvas/canvas-overlays";
+import { registerCanvasRightButtonTool } from "@/lib/canvas/canvas-pointer-tools";
 import { InfiniteCanvas } from "@/components/canvas/infinite-canvas";
 import { Minimap } from "@/components/canvas/canvas-mini-map";
 import { CanvasNode, selectionBlue } from "@/components/canvas/canvas-node";
@@ -202,6 +205,7 @@ function InfiniteCanvasPage() {
     const [pendingConnectionCreate, setPendingConnectionCreate] = useState<PendingConnectionCreate | null>(null);
     const [mouseWorld, setMouseWorld] = useState<Position>({ x: 0, y: 0 });
     const [selectionBox, setSelectionBox] = useState<SelectionBox | null>(null);
+    const [cutStroke, setCutStroke] = useState<Position[] | null>(null);
     const [runningNodeId, setRunningNodeId] = useState<string | null>(null);
     const [isMiniMapOpen, setIsMiniMapOpen] = useState(false);
     const [assetPickerOpen, setAssetPickerOpen] = useState(false);
@@ -244,6 +248,7 @@ function InfiniteCanvasPage() {
     const connectingParamsRef = useRef(connectingParams);
     const connectionTargetNodeIdRef = useRef(connectionTargetNodeId);
     const selectionBoxRef = useRef(selectionBox);
+    const cutStrokeRef = useRef<Position[] | null>(null);
     const pendingConnectionCreateRef = useRef(pendingConnectionCreate);
     const nodeSnapshotsRef = useRef<Map<string, string> | null>(null);
 
@@ -736,6 +741,45 @@ function InfiniteCanvasPage() {
         },
         [cancelPendingConnectionCreate, screenToCanvas],
     );
+
+    const startCutStroke = useCallback(
+        (event: PointerEvent) => {
+            if (isCanvasOverlayTarget(event.target)) return false;
+            if (!containerRef.current?.contains(event.target as Node)) return false;
+            const point = screenToCanvas(event.clientX, event.clientY);
+            cutStrokeRef.current = [point];
+            setCutStroke([point]);
+            return true;
+        },
+        [screenToCanvas],
+    );
+
+    const moveCutStroke = useCallback(
+        (event: PointerEvent) => {
+            const points = cutStrokeRef.current;
+            if (!points) return;
+            const next = [...points, screenToCanvas(event.clientX, event.clientY)];
+            cutStrokeRef.current = next;
+            setCutStroke(next);
+        },
+        [screenToCanvas],
+    );
+
+    const finishCutStroke = useCallback(() => {
+        const points = cutStrokeRef.current;
+        cutStrokeRef.current = null;
+        setCutStroke(null);
+        if (!points || points.length < 2) return;
+        connectionsRef.current
+            .filter((connection) => {
+                const from = nodesRef.current.find((node) => node.id === connection.fromNodeId);
+                const to = nodesRef.current.find((node) => node.id === connection.toNodeId);
+                return Boolean(from && to && connectionCrossesStroke(from, to, points));
+            })
+            .forEach((connection) => deleteConnection(connection.id));
+    }, [deleteConnection]);
+
+    useEffect(() => registerCanvasRightButtonTool("ctrl", { onStart: startCutStroke, onMove: moveCutStroke, onEnd: finishCutStroke }), [finishCutStroke, moveCutStroke, startCutStroke]);
 
     // Selection-only logic shared by the bubbling drag entry point and outer capture handler.
     // Returns the single target ID after the click, or null for multi-selection or deselection, to sync the toolbar.
@@ -1982,6 +2026,9 @@ function InfiniteCanvasPage() {
                                     />
                                 );
                             })}
+                        {cutStroke && cutStroke.length > 1 ? (
+                            <polyline points={cutStroke.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" stroke={theme.canvas.selectionStroke} strokeWidth={2 / viewport.k} strokeLinecap="round" strokeLinejoin="round" />
+                        ) : null}
                         {connectingParams ? <ActiveConnectionPath node={nodeById.get(connectingParams.nodeId)} handle={connectingParams} mouseWorld={mouseWorld} target={connectionTargetNodeId ? nodeById.get(connectionTargetNodeId) : undefined} /> : null}
                     </svg>
 
