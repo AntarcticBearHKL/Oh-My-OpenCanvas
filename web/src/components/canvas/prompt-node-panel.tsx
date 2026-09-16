@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { usePromptList } from "@/components/prompts/use-prompt-list";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { ALL_PROMPTS_OPTION, type Prompt } from "@/services/api/prompts";
-import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
+import { CANVAS_REFERENCE_DRAG_TYPE, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import type { CanvasNodeData } from "@/types/canvas";
 import { CanvasPromptChipInput } from "./canvas-prompt-chip-input";
 
@@ -31,6 +31,7 @@ export function PromptNodePanel({ node, references = [], onContentChange }: { no
                     {t("canvas.promptNode.pick")}
                 </button>
             </div>
+            <PromptReferenceChips references={references} />
             <div className="flex min-h-0 flex-1 flex-col" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
                 <CanvasPromptChipInput
                     value={node.metadata?.prompt || ""}
@@ -43,6 +44,41 @@ export function PromptNodePanel({ node, references = [], onContentChange }: { no
                 />
             </div>
             <PromptLibraryPicker open={pickerOpen} onSelect={(item) => (onContentChange(node.id, item.prompt), setPickerOpen(false))} onClose={() => setPickerOpen(false)} />
+        </div>
+    );
+}
+
+function PromptReferenceChips({ references }: { references: CanvasResourceReference[] }) {
+    const theme = useCanvasTheme();
+    const { t } = useTranslation();
+    const images = references.filter((reference) => reference.kind === "image");
+    if (!images.length) return null;
+
+    return (
+        <div
+            className="mb-2 flex max-w-full shrink-0 flex-wrap items-center gap-1"
+            title={t("canvas.promptNode.dragHint")}
+            onMouseDown={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+        >
+            {images.map((reference) => (
+                <div
+                    key={reference.id}
+                    draggable
+                    className="canvas-prompt-ref-chip flex h-7 max-w-32 cursor-grab items-center gap-1 overflow-hidden rounded-md border px-1 text-[11px] leading-none"
+                    style={{ background: theme.toolbar.panel, borderColor: theme.node.stroke, color: theme.node.text }}
+                    title={reference.title || reference.label}
+                    onDragStart={(event) => {
+                        event.dataTransfer.setData(CANVAS_REFERENCE_DRAG_TYPE, reference.id);
+                        event.dataTransfer.effectAllowed = "copy";
+                        event.currentTarget.classList.add("canvas-prompt-ref-chip-dragging");
+                    }}
+                    onDragEnd={(event) => event.currentTarget.classList.remove("canvas-prompt-ref-chip-dragging")}
+                >
+                    {reference.previewUrl ? <img src={reference.previewUrl} alt="" draggable={false} className="size-5 shrink-0 rounded object-cover" /> : null}
+                    <span className="truncate">{reference.label}</span>
+                </div>
+            ))}
         </div>
     );
 }
