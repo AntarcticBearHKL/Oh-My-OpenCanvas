@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Modal, Segmented } from "antd";
-import { BetweenHorizontalStart, Copy, Download, FolderPlus, GalleryHorizontal, GalleryHorizontalEnd, Image as ImageIcon, Info, LayoutDashboard, Layers, MessageSquare, Minus, Music2, Plus, RefreshCw, Settings2, Tags, Trash2, Upload, Video } from "lucide-react";
+import { BetweenHorizontalStart, Copy, Download, FolderPlus, GalleryHorizontal, GalleryHorizontalEnd, Image as ImageIcon, ImagePlus, Info, Layers, MessageSquare, Minus, Music2, Plus, RefreshCw, Settings2, Tags, Trash2, Upload, Video } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -46,7 +46,7 @@ type CanvasNodeHoverToolbarProps = {
     onBulkRename: (ids: string[], title: string) => void;
     onCaptureVideoFrame: (node: CanvasNodeData, position: VideoFramePosition) => void;
     onTextStyleChange?: (nodeId: string, patch: Partial<CanvasNodeMetadata>) => void;
-    onComposeBoard?: (node: CanvasNodeData) => void;
+    onSaveBoardAsNode?: (node: CanvasNodeData) => void;
     extraTools?: CanvasNodeToolbarItem[];
 };
 
@@ -92,7 +92,7 @@ export function CanvasNodeHoverToolbar({
     onBulkRename,
     onCaptureVideoFrame,
     onTextStyleChange,
-    onComposeBoard,
+    onSaveBoardAsNode,
     extraTools = [],
 }: CanvasNodeHoverToolbarProps) {
     const [quickImageToolIds, setQuickImageToolIds] = useState<ImageQuickToolId[]>(defaultImageQuickToolIds);
@@ -162,7 +162,7 @@ export function CanvasNodeHoverToolbar({
         ...(isVideo ? [{ id: "edit", title: t("common.edit"), label: t("common.edit"), icon: <MessageSquare className="size-4" />, onClick: () => onToggleDialog(node) }] : []),
         ...(isText ? [{ id: "generateImage", title: t("canvas.node.generateImage"), label: t("canvas.node.generate"), icon: <ImageIcon className="size-4" />, onClick: () => onGenerateImage(node) }] : []),
         ...(isConfig ? [{ id: "config", title: t("canvas.configNode.title"), label: t("canvas.configNode.title"), icon: <Settings2 className="size-4" />, onClick: () => onToggleDialog(node) }] : []),
-        ...(isBoard && onComposeBoard ? [{ id: "composeBoard", title: t("canvas.smartCanvas.previewTitle"), label: t("canvas.smartCanvas.preview"), icon: <LayoutDashboard className="size-4" />, onClick: () => onComposeBoard(node) }] : []),
+        ...(isBoard && onSaveBoardAsNode ? [{ id: "saveBoardAsNode", title: t("canvas.smartCanvas.saveAsNode"), label: t("canvas.smartCanvas.saveAsNode"), icon: <ImagePlus className="size-4" />, onClick: () => onSaveBoardAsNode(node) }] : []),
         ...(isText ? [{ id: "decreaseFont", title: t("canvas.nodeToolbar.decreaseFont"), label: t("canvas.nodeToolbar.zoomOut"), icon: <Minus className="size-4" />, onClick: () => onDecreaseFont(node) }] : []),
         ...(isText ? [{ id: "increaseFont", title: t("canvas.nodeToolbar.increaseFont"), label: t("canvas.nodeToolbar.zoomIn"), icon: <Plus className="size-4" />, onClick: () => onIncreaseFont(node) }] : []),
         ...(isImage && !hasImage ? [{ id: "uploadImage", title: t("canvas.nodeToolbar.uploadImage"), label: t("canvas.nodeToolbar.uploadImage"), icon: <Upload className="size-4" />, onClick: () => onUpload(node) }] : []),

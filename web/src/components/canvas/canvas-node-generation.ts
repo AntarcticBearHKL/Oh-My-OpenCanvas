@@ -198,7 +198,7 @@ export async function hydrateNodeGenerationContext(context: NodeGenerationContex
             context.referenceImages.map(async (image): Promise<ReferenceImage | null> => {
                 const board = nodes.find((node) => node.id === image.id && node.type === CanvasNodeType.SmartCanvas);
                 if (!board) return { ...image, dataUrl: await imageToDataUrl(image) };
-                const placed = nodes.filter((node) => node.type === CanvasNodeType.Image && node.metadata?.boardId === board.id);
+                const placed = nodes.filter((node) => (node.type === CanvasNodeType.Image || node.type === CanvasNodeType.SmartCanvas) && node.metadata?.boardId === board.id);
                 const composed = await composeSmartCanvas(board, placed, nodes);
                 return composed.dataUrl ? { ...image, dataUrl: composed.dataUrl } : null;
             }),

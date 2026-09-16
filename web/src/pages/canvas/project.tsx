@@ -1418,29 +1418,6 @@ function InfiniteCanvasPage() {
         [message, t],
     );
 
-    const handleSaveBoardPreview = useCallback(async () => {
-        if (!boardPreview) return;
-        const board = nodesRef.current.find((node) => node.id === boardPreview.boardId);
-        if (!board) return;
-        try {
-            const uploaded = await uploadImage(boardPreview.dataUrl);
-            const size = fitNodeSize(boardPreview.width, boardPreview.height, NODE_DEFAULT_SIZE[CanvasNodeType.Image].width, NODE_DEFAULT_SIZE[CanvasNodeType.Image].height);
-            insertDerivedAsset(
-                {
-                    source: board,
-                    children: [{ image: uploaded, title: boardPreview.title, size, position: { x: board.position.x + board.width + 40, y: board.position.y }, metadata: { naturalWidth: boardPreview.width, naturalHeight: boardPreview.height } }],
-                    select: "children",
-                    clearSelectedConnection: true,
-                },
-                { setNodes, setConnections, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
-            );
-            setBoardPreview(null);
-            message.success(t("canvas.smartCanvas.savedAsNode"));
-        } catch {
-            message.error(t("common.imageReadFailed"));
-        }
-    }, [boardPreview, message, t]);
-
     const downloadNodeImage = useCallback((node: CanvasNodeData) => {
         if ((node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video && node.type !== CanvasNodeType.Audio) || !node.metadata?.content) return;
         saveAs(node.metadata.content, `canvas-${node.type}-${node.id}.${node.type === CanvasNodeType.Video ? "mp4" : node.type === CanvasNodeType.Audio ? audioExtension(node.metadata.mimeType) : imageExtension(node.metadata.content)}`);
@@ -2128,7 +2105,7 @@ function InfiniteCanvasPage() {
                     onToggleFlag={toggleNodeFlag}
                     onBulkRename={renameNodes}
                     onCaptureVideoFrame={(node, position) => void captureVideoNodeFrame(node.id, position)}
-                    onComposeBoard={(node) => void handleComposeBoard(node)}
+                    onSaveBoardAsNode={(node) => void handleSaveBoardAsNode(node)}
                 />
 
                 {hasMultipleSelectedNodes && !selectionBox ? (
@@ -2236,10 +2213,7 @@ function InfiniteCanvasPage() {
                         <>
                             <img src={boardPreview.dataUrl} alt={boardPreview.title} style={{ maxWidth: "100%", maxHeight: "72vh", objectFit: "contain" }} />
                             <div className="flex items-center gap-2">
-                                <Button icon={<ImagePlus className="size-4" />} onClick={() => void handleSaveBoardPreview()}>
-                                    {t("canvas.smartCanvas.saveAsNode")}
-                                </Button>
-                                <Button type="primary" icon={<Download className="size-4" />} onClick={() => saveAs(boardPreview.dataUrl, `smart-canvas-${boardPreview.width}x${boardPreview.height}.png`)}>
+                                <Button className="!border-black !bg-black !text-white hover:!border-black hover:!bg-black/85 hover:!text-white" icon={<Download className="size-4" />} onClick={() => saveAs(boardPreview.dataUrl, `smart-canvas-${boardPreview.width}x${boardPreview.height}.png`)}>
                                     {t("canvas.smartCanvas.download")}
                                 </Button>
                             </div>

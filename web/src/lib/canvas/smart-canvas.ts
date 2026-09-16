@@ -121,7 +121,36 @@ export function moveBoardLayer(board: CanvasNodeData, images: CanvasNodeData[], 
     return next;
 }
 
+const SMART_CANVAS_COMPOSITE_CACHE_LIMIT = 2;
+
+const compositeCache = new Map<string, SmartCanvasComposite>();
+
+function compositeSignature(board: CanvasNodeData, layers: CanvasNodeData[], nodes: CanvasNodeData[], visited: Set<string>): string {
+    const parts = [board.id, board.position.x, board.position.y, board.width, board.height, smartCanvasRatio(board), smartCanvasResolution(board), smartCanvasBackground(board), String(smartCanvasBackgroundOpacity(board)), JSON.stringify(smartCanvasTexts(board))];
+    orderBoardImages(board, layers).forEach((layer) => {
+        parts.push(`${layer.id}:${layer.position.x},${layer.position.y},${layer.width},${layer.height}:${clampLayerOpacity(layer.metadata?.opacity)}:${resolveBlendMode(layer.metadata?.blendMode).id}:${layer.metadata?.storageKey || layer.metadata?.content || ""}`);
+        if (layer.type === CanvasNodeType.SmartCanvas && !visited.has(layer.id)) {
+            parts.push(compositeSignature(layer, nodes.filter((node) => node.metadata?.boardId === layer.id), nodes, new Set(visited).add(layer.id)));
+        }
+    });
+    return parts.join("|");
+}
+
+function cacheComposite(signature: string, composite: SmartCanvasComposite) {
+    if (signature && composite.dataUrl) {
+        compositeCache.set(signature, composite);
+        if (compositeCache.size > SMART_CANVAS_COMPOSITE_CACHE_LIMIT) {
+            const oldest = compositeCache.keys().next().value;
+            if (oldest) compositeCache.delete(oldest);
+        }
+    }
+    return composite;
+}
+
 export async function composeSmartCanvas(board: CanvasNodeData, layers: CanvasNodeData[], nodes: CanvasNodeData[], visited: Set<string> = new Set()): Promise<SmartCanvasComposite> {
+    const signature = visited.size ? "" : compositeSignature(board, layers, nodes, new Set([board.id]));
+    const cached = signature ? compositeCache.get(signature) : undefined;
+    if (cached) return cached;
     const target = smartCanvasTargetSize(board);
     const width = Math.max(1, target.width);
     const height = Math.max(1, target.height);
@@ -195,7 +224,7 @@ export async function composeSmartCanvas(board: CanvasNodeData, layers: CanvasNo
     }
 
     try {
-        return { dataUrl: canvas.toDataURL("image/png"), width, height };
+        return cacheComposite(signature, { dataUrl: canvas.toDataURL("image/png"), width, height });
     } catch {
         return { dataUrl: "", width, height };
     }

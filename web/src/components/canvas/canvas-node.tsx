@@ -399,12 +399,12 @@ export const CanvasNode = React.memo(function CanvasNode({
             )}
 
             <div
-                className={`relative h-full w-full overflow-visible rounded-3xl border-2 ${frostedCard ? `canvas-glass-card ${frostedSurfaceClass}` : ""} ${enteredImage ? "canvas-node-enter" : ""}`}
+                className={`relative h-full w-full overflow-visible rounded-3xl ${isBoard ? "border-0" : "border-2"} ${frostedCard ? `canvas-glass-card ${frostedSurfaceClass}` : ""} ${enteredImage ? "canvas-node-enter" : ""}`}
                 style={{
                     background: hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.toolbar.panel,
-                    borderColor: hasImageContent ? imageBorderColor : isBoard && isBoardDropTarget ? selectionBlue : isAssetsFolderDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : "transparent",
+                    borderColor: hasImageContent ? imageBorderColor : isAssetsFolderDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : "transparent",
                     borderStyle: "solid",
-                    outline: isBoard && isBoardDropTarget ? `2px solid ${selectionBlue}66` : isAssetsFolderDropTarget ? `2px solid ${selectionBlue}66` : isPlacedOnBoard ? `2px dashed ${selectionBlue}88` : undefined,
+                    outline: isBoard ? (isBoardDropTarget ? `2px solid ${selectionBlue}66` : isActive ? `2px solid ${selectionBlue}` : isPlacedOnBoard ? `2px dashed ${selectionBlue}88` : undefined) : isAssetsFolderDropTarget ? `2px solid ${selectionBlue}66` : isPlacedOnBoard ? `2px dashed ${selectionBlue}88` : undefined,
                     outlineOffset: (isBoard && isBoardDropTarget) || isAssetsFolderDropTarget || isPlacedOnBoard ? 2 : undefined,
                     boxShadow: isActive ? `0 0 0 1px ${selectionBlue}55` : isRelated ? `0 0 0 1px ${theme.node.muted}55` : undefined,
                 }}
