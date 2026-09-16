@@ -149,7 +149,7 @@ export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, in
                 </div>
 
                 {mode === "image" ? (
-                    <div className="thin-scrollbar mb-1.5 min-h-0 flex-1 overflow-y-auto pr-0.5" onWheel={(event) => event.stopPropagation()}>
+                    <div className={`thin-scrollbar mb-1.5 min-h-0 overflow-y-auto pr-0.5${scaledLayout ? "" : " flex-1"}`} onWheel={(event) => event.stopPropagation()}>
                         <ImageSettingsPanel config={config} compact showTitle={false} className="space-y-2" theme={theme} onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })} />
                     </div>
                 ) : null}
@@ -172,11 +172,21 @@ export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, in
                         </div>
                     )}
 
-                    <div className="flex shrink-0 justify-end">
+                    <div className="relative flex shrink-0 transition hover:opacity-90 has-[:disabled]:opacity-35">
+                        <span
+                            className="pointer-events-none absolute inset-0 rounded-full p-px"
+                            style={{
+                                background: `linear-gradient(120deg, ${isRunning ? theme.node.blocked : theme.node.primary}, ${theme.node.stroke})`,
+                                WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                                WebkitMaskComposite: "xor",
+                                mask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                                maskComposite: "exclude",
+                            }}
+                        />
                         <Button
                             type="primary"
-                            className="!h-9 !cursor-pointer !rounded-full !border-transparent !px-4 !text-[11px] !font-semibold transition hover:!opacity-90 disabled:!opacity-35"
-                            style={isRunning ? undefined : { background: theme.node.primary, color: theme.node.primaryText }}
+                            className="!h-9 !w-full !cursor-pointer !rounded-full !border-transparent !px-4 !text-[11px] !font-semibold transition"
+                            style={{ background: "transparent", color: theme.node.text }}
                             danger={isRunning}
                             disabled={!isRunning && !canGenerate}
                             onMouseDown={(event) => event.stopPropagation()}
