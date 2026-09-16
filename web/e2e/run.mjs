@@ -376,6 +376,18 @@ const LIB_ASSERTIONS = `(async () => {
         unwritten + "," + folderStore.useAssetFolderStore.getState().outputStatus,
     );
 
+    const canvasStore = await import("/src/stores/canvas/use-canvas-store.ts");
+    const viewportProjectA = canvasStore.useCanvasStore.getState().createProject("e2e viewport a");
+    const viewportProjectB = canvasStore.useCanvasStore.getState().createProject("e2e viewport b");
+    canvasStore.useCanvasStore.getState().updateProject(viewportProjectA, { viewport: { x: 12, y: 34, k: 0.5 } });
+    const viewportA = canvasStore.useCanvasStore.getState().projects.find((project) => project.id === viewportProjectA).viewport;
+    const viewportB = canvasStore.useCanvasStore.getState().projects.find((project) => project.id === viewportProjectB).viewport;
+    ok(
+        "canvas store keeps the viewport on its own project",
+        viewportA.x === 12 && viewportA.y === 34 && viewportA.k === 0.5 && viewportB.x === 0 && viewportB.y === 0 && viewportB.k === 1,
+        JSON.stringify([viewportA, viewportB]),
+    );
+
     const algorithms = await import("/src/lib/image/image-algorithms.ts");
     const cropClamped = algorithms.resolveSmartCropArea(100, 80, 1, { x: -5, y: -3, width: 200, height: 200 });
     ok("smart crop clamps into image bounds", cropClamped.x === 0 && cropClamped.y === 0 && cropClamped.width === 100 && cropClamped.height === 80, JSON.stringify(cropClamped));

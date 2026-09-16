@@ -153,7 +153,6 @@ function InfiniteCanvasPage() {
     const uploadTargetRef = useRef<{ nodeId?: string; position?: Position } | null>(null);
     const clipboardRef = useRef<CanvasClipboard | null>(null);
     const viewportSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const didInitialCenterRef = useRef(false);
     const rafRef = useRef<number | null>(null);
     const dragMoveRef = useRef<{ clientX: number; clientY: number } | null>(null);
     const dragPreviewRef = useRef<Map<string, Position> | null>(null);
@@ -388,10 +387,6 @@ function InfiniteCanvasPage() {
         const updateSize = () => {
             const rect = el.getBoundingClientRect();
             setSize({ width: rect.width, height: rect.height });
-            if (!didInitialCenterRef.current) {
-                didInitialCenterRef.current = true;
-                setViewport({ x: rect.width / 2, y: rect.height / 2, k: 1 });
-            }
         };
 
         updateSize();
