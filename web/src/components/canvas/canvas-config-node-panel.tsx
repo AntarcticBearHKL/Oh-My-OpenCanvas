@@ -51,10 +51,10 @@ export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, in
     const layoutScale = Math.min(Math.max(node.width - 4, 1) / IMAGE_GEN_DESIGN_WIDTH, Math.max(node.height - 4, 1) / IMAGE_GEN_DESIGN_HEIGHT);
 
     return (
-        <div className={scaledLayout ? "absolute inset-0 overflow-hidden" : "flex h-full w-full cursor-move flex-col px-3 pb-3 pt-7 text-sm"} style={scaledLayout ? undefined : { color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
+        <div className={scaledLayout ? "absolute inset-0 flex items-center justify-center overflow-hidden" : "flex h-full w-full cursor-move flex-col px-3 pb-3 pt-7 text-sm"} style={scaledLayout ? undefined : { color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
             <div
-                className={scaledLayout ? "flex flex-col px-3 pb-4 pt-5 text-sm" : "contents"}
-                style={scaledLayout ? { width: IMAGE_GEN_DESIGN_WIDTH, height: IMAGE_GEN_DESIGN_HEIGHT, transform: `scale(${layoutScale})`, transformOrigin: "top left", color: theme.node.text } : undefined}
+                className={scaledLayout ? "flex shrink-0 flex-col px-3 pb-4 pt-5 text-sm" : "contents"}
+                style={scaledLayout ? { width: IMAGE_GEN_DESIGN_WIDTH, height: IMAGE_GEN_DESIGN_HEIGHT, transform: `scale(${layoutScale})`, transformOrigin: "center", color: theme.node.text } : undefined}
             >
                 {isImageGenerationNode ? null : (
                     <div className="mb-2 flex items-center justify-between gap-3">
@@ -149,7 +149,7 @@ export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, in
                 </div>
 
                 {mode === "image" ? (
-                    <div className={`thin-scrollbar mb-1.5 min-h-0 overflow-y-auto pr-0.5${scaledLayout ? "" : " flex-1"}`} onWheel={(event) => event.stopPropagation()}>
+                    <div className={`thin-scrollbar mb-1.5 min-h-0 overflow-y-auto${scaledLayout ? "" : " flex-1"}`} onWheel={(event) => event.stopPropagation()}>
                         <ImageSettingsPanel config={config} compact showTitle={false} className="space-y-2" theme={theme} onConfigChange={(key, value) => onConfigChange(node.id, key === "count" ? { count: Number(value) || 1 } : { [key]: value })} />
                     </div>
                 ) : null}
