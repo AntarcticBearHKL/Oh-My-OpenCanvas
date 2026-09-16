@@ -21,7 +21,7 @@ export function AppTopNav() {
     return (
         <>
             {!hideHeader ? (
-                <header className={cn("sticky top-0 z-20 h-14 shrink-0 border-b border-black/10 bg-background/70 dark:border-white/10", frostedSurfaceClass)}>
+                <header className={cn("sticky top-0 z-20 h-14 shrink-0 border-b border-border bg-background/70", frostedSurfaceClass)}>
                     <div className="flex h-full items-stretch justify-between gap-3 px-4 sm:gap-5">
                         <div className="flex min-w-0 items-center">
                             <Link to="/" className="flex h-full min-w-0 items-center gap-2 text-sm font-semibold leading-none tracking-tight text-foreground transition hover:text-muted-foreground dark:text-foreground dark:hover:text-muted-foreground">
@@ -45,7 +45,7 @@ export function AppTopNav() {
                                 <Menu className="size-5" />
                             </button>
 
-                            <nav className="hide-scrollbar ml-8 hidden h-14 min-w-0 items-center gap-7 overflow-x-auto md:flex">
+                            <nav className="hide-scrollbar ml-8 hidden h-full min-w-0 items-center gap-7 overflow-x-auto md:flex">
                                 {navigationTools.map((tool) => {
                                     const Icon = tool.icon;
                                     const active = tool.slug === activeToolSlug;
@@ -54,10 +54,10 @@ export function AppTopNav() {
                                             key={tool.slug}
                                             to={`/${tool.slug}`}
                                             className={cn(
-                                                "relative flex h-14 shrink-0 items-center gap-2 text-sm leading-6 transition after:absolute after:inset-x-0 after:bottom-0 after:h-px",
+                                                "relative flex h-full shrink-0 items-center gap-2 text-sm leading-6 transition after:absolute after:inset-x-0 after:bottom-0 after:h-0.5",
                                                 active
-                                                    ? "font-medium text-foreground after:bg-background dark:text-foreground dark:after:bg-muted"
-                                                    : "text-muted-foreground after:bg-transparent hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground",
+                                                    ? "font-medium text-foreground after:bg-foreground"
+                                                    : "text-muted-foreground after:bg-transparent hover:text-foreground",
                                             )}
                                         >
                                             <Icon className="size-4" />
