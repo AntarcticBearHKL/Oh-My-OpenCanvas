@@ -1706,7 +1706,8 @@ function InfiniteCanvasPage() {
         const controller = new AbortController();
         try {
             const source = { id: node.id, name: `${node.title || node.id}.png`, type: node.metadata.mimeType || "image/png", dataUrl: node.metadata.content, storageKey: node.metadata.storageKey };
-            const image = await requestEdit(generationConfig, prompt, [source], { signal: controller.signal }).then((items) => items[0]);
+            const result = await requestEdit(generationConfig, prompt, [source], { signal: controller.signal });
+            const image = result.images[0];
             const uploaded = await uploadImage(image.dataUrl, { signal: controller.signal });
             const childId = nanoid();
             insertDerivedAsset(

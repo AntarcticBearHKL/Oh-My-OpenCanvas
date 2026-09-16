@@ -263,9 +263,10 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
             setRunningNodeId(childId);
             const controller = startGenerationRequest(childId, node.id, childId);
             try {
-                const image = await requestEdit(generationConfig, prompt, references, { signal: controller.signal }).then((items) => items[0]);
+                const result = await requestEdit(generationConfig, prompt, references, { signal: controller.signal });
+                const image = result.images[0];
                 const uploaded = await uploadImage(image.dataUrl, { signal: controller.signal });
-                recordGenerationCost({ nodeId: childId, model: generationConfig.model, unit: "image", quantity: 1 });
+                recordGenerationCost({ nodeId: childId, model: generationConfig.model, unit: "image", quantity: 1, cost: result.cost });
                 const size = fitNodeSize(uploaded.width, uploaded.height, node.width, node.height);
                 setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, width: size.width, height: size.height, metadata: { ...item.metadata, ...imageMetadata(uploaded), prompt, ...generationMetadata } } : item)));
             } catch (error) {
@@ -309,14 +310,15 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
             );
             const controller = startGenerationRequest(childId, node.id, childId);
             try {
-                const image = await requestEdit(
+                const result = await requestEdit(
                     generationConfig,
                     prompt,
                     [{ id: node.id, name: `${node.title || node.id}.png`, type: node.metadata.mimeType || "image/png", dataUrl: node.metadata.content, storageKey: node.metadata.storageKey }],
                     { signal: controller.signal },
-                ).then((items) => items[0]);
+                );
+                const image = result.images[0];
                 const uploaded = await uploadImage(image.dataUrl, { signal: controller.signal });
-                recordGenerationCost({ nodeId: childId, model: generationConfig.model, unit: "image", quantity: 1 });
+                recordGenerationCost({ nodeId: childId, model: generationConfig.model, unit: "image", quantity: 1, cost: result.cost });
                 const size = fitNodeSize(uploaded.width, uploaded.height, imageConfig.width, imageConfig.height);
                 setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, width: size.width, height: size.height, metadata: { ...item.metadata, ...imageMetadata(uploaded), prompt, ...generationMetadata } } : item)));
             } catch (error) {
@@ -355,11 +357,12 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                     const fullPrompt = (builtinPanel.promptPrefix || "") + scene;
                     const context = await hydrateNodeGenerationContext(buildNodeGenerationContext(nodeId, nodesRef.current, connectionsRef.current, fullPrompt), nodesRef.current);
                     const refs = context.referenceImages;
-                    const image = refs.length
-                        ? await requestEdit({ ...generationConfig, count: "1" }, context.prompt, refs, { signal: controller.signal }).then((items) => items[0])
-                        : await requestGeneration({ ...generationConfig, count: "1" }, context.prompt, { signal: controller.signal }).then((items) => items[0]);
+                    const result = refs.length
+                        ? await requestEdit({ ...generationConfig, count: "1" }, context.prompt, refs, { signal: controller.signal })
+                        : await requestGeneration({ ...generationConfig, count: "1" }, context.prompt, { signal: controller.signal });
+                    const image = result.images[0];
                     const uploaded = await uploadImage(image.dataUrl, { signal: controller.signal });
-                    recordGenerationCost({ nodeId, model: generationConfig.model, unit: "image", quantity: 1 });
+                    recordGenerationCost({ nodeId, model: generationConfig.model, unit: "image", quantity: 1, cost: result.cost });
                     setNodes((prev) =>
                         prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...imageMetadata(uploaded), prompt: scene, model: generationConfig.model, status: NODE_STATUS_SUCCESS, errorDetails: undefined } } : node)),
                     );
@@ -487,15 +490,16 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                             generationQueue.run(imageId, async () => {
                                 try {
                                     const seed = baseSeed + index;
-                                    const image = await runGenerationTaskWithRetry(
+                                    const result = await runGenerationTaskWithRetry(
                                         () =>
                                             referenceImages.length
-                                                ? requestEdit({ ...generationConfig, count: "1" }, effectivePrompt, referenceImages, { signal: controller.signal, seed }).then((items) => items[0])
-                                                : requestGeneration({ ...generationConfig, count: "1" }, effectivePrompt, { signal: controller.signal, seed }).then((items) => items[0]),
+                                                ? requestEdit({ ...generationConfig, count: "1" }, effectivePrompt, referenceImages, { signal: controller.signal, seed })
+                                                : requestGeneration({ ...generationConfig, count: "1" }, effectivePrompt, { signal: controller.signal, seed }),
                                         { signal: controller.signal },
                                     );
+                                    const image = result.images[0];
                                     const uploaded = await uploadImage(image.dataUrl, { signal: controller.signal });
-                                    recordGenerationCost({ nodeId: rootId, model: generationConfig.model, unit: "image", quantity: 1 });
+                                    recordGenerationCost({ nodeId: rootId, model: generationConfig.model, unit: "image", quantity: 1, cost: result.cost });
                                     const imageSize = fitNodeSize(uploaded.width, uploaded.height, imageConfig.width, imageConfig.height);
                                     const item: CanvasNodeImage = { id: imageId, status: NODE_STATUS_SUCCESS, content: uploaded.url, storageKey: uploaded.storageKey, thumbnail: uploaded.thumbnail, thumbnailKey: uploaded.thumbnailKey, naturalWidth: uploaded.width, naturalHeight: uploaded.height, bytes: uploaded.bytes, mimeType: uploaded.mimeType };
                                     setNodes((prev) =>
@@ -897,9 +901,10 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                     return;
                 }
 
-                const image = useReferenceImages
-                    ? await requestEdit(generationConfig, prompt, retryImages, { signal: controller.signal }).then((items) => items[0])
-                    : await requestGeneration(generationConfig, prompt, { signal: controller.signal }).then((items) => items[0]);
+                const result = useReferenceImages
+                    ? await requestEdit(generationConfig, prompt, retryImages, { signal: controller.signal })
+                    : await requestGeneration(generationConfig, prompt, { signal: controller.signal });
+                const image = result.images[0];
                 const uploadedImage = await uploadImage(image.dataUrl, { signal: controller.signal });
                 const imageConfig = NODE_DEFAULT_SIZE[CanvasNodeType.Image];
                 const retryImage: CanvasNodeImage = {

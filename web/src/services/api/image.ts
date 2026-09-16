@@ -2,6 +2,7 @@ import axios from "axios";
 
 import i18n from "@/i18n";
 import { IMAGE_MODEL, buildApiUrl, resolveModelRequestConfig, resolveModelScript, type AiConfig } from "@/stores/use-config-store";
+import { estimateGenerationCost, estimateTokenCost, type GenerationCost } from "@/lib/canvas/generation-cost";
 import { normalizePluginImages, runModelPlugin } from "./model-plugin";
 import { nanoid } from "nanoid";
 import { buildImageReferencePromptText } from "@/lib/image-reference-prompt";
@@ -52,13 +53,19 @@ type ResponseApiPayload = {
 };
 type ResponseStreamState = { buffer: string; text: string; payload?: ResponseApiPayload; error?: string };
 
+type ImageUsage = { cost?: number | null; prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+
 type ImageApiResponse = {
     data?: Array<Record<string, unknown>>;
+    usage?: ImageUsage;
     error?: { message?: string };
     code?: number;
     msg?: string;
 };
 type RequestOptions = { signal?: AbortSignal; seed?: number };
+
+export type GeneratedImage = { id: string; dataUrl: string; seed?: number };
+export type ImageRequestResult = { images: GeneratedImage[]; cost?: GenerationCost };
 
 const QUALITY_BASE: Record<string, number> = {
     low: 1024,
@@ -211,6 +218,39 @@ function parseImagePayload(payload: ImageApiResponse) {
     }
 
     return images;
+}
+
+function readGenerationId(headers: unknown) {
+    if (!headers || typeof headers !== "object") return undefined;
+    const value = (headers as Record<string, unknown>)["x-generation-id"];
+    return typeof value === "string" && value ? value : undefined;
+}
+
+async function fetchGenerationCost(config: AiConfig, generationId: string) {
+    try {
+        const response = await axios.get<{ total_cost?: number | null; usage?: number | null }>(aiApiUrl(config, "/generation"), {
+            params: { id: generationId },
+            headers: aiHeaders(config),
+        });
+        const totalCost = response.data?.total_cost;
+        if (totalCost != null && Number.isFinite(Number(totalCost))) return Number(totalCost);
+        const usage = response.data?.usage;
+        if (usage != null && Number.isFinite(Number(usage))) return Number(usage);
+    } catch {
+        return undefined;
+    }
+    return undefined;
+}
+
+async function resolveImageCost(config: AiConfig, usage: ImageUsage | undefined, generationId: string | undefined, hasReference: boolean): Promise<GenerationCost> {
+    const billed = usage?.cost == null ? Number.NaN : Number(usage.cost);
+    if (Number.isFinite(billed)) return { usd: Number(billed.toFixed(6)), priced: true, source: "api" };
+    if (generationId) {
+        const looked = await fetchGenerationCost(config, generationId);
+        if (looked !== undefined) return { usd: Number(looked.toFixed(6)), priced: true, source: "lookup" };
+    }
+    const estimated = estimateTokenCost(IMAGE_MODEL, { promptTokens: usage?.prompt_tokens, completionTokens: usage?.completion_tokens, totalTokens: usage?.total_tokens, hasReference });
+    return estimated || estimateGenerationCost(IMAGE_MODEL, "image", 1);
 }
 
 function readApiErrorMessage(value: unknown): string {
@@ -429,7 +469,7 @@ async function requestStreamingResponse(config: AiConfig, body: Record<string, u
     return { ...result, content: state.text || result.content };
 }
 
-export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions) {
+export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions): Promise<ImageRequestResult> {
     const requestConfig = { ...resolveModelRequestConfig(config, config.model || config.imageModel), model: IMAGE_MODEL };
     const n = Math.max(1, Math.min(10, Math.floor(Math.abs(Number(config.count)) || 1)));
     const script = resolveModelScript(config, config.model || config.imageModel);
@@ -447,7 +487,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
                 params: { size: requestSize, quality, count: n, ...(background ? { background } : {}) },
                 signal: options?.signal,
             });
-            return normalizePluginImages(result).map((dataUrl) => ({ id: nanoid(), dataUrl }));
+            return { images: normalizePluginImages(result).map((dataUrl) => ({ id: nanoid(), dataUrl })) };
         } catch (error) {
             throw new Error(readAxiosError(error, apiText("requestFailed")));
         }
@@ -465,13 +505,15 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
             },
             { headers: aiHeaders(requestConfig, "application/json"), signal: options?.signal },
         );
-        return await parseImagePayload(response.data);
+        const images = await parseImagePayload(response.data);
+        const cost = await resolveImageCost(requestConfig, response.data.usage, readGenerationId(response.headers), false);
+        return { images, cost };
     } catch (error) {
         throw new Error(readAxiosError(error, apiText("requestFailed")));
     }
 }
 
-export async function requestEdit(config: AiConfig, prompt: string, references: ReferenceImage[], options?: RequestOptions) {
+export async function requestEdit(config: AiConfig, prompt: string, references: ReferenceImage[], options?: RequestOptions): Promise<ImageRequestResult> {
     const requestConfig = { ...resolveModelRequestConfig(config, config.model || config.imageModel), model: IMAGE_MODEL };
     const n = Math.max(1, Math.min(10, Math.floor(Math.abs(Number(config.count)) || 1)));
     const requestPrompt = buildImageReferencePromptText(prompt, references);
@@ -491,7 +533,7 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
                 params: { size: requestSize, quality, count: n, ...(background ? { background } : {}) },
                 signal: options?.signal,
             });
-            return normalizePluginImages(result).map((dataUrl) => ({ id: nanoid(), dataUrl }));
+            return { images: normalizePluginImages(result).map((dataUrl) => ({ id: nanoid(), dataUrl })) };
         } catch (error) {
             throw new Error(readAxiosError(error, apiText("requestFailed")));
         }
@@ -511,7 +553,9 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
             },
             { headers: aiHeaders(requestConfig, "application/json"), signal: options?.signal },
         );
-        return await parseImagePayload(response.data);
+        const images = await parseImagePayload(response.data);
+        const cost = await resolveImageCost(requestConfig, response.data.usage, readGenerationId(response.headers), true);
+        return { images, cost };
     } catch (error) {
         throw new Error(readAxiosError(error, apiText("requestFailed")));
     }

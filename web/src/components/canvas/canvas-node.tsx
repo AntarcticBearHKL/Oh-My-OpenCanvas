@@ -6,6 +6,8 @@ import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canva
 import { isCanvasOverlayTarget } from "@/lib/canvas/canvas-overlays";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
+import { formatUsd } from "@/lib/canvas/generation-cost";
+import { useGenerationCostStore } from "@/stores/use-generation-cost-store";
 import { ensureThumbnailUrl } from "@/services/image-storage";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { resolveTextStyle, textStyleToCss } from "@/lib/canvas/text-style";
@@ -987,7 +989,9 @@ function ImageInfoBar({ node, onInfo }: { node: CanvasNodeData; onInfo?: (node: 
     const width = Math.round(node.metadata?.naturalWidth || node.width);
     const height = Math.round(node.metadata?.naturalHeight || node.height);
     const size = formatBytes(node.metadata?.bytes || 0);
-    const parts = [node.metadata?.showTitle === true ? node.title?.trim() : "", width && height ? `${width} x ${height}` : "", size].filter(Boolean);
+    const cost = useGenerationCostStore((state) => state.records.find((record) => record.nodeId === node.id));
+    const costText = cost?.priced ? (cost.source === "estimate" ? `~${formatUsd(cost.usd)}` : formatUsd(cost.usd)) : "";
+    const parts = [node.metadata?.showTitle === true ? node.title?.trim() : "", width && height ? `${width} x ${height}` : "", size, costText].filter(Boolean);
     return (
         <div className="pointer-events-none absolute left-3 top-[-28px] z-40 flex max-w-[calc(100%-24px)] items-center gap-1.5">
             <span className="min-w-0 truncate text-xs font-medium opacity-75" style={{ color: theme.node.text }}>

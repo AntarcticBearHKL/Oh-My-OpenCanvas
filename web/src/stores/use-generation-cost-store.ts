@@ -3,11 +3,11 @@ import { persist, type PersistStorage, type StorageValue } from "zustand/middlew
 
 import { nanoid } from "nanoid";
 import { localForageStorage } from "@/lib/localforage-storage";
-import { estimateGenerationCost, GENERATION_COST_RECORD_LIMIT, type GenerationCostUnit } from "@/lib/canvas/generation-cost";
+import { estimateGenerationCost, GENERATION_COST_RECORD_LIMIT, type GenerationCost, type GenerationCostSource, type GenerationCostUnit } from "@/lib/canvas/generation-cost";
 
-export type GenerationCostRecord = { id: string; nodeId: string; model: string; unit: GenerationCostUnit; quantity: number; usd: number; priced: boolean; reason?: string; at: number };
+export type GenerationCostRecord = { id: string; nodeId: string; model: string; unit: GenerationCostUnit; quantity: number; usd: number; priced: boolean; source: GenerationCostSource; reason?: string; at: number };
 
-export type GenerationCostInput = { nodeId: string; model: string; unit: GenerationCostUnit; quantity: number };
+export type GenerationCostInput = { nodeId: string; model: string; unit: GenerationCostUnit; quantity: number; cost?: GenerationCost };
 
 type GenerationCostStore = {
     records: GenerationCostRecord[];
@@ -31,8 +31,8 @@ export const useGenerationCostStore = create<GenerationCostStore>()(
         (set) => ({
             records: [],
             record: (input) => {
-                const estimate = estimateGenerationCost(input.model, input.unit, input.quantity);
-                const entry: GenerationCostRecord = { id: nanoid(), nodeId: input.nodeId, model: input.model, unit: input.unit, quantity: input.quantity, usd: estimate.usd, priced: estimate.priced, reason: estimate.reason, at: Date.now() };
+                const cost = input.cost || estimateGenerationCost(input.model, input.unit, input.quantity);
+                const entry: GenerationCostRecord = { id: nanoid(), nodeId: input.nodeId, model: input.model, unit: input.unit, quantity: input.quantity, usd: cost.usd, priced: cost.priced, source: cost.source, reason: cost.reason, at: Date.now() };
                 set((state) => ({ records: [entry, ...state.records].slice(0, GENERATION_COST_RECORD_LIMIT) }));
             },
             clear: () => set({ records: [] }),

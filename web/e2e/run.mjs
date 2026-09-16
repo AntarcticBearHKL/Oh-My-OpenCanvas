@@ -197,6 +197,16 @@ const LIB_ASSERTIONS = `(async () => {
     const invalid = cost.estimateGenerationCost("gpt-image-1", "image", 0);
     ok("cost rejects non-positive quantity", invalid.priced === false && invalid.reason === "unpriced-unit", JSON.stringify(invalid));
     ok("cost formatUsd uses two decimals", cost.formatUsd(1.234) === "$1.23" && cost.formatUsd(0.037) === "$0.04" && cost.formatUsd(0) === "$0.00", cost.formatUsd(1.234) + "," + cost.formatUsd(0.037) + "," + cost.formatUsd(0));
+    ok("cost marks local estimates with a source", cost.estimateGenerationCost("openrouter::gpt-image-1", "image", 1).source === "estimate", cost.estimateGenerationCost("openrouter::gpt-image-1", "image", 1).source);
+    const tokenPrice = cost.MODEL_TOKEN_PRICES["openai/gpt-image-2.5-sunburst"];
+    ok("cost knows sunburst token prices", tokenPrice.inputText === 0.000005 && tokenPrice.inputImage === 0.000008 && tokenPrice.outputImage === 0.00003, JSON.stringify(tokenPrice));
+    const tokenCost = cost.estimateTokenCost("openai/gpt-image-2.5-sunburst", { promptTokens: 1000, completionTokens: 2000 });
+    ok("cost estimates token usage from real prices", tokenCost.priced === true && tokenCost.source === "estimate" && tokenCost.usd === 0.065, JSON.stringify(tokenCost));
+    const referenceCost = cost.estimateTokenCost("openai/gpt-image-2.5-sunburst", { promptTokens: 1000, completionTokens: 0, hasReference: true });
+    ok("cost uses image input rate for reference edits", referenceCost.usd === 0.008, JSON.stringify(referenceCost));
+    ok("cost token estimate needs a model and usage", cost.estimateTokenCost("openai/gpt-image-2.5-sunburst", {}) === null && cost.estimateTokenCost("openrouter::mystery", { promptTokens: 10 }) === null);
+    const totalOnly = cost.estimateTokenCost("openai/gpt-image-2.5-sunburst", { totalTokens: 3000, completionTokens: 2000 });
+    ok("cost derives prompt tokens from total usage", totalOnly.usd === 0.065, JSON.stringify(totalOnly));
 
     const matrix = await import("/src/lib/canvas/generation-matrix.ts");
     const variants = matrix.buildMatrixVariants({ sizes: ["1024x1024", "512x512"], counts: [1, 2], prompts: ["sunset", "city"] });
