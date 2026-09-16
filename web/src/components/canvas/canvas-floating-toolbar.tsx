@@ -15,7 +15,7 @@ export function CanvasFloatingToolbarAction({ title, label, icon, onClick, showL
     const hasText = showLabel && Boolean(label);
     return (
         <Tooltip title={title} placement="top" mouseEnterDelay={0.2} color="#ffffff" styles={{ root: { color: "#242529", fontSize: 13, fontWeight: 500 } }}>
-            <button type="button" className={`group relative flex h-12 items-center whitespace-nowrap px-1.5 ${danger ? "text-[#ef4444]" : ""}`} style={danger ? undefined : { color: theme.node.text }} onClick={onClick} aria-label={title}>
+            <button type="button" className="group relative flex h-12 items-center whitespace-nowrap px-1.5" style={{ color: danger ? theme.node.blocked : theme.node.text }} onClick={onClick} aria-label={title}>
                 <span
                     className={`flex h-9 items-center ${hasText ? "gap-2 px-2.5" : "justify-center px-2"} rounded-lg transition group-hover:bg-black/5 dark:group-hover:bg-card/10`}
                     style={active ? { background: theme.toolbar.activeBg, color: theme.toolbar.activeText } : undefined}

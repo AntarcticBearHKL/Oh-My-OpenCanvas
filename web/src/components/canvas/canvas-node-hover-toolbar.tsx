@@ -145,8 +145,8 @@ export function CanvasNodeHoverToolbar({
     const baseToolbarTools: ToolbarTool[] = [
         ...(hasImage || isConfig ? [] : [{ id: "info", title: t("canvas.nodeToolbar.infoTitle"), label: t("canvas.nodeToolbar.info"), icon: <Info className="size-4" />, onClick: () => onInfo(node) }]),
         ...(hasImage ? [] : [{ id: "duplicate", title: t("canvas.nodeToolbar.duplicateTitle"), label: t("canvas.controls.duplicate"), icon: <Copy className="size-4" />, onClick: () => onDuplicate(node) }]),
-        { id: "delete", title: t("canvas.nodeToolbar.removeTitle"), label: t("common.delete"), icon: <Trash2 className="size-4" />, onClick: () => onDelete(node), danger: true },
     ];
+    const deleteTool: ToolbarTool = { id: "delete", title: t("canvas.nodeToolbar.removeTitle"), label: t("common.delete"), icon: <Trash2 className="size-4" />, onClick: () => onDelete(node), danger: true };
     const nodeToolbarTools: ToolbarTool[] = [
         ...(canQueryVideoTask ? [{ id: "queryVideoTask", title: t("canvas.nodeToolbar.queryVideoTaskTitle"), label: t("canvas.nodeToolbar.queryVideoTask"), icon: <RefreshCw className="size-4" />, onClick: () => onRetry(node) }] : []),
         ...(canRetry && !isConfig ? [{ id: "retry", title: t("canvas.nodeToolbar.retryTitle"), label: t("canvas.node.retry"), icon: <RefreshCw className="size-4" />, onClick: () => onRetry(node) }] : []),
@@ -193,6 +193,7 @@ export function CanvasNodeHoverToolbar({
                 <CanvasFloatingToolbarAction title={t("canvas.nodeToolbar.layers")} label={t("canvas.nodeToolbar.layers")} icon={<Layers className="size-4" />} active={layerOpen} onClick={() => setLayerOpen((value) => !value)} showLabel={showImageToolLabels} />
             ) : null}
             {layerOpen ? <CanvasNodeLayerPopover node={node} nodes={nodes} onMove={(direction) => onMoveLayer(node.id, direction)} onToggleFlag={onToggleFlag} onBulkRename={onBulkRename} /> : null}
+            <CanvasFloatingToolbarAction {...deleteTool} showLabel={showImageToolLabels} />
         </div>
     );
 }
