@@ -56,7 +56,7 @@ export type AiConfig = {
     canvasBackgroundMode: CanvasBackgroundMode;
 };
 
-export type ConfigTabKey = "channels" | "appearance" | "models" | "generation" | "local-models" | "prompt-sources" | "local-storage" | "cost" | "agent" | "about";
+export type ConfigTabKey = "channels" | "appearance" | "generation" | "local-models" | "prompt-sources" | "local-storage" | "cost" | "agent" | "about";
 
 type ChannelCredentialsImportResult = {
     status: "created" | "updated" | "missing-base-url" | "invalid-base-url";
@@ -66,6 +66,7 @@ type ChannelCredentialsImportResult = {
 const CONFIG_STORE_KEY = "infinite-canvas:ai_config_store";
 const CHANNEL_MODEL_SEPARATOR = "::";
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+export const IMAGE_MODEL = "openai/gpt-image-2.5-sunburst";
 
 export const defaultConfig: AiConfig = {
     channelMode: "local",
@@ -74,7 +75,7 @@ export const defaultConfig: AiConfig = {
     apiFormat: "openai",
     channels: [{ id: "openrouter", name: "OpenRouter", baseUrl: OPENROUTER_BASE_URL, apiKey: "", apiFormat: "openai", models: [] }],
     model: "",
-    imageModel: "",
+    imageModel: IMAGE_MODEL,
     videoModel: "",
     textModel: "",
     audioModel: "",
@@ -163,8 +164,7 @@ export function resolveModelScript(config: AiConfig, value: string) {
 }
 
 function isAiConfigReady(config: AiConfig, model: string) {
-    const channel = resolveModelChannel(config, model);
-    return Boolean(model.trim() && channel.baseUrl.trim() && channel.apiKey.trim());
+    return Boolean(model.trim() && config.apiKey.trim());
 }
 
 export const useConfigStore = create<ConfigStore>()(
@@ -209,7 +209,7 @@ export const useConfigStore = create<ConfigStore>()(
                         apiFormat: "openai",
                         channels,
                         models,
-                        imageModel: normalizeModelOptionValue(config.imageModel || config.model, channels),
+                        imageModel: IMAGE_MODEL,
                         videoModel: normalizeModelOptionValue(config.videoModel, channels),
                         textModel: normalizeModelOptionValue(config.textModel || config.model, channels),
                         audioModel: normalizeModelOptionValue(config.audioModel || defaultConfig.audioModel, channels),
@@ -271,21 +271,8 @@ function upsertChannelCredentials(
     if (!rawBaseUrl) return { status: "missing-base-url", config };
     if (!isHttpBaseUrl(rawBaseUrl)) return { status: "invalid-base-url", config };
 
-    const apiKey = input.apiKey?.trim() || "";
-    const matchingIndex = config.channels.findIndex((channel) => normalizedBaseUrlKey(channel.baseUrl) === normalizedBaseUrlKey(OPENROUTER_BASE_URL));
-
-    if (matchingIndex >= 0) {
-        const existing = config.channels[matchingIndex];
-        if (existing.baseUrl === OPENROUTER_BASE_URL && (!apiKey || existing.apiKey === apiKey)) {
-            return { status: "updated", channelName: existing.name, config };
-        }
-        const updated: ModelChannel = { ...existing, baseUrl: OPENROUTER_BASE_URL, apiFormat: "openai", ...(apiKey ? { apiKey } : {}) };
-        const channels = config.channels.map((channel, index) => (index === matchingIndex ? updated : channel));
-        return { status: "updated", channelName: existing.name, config: { ...config, channels } };
-    }
-
-    const channel = createModelChannel({ name: "OpenRouter", apiKey, models: [] });
-    return { status: "created", channelName: channel.name, config: { ...config, channels: [...config.channels, channel] } };
+    const apiKey = input.apiKey?.trim() || config.apiKey;
+    return { status: "updated", channelName: config.channels[0]?.name || "OpenRouter", config: { ...config, apiKey } };
 }
 
 function isHttpBaseUrl(baseUrl: string) {
@@ -295,24 +282,6 @@ function isHttpBaseUrl(baseUrl: string) {
     } catch {
         return false;
     }
-}
-
-function normalizedBaseUrlKey(baseUrl: string) {
-    try {
-        return stripTrailingApiVersion(normalizeImportedBaseUrl(baseUrl));
-    } catch {
-        return stripTrailingApiVersion(baseUrl.trim().replace(/\/+$/, ""));
-    }
-}
-
-function normalizeImportedBaseUrl(baseUrl: string) {
-    const url = new URL(baseUrl.trim());
-    url.hash = "";
-    return url.toString().replace(/\/+$/, "");
-}
-
-function stripTrailingApiVersion(baseUrl: string) {
-    return baseUrl.replace(/\/v1$/i, "");
 }
 
 function encodeChannelModel(channelId: string, model: string) {
@@ -352,21 +321,13 @@ export function normalizeModelOptionValue(value: string | undefined, channels: M
     return channel && channel.models.some((item) => item.name === model) ? encodeChannelModel(channel.id, model) : model;
 }
 
-function resolveModelChannel(config: AiConfig, value: string) {
-    const decoded = decodeChannelModel(value);
-    const model = decoded?.model || value;
-    const matched = decoded ? config.channels.find((channel) => channel.id === decoded.channelId) : config.channels.find((channel) => channel.models.some((item) => item.name === model));
-    return matched || config.channels[0] || createModelChannel({ id: "default", name: i18n.t("config.channels.defaultName"), baseUrl: config.baseUrl, apiKey: config.apiKey, apiFormat: config.apiFormat, models: config.models.map(modelOptionName).map((name) => ({ name, capability: guessCapability(name) })) });
-}
-
 export function resolveModelRequestConfig(config: AiConfig, value: string) {
-    const channel = resolveModelChannel(config, value);
     return {
         ...config,
         model: modelOptionName(value || config.model),
-        baseUrl: channel.baseUrl,
-        apiKey: channel.apiKey,
-        apiFormat: channel.apiFormat,
+        baseUrl: OPENROUTER_BASE_URL,
+        apiKey: config.apiKey,
+        apiFormat: "openai" as const,
     };
 }
 

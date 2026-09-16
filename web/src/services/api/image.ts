@@ -1,7 +1,7 @@
 import axios from "axios";
 
 import i18n from "@/i18n";
-import { buildApiUrl, resolveModelRequestConfig, resolveModelScript, type AiConfig, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
+import { IMAGE_MODEL, buildApiUrl, resolveModelRequestConfig, resolveModelScript, type AiConfig } from "@/stores/use-config-store";
 import { normalizePluginImages, runModelPlugin } from "./model-plugin";
 import { nanoid } from "nanoid";
 import { buildImageReferencePromptText } from "@/lib/image-reference-prompt";
@@ -430,7 +430,7 @@ async function requestStreamingResponse(config: AiConfig, body: Record<string, u
 }
 
 export async function requestGeneration(config: AiConfig, prompt: string, options?: RequestOptions) {
-    const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
+    const requestConfig = { ...resolveModelRequestConfig(config, config.model || config.imageModel), model: IMAGE_MODEL };
     const n = Math.max(1, Math.min(10, Math.floor(Math.abs(Number(config.count)) || 1)));
     const script = resolveModelScript(config, config.model || config.imageModel);
     if (script) {
@@ -472,7 +472,7 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
 }
 
 export async function requestEdit(config: AiConfig, prompt: string, references: ReferenceImage[], options?: RequestOptions) {
-    const requestConfig = resolveModelRequestConfig(config, config.model || config.imageModel);
+    const requestConfig = { ...resolveModelRequestConfig(config, config.model || config.imageModel), model: IMAGE_MODEL };
     const n = Math.max(1, Math.min(10, Math.floor(Math.abs(Number(config.count)) || 1)));
     const requestPrompt = buildImageReferencePromptText(prompt, references);
     const script = resolveModelScript(config, config.model || config.imageModel);
@@ -550,28 +550,3 @@ export async function requestImageQuestion(config: AiConfig, messages: AiTextMes
     }
 }
 
-export type ChannelModelOption = { id: string; capability: ModelCapability };
-
-type OpenRouterModel = { id?: string; architecture?: { output_modalities?: string[] } };
-
-export async function fetchChannelModels(channel: ModelChannel): Promise<ChannelModelOption[]> {
-    try {
-        const response = await axios.get<{ data?: OpenRouterModel[]; error?: { message?: string } }>(buildApiUrl(channel.baseUrl, "/models"), {
-            headers: { Authorization: `Bearer ${channel.apiKey}` },
-        });
-        return (response.data.data || [])
-            .map((model) => (model.id ? { id: model.id, capability: capabilityFromModalities(model.architecture?.output_modalities) } : null))
-            .filter((model): model is ChannelModelOption => Boolean(model))
-            .sort((a, b) => a.id.localeCompare(b.id));
-    } catch (error) {
-        throw new Error(readAxiosError(error, apiText("modelReadFailed")));
-    }
-}
-
-function capabilityFromModalities(modalities: string[] | undefined): ModelCapability {
-    const values = (modalities || []).map((item) => item.toLowerCase());
-    if (values.includes("image")) return "image";
-    if (values.includes("video")) return "video";
-    if (values.some((item) => item === "audio" || item === "speech" || item === "transcription")) return "audio";
-    return "text";
-}

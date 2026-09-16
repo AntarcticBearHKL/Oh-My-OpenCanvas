@@ -195,7 +195,7 @@ export function getPluginReturn(capability: ModelCapability) {
 export function getPluginAuthoringPrompt(capability: ModelCapability, modelName: string, draft = "") {
     const variables = getPluginVariables().filter((variable) => !variable.capabilities || variable.capabilities.includes(capability));
     const lines = [
-        i18n.t("modelPlugin.authoring.intro", { capability: i18n.t(`config.channelEditor.capabilities.${capability}`), model: modelName || i18n.t("modelPlugin.authoring.anyModel") }),
+        i18n.t("modelPlugin.authoring.intro", { capability: i18n.t(`settingsPanels.model.capabilities.${capability}`), model: modelName || i18n.t("modelPlugin.authoring.anyModel") }),
         "",
         i18n.t("modelPlugin.authoring.shape"),
         "",
