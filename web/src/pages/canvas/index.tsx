@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { App, Button, Empty, Input, Spin } from "antd";
+import { App, Button, Empty, Input, Spin, Table } from "antd";
 import { Check, Download, FileUp, FolderPlus, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { readZip } from "@/lib/zip";
+import { cn } from "@/lib/utils";
 import { setMediaBlob } from "@/services/file-storage";
 import { setImageBlob } from "@/services/image-storage";
 import { CanvasDeleteProjectsDialog } from "@/components/canvas/canvas-delete-projects-dialog";
 import { CanvasProjectRow } from "@/components/canvas/canvas-project-row";
 import type { CanvasExportFile } from "@/types/canvas-export";
 import { useAssetStore } from "@/stores/use-asset-store";
-import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
+import { useCanvasStore, type CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { useCanvasUiStore } from "@/stores/canvas/use-canvas-ui-store";
 import { exportCanvasProjects } from "@/lib/canvas/canvas-export";
 
@@ -24,10 +25,14 @@ export default function CanvasPage() {
     const autoOpenRef = useRef(false);
     const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
     const [editingGroupName, setEditingGroupName] = useState("");
+    const [dragId, setDragId] = useState<string | null>(null);
+    const [dropIndex, setDropIndex] = useState<number | null>(null);
+    const draggingRef = useRef(false);
     const hydrated = useCanvasStore((state) => state.hydrated);
     const projects = useCanvasStore((state) => state.projects);
     const groups = useCanvasStore((state) => state.groups);
     const createProject = useCanvasStore((state) => state.createProject);
+    const reorderProjects = useCanvasStore((state) => state.reorderProjects);
     const importProject = useCanvasStore((state) => state.importProject);
     const createGroup = useCanvasStore((state) => state.createGroup);
     const renameGroup = useCanvasStore((state) => state.renameGroup);
@@ -50,6 +55,19 @@ export default function CanvasPage() {
     const createAndEnter = () => {
         if (!selectedGroup) return;
         enterProject(createProject(t("canvas.defaultTitle", { count: projects.length + 1 }), selectedGroup.id));
+    };
+    const handleDrop = () => {
+        if (dragId && dropIndex !== null) {
+            const ids = groupProjects.map((project) => project.id);
+            const from = ids.indexOf(dragId);
+            if (from >= 0) {
+                ids.splice(from, 1);
+                ids.splice(dropIndex > from ? dropIndex - 1 : dropIndex, 0, dragId);
+                reorderProjects(ids);
+            }
+        }
+        setDragId(null);
+        setDropIndex(null);
     };
     const importCanvas = async (file?: File) => {
         if (!file) return;
@@ -173,8 +191,8 @@ export default function CanvasPage() {
             </aside>
 
             <section className="flex min-w-0 flex-1 flex-col">
-                <header className="shrink-0 border-b border-border">
-                    <div className="flex min-h-14 w-full flex-wrap items-center justify-between gap-3 px-4 py-2">
+                <header className="shrink-0">
+                    <div className="flex min-h-14 w-full flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-2">
                         <div className="flex min-w-0 items-center gap-2">
                             <h1 className="truncate text-base font-semibold text-foreground" style={{ margin: 0 }}>{selectedGroup?.name ?? t("canvas.group.none")}</h1>
                             {selectedGroup ? <span className="shrink-0 text-xs text-muted-foreground">{t("canvas.group.count", { count: groupProjects.length })}</span> : null}
@@ -218,11 +236,59 @@ export default function CanvasPage() {
                             </Empty>
                         </div>
                     ) : groupProjects.length ? (
-                        <div className="overflow-hidden rounded-2xl ring-1 ring-border">
-                            {groupProjects.map((project) => (
-                                <CanvasProjectRow key={project.id} project={project} />
-                            ))}
-                        </div>
+                        <Table<CanvasProject>
+                            rowKey="id"
+                            dataSource={groupProjects}
+                            pagination={false}
+                            className="[&_.ant-table]:!rounded-none [&_.ant-table]:!bg-transparent [&_.ant-table-container]:!rounded-none [&_.ant-table-thead>tr>th]:!rounded-none [&_.ant-table-thead>tr>th]:!bg-transparent"
+                            rowClassName={(project, index) =>
+                                cn(
+                                    dragId === project.id && "opacity-40",
+                                    dropIndex === index && "[&>td]:border-t-2 [&>td]:border-t-primary",
+                                    dropIndex === groupProjects.length && index === groupProjects.length - 1 && "[&>td]:border-b-2 [&>td]:border-b-primary",
+                                )
+                            }
+                            onRow={(project, index = 0) => ({
+                                draggable: true,
+                                onDragStart: (event) => {
+                                    draggingRef.current = true;
+                                    setDragId(project.id);
+                                    event.dataTransfer.effectAllowed = "move";
+                                    event.dataTransfer.setData("text/plain", project.id);
+                                },
+                                onDragOver: (event) => {
+                                    if (!dragId) return;
+                                    event.preventDefault();
+                                    event.dataTransfer.dropEffect = "move";
+                                    const rect = event.currentTarget.getBoundingClientRect();
+                                    setDropIndex(index + (event.clientY > rect.top + rect.height / 2 ? 1 : 0));
+                                },
+                                onDragEnd: () => {
+                                    setDragId(null);
+                                    setDropIndex(null);
+                                    setTimeout(() => {
+                                        draggingRef.current = false;
+                                    }, 0);
+                                },
+                                onDrop: (event) => {
+                                    event.preventDefault();
+                                    handleDrop();
+                                },
+                                onClickCapture: (event) => {
+                                    if (!draggingRef.current) return;
+                                    event.stopPropagation();
+                                    event.preventDefault();
+                                },
+                            })}
+                            columns={[
+                                {
+                                    title: t("canvas.projects"),
+                                    onHeaderCell: () => ({ style: { padding: "8px" } }),
+                                    onCell: () => ({ style: { padding: 0 } }),
+                                    render: (_, project) => <CanvasProjectRow project={project} />,
+                                },
+                            ]}
+                        />
                     ) : (
                         <div className="flex h-full items-center justify-center">
                             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("canvas.group.empty")} className="py-16">
