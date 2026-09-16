@@ -33,20 +33,20 @@ export type NodeGenerationInput = NodeGenerationResourceInput;
 export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[], prompt: string): NodeGenerationContext {
     const sourceNode = nodes.find((node) => node.id === nodeId);
     if (sourceNode?.type === CanvasNodeType.ImageGeneration) {
-        const boundPrompt = boundPromptText(sourceNode, nodes);
-        const boundNode = boundPromptNode(sourceNode, nodes);
-        const resourceInputs = boundNode ? flattenGenerationInputs(buildNodeGenerationInputs(boundNode.id, nodes, connections)) : [];
+        const promptNode = connectedPromptNode(sourceNode.id, nodes, connections);
+        const promptText = promptNode?.metadata?.prompt?.trim() || "";
+        const resourceInputs = promptNode ? flattenGenerationInputs(buildNodeGenerationInputs(promptNode.id, nodes, connections)) : [];
         let textIndex = 0;
         const upstreamText = resourceInputs.flatMap((input) => (input.text ? [textBlock(generationLabel("text", textIndex++), input.text)] : [])).join("\n\n");
         const referenceImages = resourceInputs.map((input) => input.image).filter((image): image is ReferenceImage => Boolean(image));
         const referenceVideos = resourceInputs.map((input) => input.video).filter((video): video is ReferenceVideo => Boolean(video));
         const referenceAudios = resourceInputs.map((input) => input.audio).filter((audio): audio is ReferenceAudio => Boolean(audio));
         return {
-            prompt: [prompt, boundPrompt, upstreamText].filter(Boolean).join("\n\n"),
+            prompt: [prompt, promptText, upstreamText].filter(Boolean).join("\n\n"),
             referenceImages,
             referenceVideos,
             referenceAudios,
-            textCount: boundPrompt ? 1 : 0,
+            textCount: promptNode ? 1 : 0,
             imageCount: referenceImages.length,
             videoCount: referenceVideos.length,
             audioCount: referenceAudios.length,
@@ -141,19 +141,17 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
 export function buildNodeGenerationInputs(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[]): NodeGenerationInput[] {
     const sourceNode = nodes.find((node) => node.id === nodeId);
     if (sourceNode?.type === CanvasNodeType.ImageGeneration) {
-        const bound = boundPromptNode(sourceNode, nodes);
-        return bound ? readNodeGenerationResource(bound) : [];
+        const promptNode = connectedPromptNode(sourceNode.id, nodes, connections);
+        return promptNode ? readNodeGenerationResource(promptNode) : [];
     }
     return getGenerationResourceNodes(nodeId, nodes, connections).flatMap(readNodeGenerationResource);
 }
 
-function boundPromptNode(node: CanvasNodeData, nodes: CanvasNodeData[]) {
-    if (!node.metadata?.promptNodeId) return undefined;
-    return nodes.find((item) => item.id === node.metadata?.promptNodeId && item.type === CanvasNodeType.Prompt);
-}
-
-function boundPromptText(node: CanvasNodeData, nodes: CanvasNodeData[]) {
-    return boundPromptNode(node, nodes)?.metadata?.prompt?.trim() || "";
+function connectedPromptNode(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[]) {
+    return connections
+        .filter((connection) => connection.toNodeId === nodeId)
+        .map((connection) => nodes.find((item) => item.id === connection.fromNodeId))
+        .find((item): item is CanvasNodeData => item?.type === CanvasNodeType.Prompt);
 }
 
 function flattenGenerationInputs(inputs: NodeGenerationInput[]) {

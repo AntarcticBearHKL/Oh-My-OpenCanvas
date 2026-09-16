@@ -130,19 +130,17 @@ const LIB_ASSERTIONS = `(async () => {
     ok("bulk rename blank", geo.bulkRenameTitles(["a", "b"], "   ").size === 0);
 
     const drop = await import("/src/lib/canvas/canvas-drop-bindings.ts");
-    ok("drop binding prompt onto image-generation", drop.resolveCanvasDropBinding("prompt", "image-generation") === "prompt", drop.resolveCanvasDropBinding("prompt", "image-generation"));
     ok("drop binding image onto assets", drop.resolveCanvasDropBinding("image", "assets") === "collect", drop.resolveCanvasDropBinding("image", "assets"));
     ok(
         "drop binding rejects unrelated pairs",
-        drop.resolveCanvasDropBinding("prompt", "assets") === null && drop.resolveCanvasDropBinding("image", "image-generation") === null && drop.resolveCanvasDropBinding("prompt", "prompt") === null,
-        JSON.stringify([drop.resolveCanvasDropBinding("prompt", "assets"), drop.resolveCanvasDropBinding("image", "image-generation")]),
+        drop.resolveCanvasDropBinding("prompt", "image-generation") === null && drop.resolveCanvasDropBinding("prompt", "assets") === null && drop.resolveCanvasDropBinding("image", "image-generation") === null && drop.resolveCanvasDropBinding("prompt", "prompt") === null,
+        JSON.stringify([drop.resolveCanvasDropBinding("prompt", "image-generation"), drop.resolveCanvasDropBinding("prompt", "assets")]),
     );
     const promptSource = { id: "pn", type: "prompt", title: "p", position: { x: 100, y: 100 }, width: 340, height: 240, metadata: {} };
     const generationTarget = { id: "gn", type: "image-generation", title: "g", position: { x: 0, y: 0 }, width: 412, height: 608, metadata: {} };
     const assetsTarget = { id: "an", type: "assets", title: "a", position: { x: 0, y: 0 }, width: 360, height: 320, metadata: {} };
     const imageSource = image("i1", 100, 100, { x: 100, y: 100 });
-    ok("prompt drop finds image-generation target", geo.findPromptDropTarget(new Set(["pn"]), [promptSource, generationTarget])?.id === "gn");
-    ok("prompt drop ignores non-generation target", geo.findPromptDropTarget(new Set(["pn"]), [promptSource, assetsTarget]) === null);
+    ok("image-generation accepts an upstream prompt connection", geo.normalizeConnection(promptSource.id, generationTarget.id, [promptSource, generationTarget], "source")?.toNodeId === generationTarget.id);
     ok("image drop finds assets target", geo.findAssetsDropTarget(new Set(["i1"]), [imageSource, assetsTarget])?.id === "an");
     ok("image drop ignores image-generation target", geo.findAssetsDropTarget(new Set(["i1"]), [imageSource, generationTarget]) === null);
 

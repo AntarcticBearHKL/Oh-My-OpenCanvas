@@ -61,7 +61,7 @@ export function applyCanvasAgentOps(snapshot: CanvasAgentSnapshot, ops?: CanvasA
         }
         if (op.type === "delete_node") {
             const ids = new Set(op.ids || (op.id ? [op.id] : op.nodeType ? nodes.filter((node) => node.type === op.nodeType).map((node) => node.id) : []));
-            nodes = nodes.filter((node) => !ids.has(node.id)).map((node) => (node.metadata?.promptNodeId && ids.has(node.metadata.promptNodeId) ? { ...node, metadata: { ...node.metadata, promptNodeId: undefined } } : node));
+            nodes = nodes.filter((node) => !ids.has(node.id));
             connections = connections.filter((conn) => !ids.has(conn.fromNodeId) && !ids.has(conn.toNodeId));
             selectedNodeIds = selectedNodeIds.filter((id) => !ids.has(id));
         }
@@ -74,7 +74,7 @@ export function applyCanvasAgentOps(snapshot: CanvasAgentSnapshot, ops?: CanvasA
             const exists = connections.some((conn) => conn.fromNodeId === op.fromNodeId && conn.toNodeId === op.toNodeId);
             const fromNode = nodes.find((node) => node.id === op.fromNodeId);
             const toNode = nodes.find((node) => node.id === op.toNodeId);
-            if (!exists && fromNode && toNode && fromNode.type !== CanvasNodeType.ImageGeneration && toNode.type !== CanvasNodeType.ImageGeneration) {
+            if (!exists && fromNode && toNode && fromNode.type !== CanvasNodeType.ImageGeneration) {
                 connections = [...connections, { id: op.id || nanoid(), fromNodeId: op.fromNodeId, toNodeId: op.toNodeId }];
             }
         }

@@ -334,7 +334,6 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
     const handleGenerateNode = useCallback(
         async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, replaySeed?: number) => {
             const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
-            if (sourceNode?.type === CanvasNodeType.ImageGeneration && !nodesRef.current.find((node) => node.id === sourceNode.metadata?.promptNodeId && node.type === CanvasNodeType.Prompt)?.metadata?.prompt?.trim()) return;
             const generationConfig = buildGenerationConfig(effectiveConfig, sourceNode, mode);
             if (!isAiConfigReady(generationConfig, generationConfig.model)) {
                 openConfigDialog();

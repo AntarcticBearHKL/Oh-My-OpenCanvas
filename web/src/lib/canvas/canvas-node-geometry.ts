@@ -113,10 +113,6 @@ export function findAssetsDropTarget(movedIds: Set<string>, nodes: CanvasNodeDat
     return findDropTargetForSource(movedIds, nodes, CanvasNodeType.Image);
 }
 
-export function findPromptDropTarget(movedIds: Set<string>, nodes: CanvasNodeData[]) {
-    return findDropTargetForSource(movedIds, nodes, CanvasNodeType.Prompt);
-}
-
 export function getConnectionTargetAnchor(node: CanvasNodeData, current: ConnectionHandle) {
     return {
         x: current.handleType === "source" ? node.position.x : node.position.x + node.width,
@@ -128,8 +124,7 @@ export function normalizeConnection(firstNodeId: string, secondNodeId: string, n
     const first = nodes.find((node) => node.id === firstNodeId);
     const second = nodes.find((node) => node.id === secondNodeId);
     if (!first || !second || first.id === second.id) return null;
-    if (first.type === CanvasNodeType.ImageGeneration || second.type === CanvasNodeType.ImageGeneration) return null;
-    const isGenerationSink = (type: CanvasNodeTypeId) => type === CanvasNodeType.Config;
+    const isGenerationSink = (type: CanvasNodeTypeId) => type === CanvasNodeType.Config || type === CanvasNodeType.ImageGeneration;
     if (isGenerationSink(first.type) && isGenerationSink(second.type)) return null;
     if (isGenerationSink(second.type)) return { fromNodeId: first.id, toNodeId: second.id };
     if (isGenerationSink(first.type) && firstHandleType === "target") return { fromNodeId: second.id, toNodeId: first.id };

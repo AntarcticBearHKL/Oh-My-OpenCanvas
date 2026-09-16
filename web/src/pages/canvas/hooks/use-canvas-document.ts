@@ -94,7 +94,7 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
                 return !node || !isNodeLocked(node);
             }));
             if (!allIds.size) return;
-            setNodes((prev) => prev.filter((node) => !allIds.has(node.id)).map((node) => (node.metadata?.promptNodeId && allIds.has(node.metadata.promptNodeId) ? { ...node, metadata: { ...node.metadata, promptNodeId: undefined } } : node)));
+            setNodes((prev) => prev.filter((node) => !allIds.has(node.id)));
             setConnections((prev) => prev.filter((conn) => !allIds.has(conn.fromNodeId) && !allIds.has(conn.toNodeId)));
             setSelectedNodeIds(new Set());
             setSelectedConnectionId(null);

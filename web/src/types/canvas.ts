@@ -63,7 +63,6 @@ export type CanvasNodeMetadata = {
     content?: string;
     composerContent?: string;
     prompt?: string;
-    promptNodeId?: string;
     status?: CanvasNodeStatus;
     errorDetails?: string;
     fontSize?: number;

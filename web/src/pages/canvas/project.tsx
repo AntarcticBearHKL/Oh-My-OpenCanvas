@@ -63,7 +63,7 @@ import { applyNodeConfigPatch, createCanvasNode } from "@/lib/canvas/canvas-node
 import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
 import { extractImageText, ocrPrompt } from "@/lib/canvas/canvas-ocr";
 import { arrangeBoardImages, BOARD_LAYOUT_TEMPLATES, boardLayerImageIds, composeSmartCanvas, moveBoardLayer, orderBoardImages, SMART_CANVAS_DEFAULT_FONT_SIZE, smartCanvasBackground, smartCanvasSizeForRatio, smartCanvasTexts, type BoardLayoutTemplate } from "@/lib/canvas/smart-canvas";
-import { CANVAS_GRID_SIZE, bulkRenameTitles, findAssetsDropTarget, findBoardDropTarget, findPromptDropTarget, getConnectionTargetAnchor, isNodeHidden, isNodeLocked, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides } from "@/lib/canvas/canvas-node-geometry";
+import { CANVAS_GRID_SIZE, bulkRenameTitles, findAssetsDropTarget, findBoardDropTarget, getConnectionTargetAnchor, isNodeHidden, isNodeLocked, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides } from "@/lib/canvas/canvas-node-geometry";
 import {
     audioExtension,
     buildGenerationConfig,
@@ -157,7 +157,6 @@ function InfiniteCanvasPage() {
     const dragMoveRef = useRef<{ clientX: number; clientY: number } | null>(null);
     const dragPreviewRef = useRef<Map<string, Position> | null>(null);
     const dropTargetAssetsRef = useRef<string | null>(null);
-    const dropTargetPromptRef = useRef<string | null>(null);
     const nodeDraggingRef = useRef(false);
     const dragRef = useRef<{
         isDraggingNode: boolean;
@@ -229,7 +228,6 @@ function InfiniteCanvasPage() {
     const [isNodeResizing, setIsNodeResizing] = useState(false);
     const [dropTargetBoardId, setDropTargetBoardId] = useState<string | null>(null);
     const [dropTargetAssetsNodeId, setDropTargetAssetsNodeId] = useState<string | null>(null);
-    const [dropTargetPromptNodeId, setDropTargetPromptNodeId] = useState<string | null>(null);
     const [snapGuides, setSnapGuides] = useState<{ x: number[]; y: number[] }>(EMPTY_SNAP_GUIDES);
     const [dragPreview, setDragPreview] = useState<Map<string, Position> | null>(null);
     const [returningNodes, setReturningNodes] = useState<Map<string, Position>>(new Map());
@@ -845,8 +843,7 @@ function InfiniteCanvasPage() {
         const dx = clientX == null ? 0 : (clientX - dragRef.current.startX) / currentViewport.k;
         const dy = clientY == null ? 0 : (clientY - dragRef.current.startY) / currentViewport.k;
         const initialPositions = dragRef.current.initialSelectedNodes;
-        const promptTargetId = dragRef.current.hasMoved ? dropTargetPromptRef.current : null;
-        const assetsTargetId = dragRef.current.hasMoved && !promptTargetId ? dropTargetAssetsRef.current : null;
+        const assetsTargetId = dragRef.current.hasMoved ? dropTargetAssetsRef.current : null;
         const previewPositions = dragPreviewRef.current;
 
         historyPausedRef.current = false;
@@ -855,35 +852,12 @@ function InfiniteCanvasPage() {
         setDropTargetBoardId(null);
         setDropTargetAssetsNodeId(null);
         dropTargetAssetsRef.current = null;
-        setDropTargetPromptNodeId(null);
-        dropTargetPromptRef.current = null;
         setSnapGuides(EMPTY_SNAP_GUIDES);
         setDragPreview(null);
         dragPreviewRef.current = null;
         dragMoveRef.current = null;
 
-        if (promptTargetId) {
-            const target = nodesRef.current.find((node) => node.id === promptTargetId);
-            const droppedPromptIds: string[] = [];
-            const returned = new Map<string, Position>();
-            if (target) {
-                nodesRef.current.forEach((node) => {
-                    if (node.type !== CanvasNodeType.Prompt) return;
-                    const initial = initialPositions.find((item) => item.id === node.id);
-                    if (!initial) return;
-                    const dropped = previewPositions?.get(node.id) || { x: initial.x + dx, y: initial.y + dy };
-                    if (!nodeCenterInside({ ...node, position: dropped }, target)) return;
-                    droppedPromptIds.push(node.id);
-                    returned.set(node.id, dropped);
-                });
-            }
-            const boundPromptId = droppedPromptIds[droppedPromptIds.length - 1];
-            if (target && boundPromptId) setNodes((prev) => prev.map((node) => (node.id === target.id ? { ...node, metadata: { ...node.metadata, promptNodeId: boundPromptId } } : node)));
-            if (returned.size) {
-                setReturningNodes(returned);
-                window.setTimeout(() => setReturningNodes(new Map()), NODE_RETURN_MS);
-            }
-        } else if (assetsTargetId) {
+        if (assetsTargetId) {
             const target = nodesRef.current.find((node) => node.id === assetsTargetId);
             const returned = new Map<string, Position>();
             if (target) {
@@ -995,13 +969,10 @@ function InfiniteCanvasPage() {
                         return initial ? { ...node, position: { x: initial.x + finalDx, y: initial.y + finalDy } } : node;
                     });
                     const dropCandidates = previewNodes.filter((node) => !isNodeHidden(node));
-                    const promptTarget = findPromptDropTarget(movedIds, dropCandidates);
-                    dropTargetPromptRef.current = promptTarget?.id || null;
-                    setDropTargetPromptNodeId(promptTarget?.id || null);
-                    const assetsTarget = promptTarget ? null : findAssetsDropTarget(movedIds, dropCandidates);
+                    const assetsTarget = findAssetsDropTarget(movedIds, dropCandidates);
                     dropTargetAssetsRef.current = assetsTarget?.id || null;
                     setDropTargetAssetsNodeId(assetsTarget?.id || null);
-                    setDropTargetBoardId(promptTarget || assetsTarget ? null : findBoardDropTarget(movedIds, dropCandidates)?.id || null);
+                    setDropTargetBoardId(assetsTarget ? null : findBoardDropTarget(movedIds, dropCandidates)?.id || null);
                     const preview = new Map(initialPositions.map((item) => [item.id, { x: item.x + finalDx, y: item.y + finalDy }]));
                     dragPreviewRef.current = preview;
                     setDragPreview(preview);
@@ -1967,7 +1938,7 @@ function InfiniteCanvasPage() {
             <CanvasConfigNodePanel
                 node={contentNode}
                 isRunning={runningNodeId === contentNode.id}
-                isPromptDropTarget={dropTargetPromptNodeId === contentNode.id}
+                hasPromptConnection={(connectedNodesByNodeId.get(contentNode.id) || []).some((node) => node.type === CanvasNodeType.Prompt)}
                 inputSummary={getInputSummary(configInputsById.get(contentNode.id) || [])}
                 onConfigChange={handleConfigNodeChange}
                 onComposerToggle={() => setDialogNodeId((current) => (current === contentNode.id ? null : contentNode.id))}
@@ -1980,7 +1951,7 @@ function InfiniteCanvasPage() {
             />
             );
         },
-        [configInputsById, confirmStopGeneration, dropTargetPromptNodeId, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleOutputFolderBind, handleOutputFolderUnbind, handleReplayNode, insertFolderFile, mentionReferencesByNodeId, runningNodeId],
+        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleOutputFolderBind, handleOutputFolderUnbind, handleReplayNode, insertFolderFile, mentionReferencesByNodeId, runningNodeId],
     );
 
     if (!projectLoaded && !loadedOnceRef.current) return <CanvasRefreshShell />;
