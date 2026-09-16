@@ -2145,7 +2145,6 @@ function InfiniteCanvasPage() {
                     canvasTool={canvasTool}
                     canUndo={historyState.canUndo}
                     canRedo={historyState.canRedo}
-                    onAddImage={() => createNode(CanvasNodeType.Image)}
                     onAddImageGeneration={() => createNode(CanvasNodeType.ImageGeneration)}
                     onAddPrompt={() => createNode(CanvasNodeType.Prompt)}
                     onAddVideo={() => createNode(CanvasNodeType.Video)}

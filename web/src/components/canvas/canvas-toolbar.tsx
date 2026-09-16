@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
-import { Compass, Focus, FolderInput, Hand, HelpCircle, Image as ImageIcon, LayoutDashboard, ListTree, MessageSquareText, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
+import { Compass, Focus, FolderInput, Hand, HelpCircle, LayoutDashboard, ListTree, MessageSquareText, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -18,7 +18,6 @@ export function CanvasToolbar({
     canRedo,
     scale,
     isMiniMapOpen,
-    onAddImage,
     onAddImageGeneration,
     onAddPrompt,
     onAddVideo,
@@ -42,7 +41,6 @@ export function CanvasToolbar({
     canRedo: boolean;
     scale: number;
     isMiniMapOpen: boolean;
-    onAddImage: () => void;
     onAddImageGeneration: () => void;
     onAddPrompt: () => void;
     onAddVideo: () => void;
@@ -115,14 +113,17 @@ export function CanvasToolbar({
                     <Redo2 className="size-4.5" />
                 </ToolbarButton>
                 <Divider theme={theme} />
-                <ToolbarButton id="tool-image" label={t("canvas.toolbar.image")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddImage}>
-                    <ImageIcon className="size-4.5" />
+                <ToolbarButton id="tool-assets" label={t("canvas.nodeTypes.assets")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddAssets}>
+                    <FolderInput className="size-4.5" />
+                </ToolbarButton>
+                <ToolbarButton id="tool-prompt" label={t("canvas.nodeTypes.prompt")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddPrompt}>
+                    <MessageSquareText className="size-4.5" />
                 </ToolbarButton>
                 <ToolbarButton id="tool-image-generation" label={t("canvas.nodeTypes.imageGeneration")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddImageGeneration}>
                     <Sparkles className="size-4.5" />
                 </ToolbarButton>
-                <ToolbarButton id="tool-prompt" label={t("canvas.nodeTypes.prompt")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddPrompt}>
-                    <MessageSquareText className="size-4.5" />
+                <ToolbarButton id="tool-smart-canvas" label={t("canvas.nodeTypes.smartCanvas")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddSmartCanvas}>
+                    <LayoutDashboard className="size-4.5" />
                 </ToolbarButton>
                 {SHOW_MEDIA_TOOLS ? (
                     <>
@@ -134,12 +135,6 @@ export function CanvasToolbar({
                         </ToolbarButton>
                     </>
                 ) : null}
-                <ToolbarButton id="tool-smart-canvas" label={t("canvas.nodeTypes.smartCanvas")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddSmartCanvas}>
-                    <LayoutDashboard className="size-4.5" />
-                </ToolbarButton>
-                <ToolbarButton id="tool-assets" label={t("canvas.nodeTypes.assets")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddAssets}>
-                    <FolderInput className="size-4.5" />
-                </ToolbarButton>
                 {extensionDefs.length ? (
                     <ToolbarButton
                         id="tool-extensions"
@@ -384,7 +379,6 @@ function toolLabel(id: string, t: (key: string) => string) {
     if (id === "tool-pan") return t("canvas.toolbar.pan");
     if (id === "tool-undo") return t("canvas.undo");
     if (id === "tool-redo") return t("canvas.redo");
-    if (id === "tool-image") return t("canvas.toolbar.image");
     if (id === "tool-image-generation") return t("canvas.nodeTypes.imageGeneration");
     if (id === "tool-prompt") return t("canvas.nodeTypes.prompt");
     if (id === "tool-video") return t("canvas.toolbar.video");

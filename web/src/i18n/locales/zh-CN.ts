@@ -167,7 +167,7 @@ export default {
         nodeTypes: { image: "图片", text: "文本", prompt: "提示词", config: "生成配置", imageGeneration: "图片生成", video: "视频", audio: "音频", smartCanvas: "智能画布", assets: "资源" },
         relations: { reference: "参考图", referenceNumbered: "参考图 {{index}}", "video-reference": "参考视频", "audio-reference": "参考音频", prompt: "提示词", composite: "合成图", generation: "生成结果", crop: "裁剪结果", split: "切图结果", upscale: "放大结果", "ai-upscale": "AI 提升结果", mask: "局部编辑结果", "background-removal": "抠图结果", frame: "视频截帧", linked: "关联" },
         toolbar: {
-            select: "选择", pan: "移动", text: "文本", image: "图片", video: "视频", audio: "音频", config: "生成配置", extensions: "扩展节点", upload: "上传资产", zoom: "缩放",
+            select: "选择", pan: "移动", text: "文本", video: "视频", audio: "音频", config: "生成配置", extensions: "扩展节点", upload: "上传资产", zoom: "缩放",
             light: "白", dark: "黑", dots: "点", lines: "线", blank: "空白",
         },
         project: {

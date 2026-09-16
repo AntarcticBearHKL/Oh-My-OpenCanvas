@@ -25,7 +25,7 @@ type CanvasConfigNodePanelProps = {
 };
 
 const IMAGE_GEN_DESIGN_WIDTH = 412;
-const IMAGE_GEN_DESIGN_HEIGHT = 608;
+const IMAGE_GEN_DESIGN_HEIGHT = 540;
 
 export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, inputSummary, onConfigChange, onGenerate, onReplay, onStop, onComposerToggle }: CanvasConfigNodePanelProps) {
     const { t } = useTranslation();
@@ -53,7 +53,7 @@ export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, in
     return (
         <div className={scaledLayout ? "absolute inset-0 flex items-center justify-center overflow-hidden" : "flex h-full w-full cursor-move flex-col px-3 pb-3 pt-7 text-sm"} style={scaledLayout ? undefined : { color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
             <div
-                className={scaledLayout ? "flex shrink-0 flex-col px-3 pb-4 pt-5 text-sm" : "contents"}
+                className={scaledLayout ? "flex shrink-0 flex-col px-3 pb-5 pt-5 text-sm" : "contents"}
                 style={scaledLayout ? { width: IMAGE_GEN_DESIGN_WIDTH, height: IMAGE_GEN_DESIGN_HEIGHT, transform: `scale(${layoutScale})`, transformOrigin: "center", color: theme.node.text } : undefined}
             >
                 {isImageGenerationNode ? null : (

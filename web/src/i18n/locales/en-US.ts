@@ -167,7 +167,7 @@ export default {
         nodeTypes: { image: "Image", text: "Text", prompt: "Prompt", config: "Generation config", imageGeneration: "Image generation", video: "Video", audio: "Audio", smartCanvas: "Smart Canvas", assets: "Assets" },
         relations: { reference: "Reference image", referenceNumbered: "Reference {{index}}", "video-reference": "Reference video", "audio-reference": "Reference audio", prompt: "Prompt", composite: "Composite", generation: "Generation result", crop: "Cropped", split: "Split", upscale: "Upscaled", "ai-upscale": "Enhanced", mask: "Mask edited", "background-removal": "Background removed", frame: "Video frame", linked: "Linked" },
         toolbar: {
-            select: "Select", pan: "Move", text: "Text", image: "Image", video: "Video", audio: "Audio", config: "Generation config", extensions: "Extension nodes", upload: "Upload assets", zoom: "Zoom",
+            select: "Select", pan: "Move", text: "Text", video: "Video", audio: "Audio", config: "Generation config", extensions: "Extension nodes", upload: "Upload assets", zoom: "Zoom",
             light: "White", dark: "Black", dots: "Dots", lines: "Lines", blank: "Blank",
         },
         project: {
