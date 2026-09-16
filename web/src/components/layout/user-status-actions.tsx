@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { CanvasAccountUsage } from "@/components/canvas/canvas-account-usage";
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useConfigStore } from "@/stores/use-config-store";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -26,6 +27,7 @@ export function UserStatusActions({ showConfig = true, variant = "default" }: Us
                     <Settings2 className="size-4" />
                 </button>
             ) : null}
+            {variant === "canvas" ? <CanvasAccountUsage /> : null}
         </div>
     );
 }
