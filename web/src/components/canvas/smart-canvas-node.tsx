@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { frostedSurfaceClass } from "@/lib/canvas-theme";
 import { clampLayerOpacity, resolveBlendMode } from "@/lib/canvas/blend-modes";
-import { smartCanvasBackground, smartCanvasRatio, smartCanvasResolution, smartCanvasTexts } from "@/lib/canvas/smart-canvas";
+import { smartCanvasBackground, smartCanvasBackgroundOpacity, smartCanvasFill, smartCanvasRatio, smartCanvasResolution, smartCanvasTexts } from "@/lib/canvas/smart-canvas";
 import { resolveImageUrl } from "@/services/image-storage";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
 
@@ -27,6 +27,7 @@ export function SmartCanvasNodeContent({ node, boardLayers = EMPTY_BOARD_LAYERS,
     const ratio = smartCanvasRatio(node);
     const resolution = smartCanvasResolution(node).toUpperCase();
     const background = smartCanvasBackground(node);
+    const backgroundFill = smartCanvasFill(background === "transparent" ? theme.toolbar.panel : background, smartCanvasBackgroundOpacity(node));
     const gridColor = `${theme.node.stroke}22`;
     const dragRef = useRef<{ id: string; pointerId: number; startX: number; startY: number; x: number; y: number; scale: number } | null>(null);
     const [editing, setEditing] = useState<{ id: string; draft: string } | null>(null);
@@ -61,7 +62,7 @@ export function SmartCanvasNodeContent({ node, boardLayers = EMPTY_BOARD_LAYERS,
     return (
         <div
             className={`relative h-full w-full overflow-hidden rounded-[inherit] canvas-glass-card ${frostedSurfaceClass}`}
-            style={{ backgroundColor: background === "transparent" ? theme.toolbar.panel : background, backgroundImage: `linear-gradient(${gridColor} 1px, transparent 1px), linear-gradient(90deg, ${gridColor} 1px, transparent 1px)`, backgroundSize: "24px 24px", isolation: "isolate" }}
+            style={{ backgroundColor: backgroundFill, backgroundImage: `linear-gradient(${gridColor} 1px, transparent 1px), linear-gradient(90deg, ${gridColor} 1px, transparent 1px)`, backgroundSize: "24px 24px", isolation: "isolate" }}
         >
             <BoardLayersView node={node} layers={boardLayers} byId={boardLayersById} visited={new Set([node.id])} />
             {texts.map((text) => (

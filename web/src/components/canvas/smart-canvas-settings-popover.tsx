@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Settings2 } from "lucide-react";
-import { Button, ColorPicker, Segmented, Select } from "antd";
+import { Button, ColorPicker, Segmented, Select, Slider } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { ImageSettingsTheme } from "@/components/image-settings-panel";
@@ -14,12 +14,14 @@ type SmartCanvasSettingsPatch = {
     boardRatio?: string;
     boardResolution?: SmartCanvasResolution;
     boardBackground?: string;
+    boardBackgroundOpacity?: number;
 };
 
 type SmartCanvasSettingsPopoverProps = {
     ratio: string;
     resolution: SmartCanvasResolution;
     background: string;
+    backgroundOpacity: number;
     onChange: (patch: SmartCanvasSettingsPatch) => void;
 };
 
@@ -30,7 +32,7 @@ const resolutionOptions: { label: string; value: SmartCanvasResolution }[] = [
     { label: "4K", value: "4k" },
 ];
 
-export function SmartCanvasSettingsPopover({ ratio, resolution, background, onChange }: SmartCanvasSettingsPopoverProps) {
+export function SmartCanvasSettingsPopover({ ratio, resolution, background, backgroundOpacity, onChange }: SmartCanvasSettingsPopoverProps) {
     const { t } = useTranslation();
     const theme = useCanvasTheme();
     const buttonRef = useRef<HTMLSpanElement>(null);
@@ -69,7 +71,7 @@ export function SmartCanvasSettingsPopover({ ratio, resolution, background, onCh
                     </span>
                 </Button>
             </span>
-            {open && buttonRect ? <SmartCanvasSettingsPortal buttonRect={buttonRect} panelRef={panelRef} theme={theme} ratio={ratio} resolution={resolution} background={background} onChange={onChange} /> : null}
+            {open && buttonRect ? <SmartCanvasSettingsPortal buttonRect={buttonRect} panelRef={panelRef} theme={theme} ratio={ratio} resolution={resolution} background={background} backgroundOpacity={backgroundOpacity} onChange={onChange} /> : null}
         </>
     );
 }
@@ -81,6 +83,7 @@ function SmartCanvasSettingsPortal({
     ratio,
     resolution,
     background,
+    backgroundOpacity,
     onChange,
 }: {
     buttonRect: DOMRect;
@@ -89,6 +92,7 @@ function SmartCanvasSettingsPortal({
     ratio: string;
     resolution: SmartCanvasResolution;
     background: string;
+    backgroundOpacity: number;
     onChange: (patch: SmartCanvasSettingsPatch) => void;
 }) {
     const { t } = useTranslation();
@@ -154,6 +158,21 @@ function SmartCanvasSettingsPortal({
                                 value={background === "transparent" ? "#ffffff" : background}
                                 disabledAlpha
                                 onChangeComplete={(color) => onChange({ boardBackground: color.toHexString() })}
+                            />
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                            <span className="shrink-0 text-xs" style={{ color: theme.node.muted }}>
+                                {t("canvas.smartCanvas.backgroundOpacity")}
+                            </span>
+                            <Slider
+                                className="!mx-0 !w-[180px]"
+                                min={0}
+                                max={100}
+                                step={1}
+                                value={Math.round(backgroundOpacity * 100)}
+                                tooltip={{ formatter: (value) => `${value}%` }}
+                                ariaLabelForHandle={t("canvas.smartCanvas.backgroundOpacity")}
+                                onChange={(value) => onChange({ boardBackgroundOpacity: value / 100 })}
                             />
                         </div>
                     </div>

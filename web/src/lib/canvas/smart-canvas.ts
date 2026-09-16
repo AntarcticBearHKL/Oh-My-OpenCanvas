@@ -38,6 +38,14 @@ export function smartCanvasBackground(board: CanvasNodeData) {
     return board.metadata?.boardBackground || SMART_CANVAS_DEFAULT_BACKGROUND;
 }
 
+export function smartCanvasBackgroundOpacity(board: CanvasNodeData) {
+    return clampLayerOpacity(board.metadata?.boardBackgroundOpacity);
+}
+
+export function smartCanvasFill(color: string, opacity: number) {
+    return opacity >= 1 ? color : `color-mix(in srgb, ${color} ${Math.round(opacity * 100)}%, transparent)`;
+}
+
 export function smartCanvasTexts(board: CanvasNodeData) {
     return board.metadata?.boardTexts ?? [];
 }
@@ -135,7 +143,9 @@ export async function composeSmartCanvas(board: CanvasNodeData, layers: CanvasNo
     const background = smartCanvasBackground(board);
     if (background !== "transparent") {
         context.fillStyle = background;
+        context.globalAlpha = smartCanvasBackgroundOpacity(board);
         context.fillRect(0, 0, width, height);
+        context.globalAlpha = 1;
     }
 
     for (const layer of ordered) {

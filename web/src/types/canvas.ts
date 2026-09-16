@@ -110,6 +110,7 @@ export type CanvasNodeMetadata = {
     boardResolution?: "1k" | "2k" | "4k"; // Smart Canvas composite resolution tier; defaults to "2k".
     boardId?: string; // Set on an IMAGE node to mark it as placed on that Smart Canvas board.
     boardBackground?: string; // Smart Canvas board background colour as a CSS colour string; defaults to "transparent".
+    boardBackgroundOpacity?: number; // Smart Canvas board background opacity in 0..1; defaults to 1.
     boardTexts?: { id: string; text: string; x: number; y: number; fontSize: number; color: string }[]; // Smart Canvas text annotations drawn above placed images; x/y are board-local top-left coordinates and fontSize uses board units.
     boardLayers?: string[];
     blendMode?: string;

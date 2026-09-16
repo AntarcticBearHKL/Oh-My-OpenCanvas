@@ -62,7 +62,7 @@ import { buildNodeMentionReferences, isCanvasReferenceNode, type CanvasResourceR
 import { applyNodeConfigPatch, createCanvasNode } from "@/lib/canvas/canvas-node-factory";
 import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
 import { extractImageText, ocrPrompt } from "@/lib/canvas/canvas-ocr";
-import { arrangeBoardImages, BOARD_LAYOUT_TEMPLATES, boardLayerImageIds, composeSmartCanvas, moveBoardLayer, orderBoardImages, SMART_CANVAS_DEFAULT_FONT_SIZE, smartCanvasBackground, smartCanvasSizeForRatio, smartCanvasTexts, type BoardLayoutTemplate } from "@/lib/canvas/smart-canvas";
+import { arrangeBoardImages, BOARD_LAYOUT_TEMPLATES, boardLayerImageIds, composeSmartCanvas, moveBoardLayer, orderBoardImages, SMART_CANVAS_DEFAULT_FONT_SIZE, smartCanvasBackground, smartCanvasBackgroundOpacity, smartCanvasSizeForRatio, smartCanvasTexts, type BoardLayoutTemplate } from "@/lib/canvas/smart-canvas";
 import { CANVAS_GRID_SIZE, bulkRenameTitles, findAssetsDropTarget, findBoardDropTarget, getConnectionTargetAnchor, isNodeHidden, isNodeLocked, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides } from "@/lib/canvas/canvas-node-geometry";
 import {
     audioExtension,
@@ -1866,7 +1866,7 @@ function InfiniteCanvasPage() {
                 />
             ) : panelNode.type === CanvasNodeType.SmartCanvas ? (
                 <div className="flex items-center gap-2" style={{ color: theme.node.text }}>
-                    <SmartCanvasSettingsPopover ratio={panelNode.metadata?.boardRatio || "16:9"} resolution={panelNode.metadata?.boardResolution || "2k"} background={smartCanvasBackground(panelNode)} onChange={(patch) => handleSmartCanvasChange(panelNode.id, patch)} />
+                    <SmartCanvasSettingsPopover ratio={panelNode.metadata?.boardRatio || "16:9"} resolution={panelNode.metadata?.boardResolution || "2k"} background={smartCanvasBackground(panelNode)} backgroundOpacity={smartCanvasBackgroundOpacity(panelNode)} onChange={(patch) => handleSmartCanvasChange(panelNode.id, patch)} />
                     <Button size="small" type="text" className="!h-8 !rounded-full !px-2.5" style={{ color: theme.node.text }} icon={<ImagePlus className="size-3.5" />} onClick={() => void handleSaveBoardAsNode(panelNode)}>
                         {t("canvas.smartCanvas.saveAsNode")}
                     </Button>
