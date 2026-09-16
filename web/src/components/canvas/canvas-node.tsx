@@ -362,7 +362,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 if (!referenceSelectionState) onSelectCapture?.(event, data.id);
             }}
         >
-            {!referenceSelectionState && !hasImageContent && (data.metadata?.showTitle === true || isSelected || hovered || isEditingTitle) && (
+            {!referenceSelectionState && !hasImageContent && (isEditingTitle || (data.metadata?.showTitle ?? (isSelected || hovered))) && (
                 <div className="absolute left-3 top-[-28px] z-[65] max-w-[calc(100%-24px)]" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                     {isEditingTitle ? (
                         <input
