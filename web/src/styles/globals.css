@@ -49,72 +49,74 @@
 }
 
 :root {
+    /* Mirrors canvasThemes.light in web/src/lib/canvas-theme.ts; CSS cannot import TS. */
     --radius: 0.625rem;
-    --border: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --input: oklch(0.922 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    --border: #d6d3ca;
+    --ring: #a8a29e;
+    --background: #f4f2ed;
+    --foreground: #292524;
+    --card: #fbfaf7;
+    --card-foreground: #292524;
+    --popover: #fbfaf7;
+    --popover-foreground: #292524;
+    --primary: #292524;
+    --primary-foreground: #fbfaf7;
+    --secondary: #e7e5df;
+    --secondary-foreground: #292524;
+    --muted: #e7e5df;
+    --muted-foreground: #78716c;
+    --accent: #e7e5df;
+    --accent-foreground: #292524;
+    --destructive: #d05a4a;
+    --input: #d6d3ca;
+    --chart-1: #e7e5df;
+    --chart-2: #a8a29e;
+    --chart-3: #78716c;
+    --chart-4: #57534e;
+    --chart-5: #292524;
+    --sidebar: #fbfaf7;
+    --sidebar-foreground: #292524;
+    --sidebar-primary: #292524;
+    --sidebar-primary-foreground: #fbfaf7;
+    --sidebar-accent: #e7e5df;
+    --sidebar-accent-foreground: #292524;
+    --sidebar-border: #d6d3ca;
+    --sidebar-ring: #a8a29e;
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --border: oklch(1 0 0 / 10%);
-    --ring: oklch(0.556 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --input: oklch(1 0 0 / 15%);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    /* Mirrors canvasThemes.dark in web/src/lib/canvas-theme.ts; CSS cannot import TS. */
+    --background: #181715;
+    --foreground: #f5f5f4;
+    --border: #44403c;
+    --ring: #78716c;
+    --card: #1f1d1a;
+    --card-foreground: #f5f5f4;
+    --popover: #1f1d1a;
+    --popover-foreground: #f5f5f4;
+    --primary: #f5f5f4;
+    --primary-foreground: #1f1d1a;
+    --secondary: #292524;
+    --secondary-foreground: #f5f5f4;
+    --muted: #292524;
+    --muted-foreground: #d6d3d1;
+    --accent: #292524;
+    --accent-foreground: #f5f5f4;
+    --destructive: #e07a6b;
+    --input: #44403c;
+    --chart-1: #44403c;
+    --chart-2: #78716c;
+    --chart-3: #a8a29e;
+    --chart-4: #d6d3d1;
+    --chart-5: #f5f5f4;
+    --sidebar: #1f1d1a;
+    --sidebar-foreground: #f5f5f4;
+    --sidebar-primary: #f5f5f4;
+    --sidebar-primary-foreground: #1f1d1a;
+    --sidebar-accent: #292524;
+    --sidebar-accent-foreground: #f5f5f4;
+    --sidebar-border: #44403c;
+    --sidebar-ring: #78716c;
 }
 
 @layer base {
@@ -204,9 +206,9 @@
 
     .prompt-filter-tag.ant-tag-checkable.is-active,
     .prompt-filter-tag.ant-tag-checkable-checked {
-        background: #111111;
-        border-color: #111111;
-        color: #ffffff;
+        background: #292524;
+        border-color: #292524;
+        color: #fbfaf7;
         font-weight: 600;
     }
 
