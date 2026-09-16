@@ -48,7 +48,7 @@ export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, in
     ].filter(Boolean);
 
     const scaledLayout = isImageGenerationNode;
-    const layoutScale = Math.max(node.width - 4, 1) / IMAGE_GEN_DESIGN_WIDTH;
+    const layoutScale = Math.min(Math.max(node.width - 4, 1) / IMAGE_GEN_DESIGN_WIDTH, Math.max(node.height - 4, 1) / IMAGE_GEN_DESIGN_HEIGHT);
 
     return (
         <div className={scaledLayout ? "absolute inset-0 overflow-hidden" : "flex h-full w-full cursor-move flex-col px-3 pb-3 pt-7 text-sm"} style={scaledLayout ? undefined : { color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
@@ -154,7 +154,7 @@ export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, in
                     </div>
                 ) : null}
 
-                <div className="mt-auto flex shrink-0 flex-col gap-2 pt-2">
+                <div className="flex shrink-0 flex-col gap-2 pt-2">
                     {isImageGenerationNode && !canReplay ? null : (
                         <div className="flex min-w-0 flex-wrap items-center gap-1" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                             {isImageGenerationNode ? null : (
