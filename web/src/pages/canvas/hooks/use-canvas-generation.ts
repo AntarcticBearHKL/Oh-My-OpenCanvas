@@ -15,8 +15,6 @@ import { audioMetadata, buildAudioGenerationMetadata, buildImageGenerationMetada
 import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
 import { NODE_STATUS_ERROR, NODE_STATUS_IDLE, NODE_STATUS_LOADING, NODE_STATUS_SUCCESS, VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH } from "@/lib/canvas/canvas-node-constants";
 import { buildAngleLabel, buildAnglePrompt, buildGenerationConfig, createGenerationSeed, findRetrySourceNode, generationQueue, generationReferenceUrls, getGenerationCount, hasResumableVideoTask, isGenerationCanceled, pushGenerationVersion, resolveGenerationSeed, resolveMetadataReferences, runGenerationTaskWithRetry, sourceNodeReferenceImages } from "@/lib/canvas/canvas-generation-helpers";
-import { buildMatrixVariants, type GenerationMatrixVariant } from "@/lib/canvas/generation-matrix";
-import { applyPromptVariables } from "@/lib/canvas/prompt-variables";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasImageAngleParams } from "@/components/canvas/canvas-node-angle-dialog";
@@ -334,11 +332,10 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
     );
 
     const handleGenerateNode = useCallback(
-        async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, replaySeed?: number, variant?: GenerationMatrixVariant, options?: { deferRunningState?: boolean }) => {
-            if (variant?.prompt) prompt = variant.prompt;
+        async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, replaySeed?: number) => {
             const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
             if (sourceNode?.type === CanvasNodeType.ImageGeneration && !nodesRef.current.find((node) => node.id === sourceNode.metadata?.promptNodeId && node.type === CanvasNodeType.Prompt)?.metadata?.prompt?.trim()) return;
-            const generationConfig = { ...buildGenerationConfig(effectiveConfig, sourceNode, mode), ...(variant?.size ? { size: variant.size } : {}), ...(variant?.count ? { count: String(variant.count) } : {}) };
+            const generationConfig = buildGenerationConfig(effectiveConfig, sourceNode, mode);
             if (!isAiConfigReady(generationConfig, generationConfig.model)) {
                 openConfigDialog();
                 return;
@@ -379,7 +376,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                 return;
             }
 
-            if (!options?.deferRunningState) setRunningNodeId(nodeId);
+            setRunningNodeId(nodeId);
             const runController = startGenerationRequest(nodeId, nodeId, nodeId);
             const sourceTextContent = sourceNode?.type === CanvasNodeType.Text ? sourceNode.metadata?.content?.trim() || "" : "";
             const editingTextNode = mode === "text" && Boolean(sourceTextContent);
@@ -387,16 +384,16 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                 buildNodeGenerationContext(nodeId, nodesRef.current, connectionsRef.current, editingTextNode ? t("canvas.projectPage.editTextPrompt", { source: sourceTextContent, prompt }) : prompt),
                 nodesRef.current,
             );
-            const effectivePrompt = applyPromptVariables(generationContext.prompt, sourceNode?.metadata?.variables).trim();
+            const effectivePrompt = generationContext.prompt.trim();
             if (runController.signal.aborted) {
                 finishGenerationRequest(nodeId, runController);
-                if (!options?.deferRunningState) setRunningNodeId(null);
+                setRunningNodeId(null);
                 return;
             }
             const markSourceStatus = sourceNode?.type !== CanvasNodeType.Image && !editingTextNode;
             if (!effectivePrompt && (mode === "text" || mode === "audio")) {
                 finishGenerationRequest(nodeId, runController);
-                if (!options?.deferRunningState) setRunningNodeId(null);
+                setRunningNodeId(null);
                 return;
             }
             let pendingChildIds: string[] = [];
@@ -438,7 +435,6 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                             status: NODE_STATUS_LOADING,
                             images: imageIds.map((id) => ({ id, status: NODE_STATUS_LOADING, content: "", naturalWidth: 0, naturalHeight: 0, bytes: 0, mimeType: "" })),
                             ...generationMetadata,
-                            ...(variant ? { matrixTrace: variant } : {}),
                         },
                     };
 
@@ -558,7 +554,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                                           status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR,
                                           errorDetails: hasSuccess ? undefined : t("canvas.projectPage.generationFailed"),
                                           ...(hasSuccess
-                                              ? { seed: baseSeed, generationVersions: pushGenerationVersion(node.metadata?.generationVersions, { id: nanoid(), prompt: effectivePrompt, seed: baseSeed, model: generationConfig.model, size: generationConfig.size, createdAt: Date.now(), ...(variant ? { count, matrixTrace: variant } : {}) }) }
+                                              ? { seed: baseSeed, generationVersions: pushGenerationVersion(node.metadata?.generationVersions, { id: nanoid(), prompt: effectivePrompt, seed: baseSeed, model: generationConfig.model, size: generationConfig.size, createdAt: Date.now() }) }
                                               : {}),
                                       },
                                   }
@@ -593,7 +589,6 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                             watermark: generationConfig.videoWatermark,
                             videoMode: generationConfig.videoMode,
                             references: generationReferenceUrls(generationContext),
-                            ...(variant ? { matrixTrace: variant } : {}),
                         },
                     };
                     pendingChildIds = [videoId];
@@ -631,7 +626,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                         position: isEmptyAudioNode ? sourceNode.position : { x: parent.x + (sourceNode?.width || spec.width) + 96, y: parent.y + ((sourceNode?.height || spec.height) - spec.height) / 2 },
                         width: isEmptyAudioNode ? sourceNode.width : spec.width,
                         height: isEmptyAudioNode ? sourceNode.height : spec.height,
-                        metadata: { prompt: effectivePrompt, status: NODE_STATUS_LOADING, ...buildAudioGenerationMetadata(generationConfig), ...(variant ? { matrixTrace: variant } : {}) },
+                        metadata: { prompt: effectivePrompt, status: NODE_STATUS_LOADING, ...buildAudioGenerationMetadata(generationConfig) },
                     };
                     pendingChildIds = [audioId];
                     setNodes((prev) =>
@@ -674,7 +669,6 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                         textCount,
                         texts: textIds.map((id) => ({ id, status: NODE_STATUS_LOADING, content: "" })),
                         primaryTextId: textIds[0],
-                        ...(variant ? { matrixTrace: variant } : {}),
                     },
                 };
                 pendingChildIds = [rootId];
@@ -788,28 +782,10 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                 );
             } finally {
                 finishGenerationRequest(nodeId, runController);
-                if (!options?.deferRunningState) setRunningNodeId(null);
-            }
-        },
-        [completeVideoNodeTask, effectiveConfig, finishGenerationRequest, isAiConfigReady, message, openConfigDialog, startGenerationRequest, t],
-    );
-
-    const handleGenerateMatrix = useCallback(
-        async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string) => {
-            const node = nodesRef.current.find((item) => item.id === nodeId);
-            const variants = buildMatrixVariants(node?.metadata?.matrix);
-            if (variants.length <= 1) {
-                await handleGenerateNode(nodeId, mode, prompt, undefined, variants[0]);
-                return;
-            }
-            setRunningNodeId(nodeId);
-            try {
-                await Promise.all(variants.map((variant) => handleGenerateNode(nodeId, mode, prompt, undefined, variant, { deferRunningState: true })));
-            } finally {
                 setRunningNodeId(null);
             }
         },
-        [handleGenerateNode, setRunningNodeId],
+        [completeVideoNodeTask, effectiveConfig, finishGenerationRequest, isAiConfigReady, message, openConfigDialog, startGenerationRequest, t],
     );
 
     const handleReplayNode = useCallback(
@@ -979,5 +955,5 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
         [completeVideoNodeTask, effectiveConfig, finishGenerationRequest, isAiConfigReady, message, openConfigDialog, pollVideoNodeTask, startGenerationRequest, t],
     );
 
-    return { handleGenerateNode, handleGenerateMatrix, handleRetryNode, handleReplayNode, pollVideoNodeTask, confirmStopGeneration, maskEditImageNode, generateAngleNode };
+    return { handleGenerateNode, handleRetryNode, handleReplayNode, pollVideoNodeTask, confirmStopGeneration, maskEditImageNode, generateAngleNode };
 }

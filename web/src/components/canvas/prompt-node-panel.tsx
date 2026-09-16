@@ -14,6 +14,7 @@ export function PromptNodePanel({ node, references = [], onContentChange }: { no
     const { t } = useTranslation();
     const theme = useCanvasTheme();
     const [pickerOpen, setPickerOpen] = useState(false);
+    const [editing, setEditing] = useState(false);
 
     return (
         <div className="flex h-full w-full cursor-move flex-col px-3 pb-3 pt-7 text-sm" style={{ color: theme.node.text }}>
@@ -32,7 +33,18 @@ export function PromptNodePanel({ node, references = [], onContentChange }: { no
                 </button>
             </div>
             <PromptReferenceChips references={references} />
-            <div className="flex min-h-0 flex-1 flex-col" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onWheel={(event) => event.stopPropagation()}>
+            <div
+                className="flex min-h-0 flex-1 flex-col"
+                onFocus={() => setEditing(true)}
+                onBlur={() => setEditing(false)}
+                onMouseDown={(event) => {
+                    if (editing) event.stopPropagation();
+                }}
+                onPointerDown={(event) => {
+                    if (editing) event.stopPropagation();
+                }}
+                onWheel={(event) => event.stopPropagation()}
+            >
                 <CanvasPromptChipInput
                     value={node.metadata?.prompt || ""}
                     references={references}

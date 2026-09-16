@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Braces, Grid3x3, Image as ImageIcon, LoaderCircle, MessageSquare, Music2, Play, RefreshCw, Settings2, Square, Video } from "lucide-react";
+import { Image as ImageIcon, LoaderCircle, MessageSquare, Music2, Play, RefreshCw, Settings2, Square, Video } from "lucide-react";
 import { Button, Segmented } from "antd";
 import { useTranslation } from "react-i18next";
 
@@ -7,9 +6,6 @@ import { ImageSettingsPanel } from "@/components/image-settings-panel";
 import { ModelPicker } from "@/components/model-picker";
 import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
-import { buildMatrixVariants } from "@/lib/canvas/generation-matrix";
-import { CanvasGenerationMatrixDialog } from "./canvas-generation-matrix-dialog";
-import { CanvasPromptVariablesDialog } from "./canvas-prompt-variables-dialog";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
@@ -44,9 +40,6 @@ export function CanvasConfigNodePanel({ node, isRunning, isPromptDropTarget, inp
     const hasComposerContent = Boolean((node.metadata?.composerContent ?? node.metadata?.prompt ?? "").trim());
     const canGenerate = isImageGenerationNode ? hasBoundPrompt : hasComposerContent || (mode === "audio" ? inputSummary.textCount > 0 : hasAnyInput);
     const canReplay = mode === "image" && typeof node.metadata?.seed === "number";
-    const matrixVariantCount = buildMatrixVariants(node.metadata?.matrix).length;
-    const [matrixOpen, setMatrixOpen] = useState(false);
-    const [variablesOpen, setVariablesOpen] = useState(false);
     const flatButtonClass = "inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 text-[11px] transition hover:bg-black/5 dark:hover:bg-white/10";
     const summaryParts = [
         inputSummary.textCount ? `${t("canvas.configNode.prompt")} ${inputSummary.textCount}` : "",
@@ -61,7 +54,7 @@ export function CanvasConfigNodePanel({ node, isRunning, isPromptDropTarget, inp
     return (
         <div className={scaledLayout ? "absolute inset-0 overflow-hidden" : "flex h-full w-full cursor-move flex-col px-3 pb-3 pt-7 text-sm"} style={scaledLayout ? undefined : { color: theme.node.text }} onWheel={(event) => event.stopPropagation()}>
             <div
-                className={scaledLayout ? "flex flex-col px-3 pb-3 pt-5 text-sm" : "contents"}
+                className={scaledLayout ? "flex flex-col px-3 pb-4 pt-5 text-sm" : "contents"}
                 style={scaledLayout ? { width: IMAGE_GEN_DESIGN_WIDTH, height: IMAGE_GEN_DESIGN_HEIGHT, transform: `scale(${layoutScale})`, transformOrigin: "top left", color: theme.node.text } : undefined}
             >
                 {isImageGenerationNode ? null : (
@@ -162,87 +155,64 @@ export function CanvasConfigNodePanel({ node, isRunning, isPromptDropTarget, inp
                     </div>
                 ) : null}
 
-                <div className="mt-auto flex min-w-0 flex-wrap items-center gap-1" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-                    {isImageGenerationNode ? null : (
-                        <button type="button" className={flatButtonClass} style={{ color: theme.node.text }} onClick={onComposerToggle}>
-                            <Settings2 className="size-3.5" />
-                            {t("canvas.configNode.compose")}
-                        </button>
+                <div className="mt-auto flex shrink-0 flex-col gap-2 pt-2">
+                    {isImageGenerationNode && !canReplay ? null : (
+                        <div className="flex min-w-0 flex-wrap items-center gap-1" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+                            {isImageGenerationNode ? null : (
+                                <button type="button" className={flatButtonClass} style={{ color: theme.node.text }} onClick={onComposerToggle}>
+                                    <Settings2 className="size-3.5" />
+                                    {t("canvas.configNode.compose")}
+                                </button>
+                            )}
+                            {canReplay ? (
+                                <button type="button" className={flatButtonClass} style={{ color: theme.node.text }} onClick={() => onReplay(node.id)}>
+                                    <RefreshCw className="size-3.5" />
+                                    {t("canvas.configNode.replaySeed")}
+                                </button>
+                            ) : null}
+                        </div>
                     )}
-                    <button type="button" data-matrix-button className={flatButtonClass} style={{ color: theme.node.text }} onClick={() => setMatrixOpen(true)}>
-                        <Grid3x3 className="size-3.5" />
-                        {t("canvas.configNode.matrix")}
-                        {matrixVariantCount > 0 ? ` · ${matrixVariantCount}` : ""}
-                    </button>
-                    <button type="button" data-variables-button className={flatButtonClass} style={{ color: theme.node.text }} onClick={() => setVariablesOpen(true)}>
-                        <Braces className="size-3.5" />
-                        {t("canvas.promptPanel.variables")}
-                    </button>
-                    {canReplay ? (
-                        <button type="button" className={flatButtonClass} style={{ color: theme.node.text }} onClick={() => onReplay(node.id)}>
-                            <RefreshCw className="size-3.5" />
-                            {t("canvas.configNode.replaySeed")}
-                        </button>
+
+                    <div className="flex shrink-0 justify-end">
+                        <Button
+                            type="primary"
+                            className="!h-9 !cursor-pointer !rounded-full !border-transparent !px-4 !text-[11px] !font-semibold transition hover:!opacity-90 disabled:!opacity-35"
+                            style={isRunning ? undefined : { background: theme.node.primary, color: theme.node.primaryText }}
+                            danger={isRunning}
+                            disabled={!isRunning && !canGenerate}
+                            onMouseDown={(event) => event.stopPropagation()}
+                            onClick={() => (isRunning ? onStop(node.id) : onGenerate(node.id))}
+                        >
+                            <span className="inline-flex items-center gap-1.5">
+                                {isRunning ? (
+                                    <>
+                                        <LoaderCircle className="size-4 animate-spin" />
+                                        <Square className="size-3.5 fill-current" />
+                                        <span>{t("canvas.configNode.stop")}</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Play className="size-4" />
+                                        <span>{t("canvas.configNode.generate")}</span>
+                                    </>
+                                )}
+                            </span>
+                        </Button>
+                    </div>
+
+                    {isImageGenerationNode ? (
+                        <div
+                            className="flex items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-colors duration-200 motion-reduce:transition-none"
+                            style={{ borderColor: isPromptDropTarget ? theme.node.ready : theme.node.faint, borderStyle: isPromptDropTarget ? "solid" : "dashed" }}
+                        >
+                            <span className="size-2 shrink-0 rounded-full transition-colors duration-200 motion-reduce:transition-none" style={{ background: hasBoundPrompt ? theme.node.ready : theme.node.blocked }} />
+                            <MessageSquare className="size-3.5 shrink-0" style={{ color: isPromptDropTarget ? theme.node.ready : theme.node.muted }} />
+                            <span className="min-w-0 flex-1 truncate text-[11px]" style={{ color: isPromptDropTarget ? theme.node.ready : theme.node.muted }}>
+                                {hasBoundPrompt ? t("canvas.configNode.promptBound") : t("canvas.configNode.promptSlot")}
+                            </span>
+                        </div>
                     ) : null}
                 </div>
-
-                <div className="ml-auto shrink-0">
-                    <Button
-                        type="primary"
-                        className="!h-9 !cursor-pointer !rounded-full !border-transparent !px-4 !text-[11px] !font-semibold transition hover:!opacity-90 disabled:!opacity-35"
-                        style={isRunning ? undefined : { background: theme.node.primary, color: theme.node.primaryText }}
-                        danger={isRunning}
-                        disabled={!isRunning && !canGenerate}
-                        onMouseDown={(event) => event.stopPropagation()}
-                        onClick={() => (isRunning ? onStop(node.id) : onGenerate(node.id))}
-                    >
-                        <span className="inline-flex items-center gap-1.5">
-                            {isRunning ? (
-                                <>
-                                    <LoaderCircle className="size-4 animate-spin" />
-                                    <Square className="size-3.5 fill-current" />
-                                    <span>{t("canvas.configNode.stop")}</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Play className="size-4" />
-                                    <span>{matrixVariantCount > 1 ? t("canvas.configNode.generateVariants", { count: matrixVariantCount }) : t("canvas.configNode.generate")}</span>
-                                </>
-                            )}
-                        </span>
-                    </Button>
-                </div>
-                {isImageGenerationNode ? (
-                    <div
-                        className="mt-2 flex items-center gap-2 rounded-lg border px-2.5 py-1.5 transition-colors duration-200 motion-reduce:transition-none"
-                        style={{ borderColor: isPromptDropTarget ? theme.node.ready : theme.node.faint, borderStyle: isPromptDropTarget ? "solid" : "dashed" }}
-                    >
-                        <span className="size-2 shrink-0 rounded-full transition-colors duration-200 motion-reduce:transition-none" style={{ background: hasBoundPrompt ? theme.node.ready : theme.node.blocked }} />
-                        <MessageSquare className="size-3.5 shrink-0" style={{ color: isPromptDropTarget ? theme.node.ready : theme.node.muted }} />
-                        <span className="min-w-0 flex-1 truncate text-[11px]" style={{ color: isPromptDropTarget ? theme.node.ready : theme.node.muted }}>
-                            {hasBoundPrompt ? t("canvas.configNode.promptBound") : t("canvas.configNode.promptSlot")}
-                        </span>
-                    </div>
-                ) : null}
-                <CanvasGenerationMatrixDialog
-                    open={matrixOpen}
-                    matrix={node.metadata?.matrix}
-                    onClose={() => setMatrixOpen(false)}
-                    onConfirm={(matrix) => {
-                        onConfigChange(node.id, { matrix });
-                        setMatrixOpen(false);
-                    }}
-                />
-                <CanvasPromptVariablesDialog
-                    open={variablesOpen}
-                    prompt={node.metadata?.composerContent ?? node.metadata?.prompt ?? ""}
-                    variables={node.metadata?.variables}
-                    onClose={() => setVariablesOpen(false)}
-                    onConfirm={(variables) => {
-                        onConfigChange(node.id, { variables });
-                        setVariablesOpen(false);
-                    }}
-                />
             </div>
         </div>
     );

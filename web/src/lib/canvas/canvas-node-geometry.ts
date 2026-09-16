@@ -1,4 +1,5 @@
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeTypeId, type ConnectionHandle } from "@/types/canvas";
+import { resolveCanvasDropBinding } from "@/lib/canvas/canvas-drop-bindings";
 
 export function nodeBounds(nodes: CanvasNodeData[]) {
     return nodes.reduce(
@@ -102,16 +103,18 @@ export function findBoardDropTarget(movedIds: Set<string>, nodes: CanvasNodeData
     );
 }
 
-export function findAssetsDropTarget(movedIds: Set<string>, nodes: CanvasNodeData[]) {
-    const movingNodes = nodes.filter((node) => movedIds.has(node.id) && node.type === CanvasNodeType.Image);
+function findDropTargetForSource(movedIds: Set<string>, nodes: CanvasNodeData[], sourceType: CanvasNodeTypeId) {
+    const movingNodes = nodes.filter((node) => movedIds.has(node.id) && node.type === sourceType);
     if (!movingNodes.length) return null;
-    return [...nodes].reverse().find((assets) => assets.type === CanvasNodeType.Assets && !movedIds.has(assets.id) && movingNodes.some((node) => nodeCenterInside(node, assets))) || null;
+    return [...nodes].reverse().find((target) => !movedIds.has(target.id) && resolveCanvasDropBinding(sourceType, target.type) !== null && movingNodes.some((node) => nodeCenterInside(node, target))) || null;
+}
+
+export function findAssetsDropTarget(movedIds: Set<string>, nodes: CanvasNodeData[]) {
+    return findDropTargetForSource(movedIds, nodes, CanvasNodeType.Image);
 }
 
 export function findPromptDropTarget(movedIds: Set<string>, nodes: CanvasNodeData[]) {
-    const movingNodes = nodes.filter((node) => movedIds.has(node.id) && node.type === CanvasNodeType.Prompt);
-    if (!movingNodes.length) return null;
-    return [...nodes].reverse().find((generation) => generation.type === CanvasNodeType.ImageGeneration && !movedIds.has(generation.id) && movingNodes.some((node) => nodeCenterInside(node, generation))) || null;
+    return findDropTargetForSource(movedIds, nodes, CanvasNodeType.Prompt);
 }
 
 export function getConnectionTargetAnchor(node: CanvasNodeData, current: ConnectionHandle) {

@@ -129,6 +129,23 @@ const LIB_ASSERTIONS = `(async () => {
     ok("bulk rename numbered", bulk.get("a") === "名字 1" && bulk.get("b") === "名字 2");
     ok("bulk rename blank", geo.bulkRenameTitles(["a", "b"], "   ").size === 0);
 
+    const drop = await import("/src/lib/canvas/canvas-drop-bindings.ts");
+    ok("drop binding prompt onto image-generation", drop.resolveCanvasDropBinding("prompt", "image-generation") === "prompt", drop.resolveCanvasDropBinding("prompt", "image-generation"));
+    ok("drop binding image onto assets", drop.resolveCanvasDropBinding("image", "assets") === "collect", drop.resolveCanvasDropBinding("image", "assets"));
+    ok(
+        "drop binding rejects unrelated pairs",
+        drop.resolveCanvasDropBinding("prompt", "assets") === null && drop.resolveCanvasDropBinding("image", "image-generation") === null && drop.resolveCanvasDropBinding("prompt", "prompt") === null,
+        JSON.stringify([drop.resolveCanvasDropBinding("prompt", "assets"), drop.resolveCanvasDropBinding("image", "image-generation")]),
+    );
+    const promptSource = { id: "pn", type: "prompt", title: "p", position: { x: 100, y: 100 }, width: 340, height: 240, metadata: {} };
+    const generationTarget = { id: "gn", type: "image-generation", title: "g", position: { x: 0, y: 0 }, width: 412, height: 608, metadata: {} };
+    const assetsTarget = { id: "an", type: "assets", title: "a", position: { x: 0, y: 0 }, width: 360, height: 320, metadata: {} };
+    const imageSource = image("i1", 100, 100, { x: 100, y: 100 });
+    ok("prompt drop finds image-generation target", geo.findPromptDropTarget(new Set(["pn"]), [promptSource, generationTarget])?.id === "gn");
+    ok("prompt drop ignores non-generation target", geo.findPromptDropTarget(new Set(["pn"]), [promptSource, assetsTarget]) === null);
+    ok("image drop finds assets target", geo.findAssetsDropTarget(new Set(["i1"]), [imageSource, assetsTarget])?.id === "an");
+    ok("image drop ignores image-generation target", geo.findAssetsDropTarget(new Set(["i1"]), [imageSource, generationTarget]) === null);
+
     const align = await import("/src/lib/canvas/alignment.ts");
     const trio = [
         { id: "a", type: "image", title: "a", position: { x: 100, y: 50 }, width: 100, height: 100, metadata: {} },
@@ -207,43 +224,6 @@ const LIB_ASSERTIONS = `(async () => {
     ok("cost token estimate needs a model and usage", cost.estimateTokenCost("openai/gpt-image-2.5-sunburst", {}) === null && cost.estimateTokenCost("openrouter::mystery", { promptTokens: 10 }) === null);
     const totalOnly = cost.estimateTokenCost("openai/gpt-image-2.5-sunburst", { totalTokens: 3000, completionTokens: 2000 });
     ok("cost derives prompt tokens from total usage", totalOnly.usd === 0.065, JSON.stringify(totalOnly));
-
-    const matrix = await import("/src/lib/canvas/generation-matrix.ts");
-    const variants = matrix.buildMatrixVariants({ sizes: ["1024x1024", "512x512"], counts: [1, 2], prompts: ["sunset", "city"] });
-    const labels = variants.map((variant) => variant.prompt + "|" + variant.count + "|" + variant.size).join(",");
-    ok("matrix 2x2x2 yields eight variants", variants.length === 8, variants.length);
-    ok("matrix order prompts outer sizes inner", labels === "sunset|1|1024x1024,sunset|1|512x512,sunset|2|1024x1024,sunset|2|512x512,city|1|1024x1024,city|1|512x512,city|2|1024x1024,city|2|512x512", labels);
-    ok("matrix empty input yields none", matrix.buildMatrixVariants(undefined).length === 0 && matrix.buildMatrixVariants({}).length === 0 && matrix.buildMatrixVariants({ sizes: ["  "], counts: [0, -1, Number.NaN] }).length === 0);
-    const single = matrix.buildMatrixVariants({ prompts: ["a", " b ", "  "] });
-    ok("matrix single dimension expands once", single.length === 2 && single[0].prompt === "a" && single[1].prompt === "b" && single[0].size === undefined && single[0].count === undefined, JSON.stringify(single));
-    ok("matrix describes variant", matrix.describeMatrixVariant({ size: "1024x1024", count: 2, prompt: "sunset" }) === "1024x1024 · x2 · sunset", matrix.describeMatrixVariant({ size: "1024x1024", count: 2, prompt: "sunset" }));
-    const blankOnly = matrix.buildMatrixVariants({ prompts: ["keep", " ", "\\n"], sizes: ["   "], counts: [] });
-    ok("matrix drops blank-only entries", blankOnly.length === 1 && blankOnly[0].prompt === "keep" && blankOnly[0].size === undefined && blankOnly[0].count === undefined, JSON.stringify(blankOnly));
-    const badCounts = matrix.buildMatrixVariants({ counts: [2, 0, -4, Number.NaN, Number.POSITIVE_INFINITY, 2] });
-    ok("matrix drops bad counts and keeps duplicates", badCounts.length === 2 && badCounts.every((variant) => variant.count === 2), JSON.stringify(badCounts));
-    const sizeOnly = matrix.buildMatrixVariants({ sizes: ["1024x1024", "512x512"] });
-    ok("matrix sizes-only product", sizeOnly.length === 2 && sizeOnly[0].size === "1024x1024" && sizeOnly[1].size === "512x512" && sizeOnly.every((variant) => variant.prompt === undefined && variant.count === undefined), JSON.stringify(sizeOnly));
-
-    const variables = await import("/src/lib/canvas/prompt-variables.ts");
-    const parsed = variables.parsePromptVariables("{{c }} {{ b }} {{a}} {{ b }}");
-    ok("variables parse unique first-seen order", parsed.join(",") === "c,b,a", parsed.join(","));
-    ok("variables parse drops empty names", variables.parsePromptVariables("{{  }} {{}} {{ x }}").join(",") === "x", variables.parsePromptVariables("{{  }} {{}} {{ x }}").join(","));
-    ok("variables parse tolerates empty input", variables.parsePromptVariables("").length === 0 && variables.parsePromptVariables(undefined).length === 0);
-    const applied = variables.applyPromptVariables("a {{name}} b {{ name }} c", [{ name: "name", value: "X" }]);
-    ok("variables apply tolerates whitespace", applied === "a X b X c", applied);
-    const unmatched = variables.applyPromptVariables("{{known}} {{unknown}}", [{ name: "known", value: "yes" }]);
-    ok("variables apply keeps unmatched tokens", unmatched === "yes {{unknown}}", unmatched);
-    ok(
-        "variables apply unchanged without usable variables",
-        variables.applyPromptVariables("{{name}}", undefined) === "{{name}}" && variables.applyPromptVariables("{{name}}", []) === "{{name}}" && variables.applyPromptVariables("{{name}}", [{ name: "  ", value: "x" }]) === "{{name}}",
-        variables.applyPromptVariables("{{name}}", undefined),
-    );
-    const resolvedUnion = variables.resolvePromptVariableList("{{keep}} {{fresh}}", [{ name: "keep", value: "1" }, { name: "extra", value: "2" }]);
-    ok("variables resolve unions detected first", JSON.stringify(resolvedUnion) === JSON.stringify([{ name: "keep", value: "1" }, { name: "fresh", value: "" }, { name: "extra", value: "2" }]), JSON.stringify(resolvedUnion));
-    const resolvedTrimmed = variables.resolvePromptVariableList("{{ keep }}", [{ name: " keep ", value: "9" }]);
-    ok("variables resolve matches trimmed names", JSON.stringify(resolvedTrimmed) === JSON.stringify([{ name: "keep", value: "9" }]), JSON.stringify(resolvedTrimmed));
-    const resolvedOrder = variables.resolvePromptVariableList("{{b}} {{a}}", [{ name: "a", value: "1" }, { name: "b", value: "2" }]);
-    ok("variables resolve keeps detected order", JSON.stringify(resolvedOrder) === JSON.stringify([{ name: "b", value: "2" }, { name: "a", value: "1" }]), JSON.stringify(resolvedOrder));
 
     const typography = await import("/src/lib/canvas/text-style.ts");
     ok("text style fontSize clamps to bounds", typography.clampFontSize(2) === typography.TEXT_FONT_SIZE_MIN && typography.clampFontSize(999) === typography.TEXT_FONT_SIZE_MAX, typography.clampFontSize(2) + "," + typography.clampFontSize(999));

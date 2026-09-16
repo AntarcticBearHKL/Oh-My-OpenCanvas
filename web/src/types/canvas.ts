@@ -1,6 +1,3 @@
-import type { GenerationMatrix, GenerationMatrixVariant } from "@/lib/canvas/generation-matrix";
-import type { PromptVariable } from "@/lib/canvas/prompt-variables";
-
 export type Position = {
     x: number;
     y: number;
@@ -59,7 +56,6 @@ export type CanvasGenerationVersion = {
     model?: string;
     size?: string;
     count?: number;
-    matrixTrace?: GenerationMatrixVariant;
     createdAt: number;
 };
 
@@ -127,9 +123,6 @@ export type CanvasNodeMetadata = {
     outputFolderName?: string;
     seed?: number;
     generationVersions?: CanvasGenerationVersion[];
-    matrix?: GenerationMatrix;
-    matrixTrace?: GenerationMatrixVariant;
-    variables?: PromptVariable[];
 };
 
 export type CanvasNodeData = {
