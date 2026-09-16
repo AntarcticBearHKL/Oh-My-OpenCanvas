@@ -47,7 +47,6 @@ type CanvasNodeHoverToolbarProps = {
     onCaptureVideoFrame: (node: CanvasNodeData, position: VideoFramePosition) => void;
     onTextStyleChange?: (nodeId: string, patch: Partial<CanvasNodeMetadata>) => void;
     onComposeBoard?: (node: CanvasNodeData) => void;
-    onToggleName?: (node: CanvasNodeData, visible: boolean) => void;
     extraTools?: CanvasNodeToolbarItem[];
 };
 
@@ -59,7 +58,6 @@ type ToolbarTool = {
     onClick: () => void;
     active?: boolean;
     danger?: boolean;
-    iconOnly?: boolean;
 };
 
 export function CanvasNodeHoverToolbar({
@@ -95,7 +93,6 @@ export function CanvasNodeHoverToolbar({
     onCaptureVideoFrame,
     onTextStyleChange,
     onComposeBoard,
-    onToggleName,
     extraTools = [],
 }: CanvasNodeHoverToolbarProps) {
     const [quickImageToolIds, setQuickImageToolIds] = useState<ImageQuickToolId[]>(defaultImageQuickToolIds);
@@ -134,7 +131,6 @@ export function CanvasNodeHoverToolbar({
     const isText = node.type === CanvasNodeType.Text;
     const isConfig = node.type === CanvasNodeType.Config;
     const isBoard = node.type === CanvasNodeType.SmartCanvas;
-    const nameVisible = node.metadata?.showTitle === true;
     const canRetry = node.metadata?.status === "error" && !(isVideo && Boolean(node.metadata?.videoTaskId) && !hasVideo);
     const canQueryVideoTask = isVideo && Boolean(node.metadata?.videoTaskId) && !hasVideo && node.metadata?.status !== "loading";
     const quickImageToolIdSet = new Set(quickImageToolIds);
@@ -156,9 +152,9 @@ export function CanvasNodeHoverToolbar({
         ...(canRetry && !isConfig ? [{ id: "retry", title: t("canvas.nodeToolbar.retryTitle"), label: t("canvas.node.retry"), icon: <RefreshCw className="size-4" />, onClick: () => onRetry(node) }] : []),
         ...(isVideo && hasVideo
             ? [
-                  { id: "captureFirst", title: t("canvas.videoFrames.first"), label: t("canvas.videoFrames.first"), icon: <BetweenHorizontalStart className="size-4" />, onClick: () => onCaptureVideoFrame(node, "first"), iconOnly: true },
-                  { id: "captureLast", title: t("canvas.videoFrames.last"), label: t("canvas.videoFrames.last"), icon: <GalleryHorizontalEnd className="size-4" />, onClick: () => onCaptureVideoFrame(node, "last"), iconOnly: true },
-                  { id: "captureCurrent", title: t("canvas.videoFrames.current"), label: t("canvas.videoFrames.current"), icon: <GalleryHorizontal className="size-4" />, onClick: () => onCaptureVideoFrame(node, "current"), iconOnly: true },
+                  { id: "captureFirst", title: t("canvas.videoFrames.first"), label: t("canvas.videoFrames.first"), icon: <BetweenHorizontalStart className="size-4" />, onClick: () => onCaptureVideoFrame(node, "first") },
+                  { id: "captureLast", title: t("canvas.videoFrames.last"), label: t("canvas.videoFrames.last"), icon: <GalleryHorizontalEnd className="size-4" />, onClick: () => onCaptureVideoFrame(node, "last") },
+                  { id: "captureCurrent", title: t("canvas.videoFrames.current"), label: t("canvas.videoFrames.current"), icon: <GalleryHorizontal className="size-4" />, onClick: () => onCaptureVideoFrame(node, "current") },
               ]
             : []),
         ...(hasVideo || isText ? [{ id: "saveAsset", title: t("common.addToAssets"), label: t("canvas.nodeToolbar.saveAsset"), icon: <FolderPlus className="size-4" />, onClick: () => onSaveAsset(node) }] : []),
@@ -174,8 +170,7 @@ export function CanvasNodeHoverToolbar({
         ...(isAudio ? [{ id: "uploadAudio", title: t(hasAudio ? "canvas.nodeToolbar.replaceAudio" : "canvas.nodeToolbar.uploadAudio"), label: t(hasAudio ? "canvas.nodeToolbar.replaceAudio" : "canvas.nodeToolbar.uploadAudio"), icon: <Music2 className="size-4" />, onClick: () => onUpload(node) }] : []),
         ...(hasImage ? imageTools.map((tool) => ({ id: tool.id, title: tool.title, label: tool.label, icon: tool.icon, active: tool.active, onClick: tool.onClick })) : []),
     ];
-    const nameToolbarTools: ToolbarTool[] = onToggleName ? [{ id: "toggleName", title: t(nameVisible ? "canvas.nodeToolbar.hideName" : "canvas.nodeToolbar.showName"), label: t(nameVisible ? "canvas.nodeToolbar.hideName" : "canvas.nodeToolbar.showName"), icon: <Tags className="size-4" />, active: nameVisible, onClick: () => onToggleName(node, !nameVisible) }] : [];
-    const toolbarTools: ToolbarTool[] = [...(hasImage ? [...baseToolbarTools, ...nodeToolbarTools].filter((tool) => quickImageToolIdSet.has(tool.id as ImageQuickToolId)) : [...baseToolbarTools, ...nodeToolbarTools, ...extraTools]), ...nameToolbarTools];
+    const toolbarTools: ToolbarTool[] = hasImage ? [...baseToolbarTools, ...nodeToolbarTools].filter((tool) => quickImageToolIdSet.has(tool.id as ImageQuickToolId)) : [...baseToolbarTools, ...nodeToolbarTools, ...extraTools];
 
     return (
         <div
@@ -190,14 +185,12 @@ export function CanvasNodeHoverToolbar({
             onPointerDown={(event) => event.stopPropagation()}
         >
             {toolbarTools.map((tool) => (
-                <CanvasFloatingToolbarAction key={tool.id} {...tool} showLabel={isImage ? showImageToolLabels : !tool.iconOnly} />
+                <CanvasFloatingToolbarAction key={tool.id} {...tool} showLabel={showImageToolLabels} />
             ))}
             {isText && onTextStyleChange ? <CanvasTextStylePopover metadata={node.metadata} onChange={(patch) => onTextStyleChange(node.id, patch)} /> : null}
-            {hasImage ? (
-                <CanvasFloatingToolbarAction title={t("canvas.imageTools.showLabels")} label={t("canvas.imageTools.showLabels")} icon={<Tags className="size-4" />} active={showImageToolLabels} onClick={toggleImageToolLabels} showLabel={showImageToolLabels} />
-            ) : null}
+            <CanvasFloatingToolbarAction title={t("canvas.imageTools.showLabels")} label={t("canvas.imageTools.showLabels")} icon={<Tags className="size-4" />} active={showImageToolLabels} onClick={toggleImageToolLabels} showLabel={showImageToolLabels} />
             {!isBoard && !isConfig ? (
-                <CanvasFloatingToolbarAction title={t("canvas.nodeToolbar.layers")} label={t("canvas.nodeToolbar.layers")} icon={<Layers className="size-4" />} active={layerOpen} onClick={() => setLayerOpen((value) => !value)} showLabel={isImage ? showImageToolLabels : true} />
+                <CanvasFloatingToolbarAction title={t("canvas.nodeToolbar.layers")} label={t("canvas.nodeToolbar.layers")} icon={<Layers className="size-4" />} active={layerOpen} onClick={() => setLayerOpen((value) => !value)} showLabel={showImageToolLabels} />
             ) : null}
             {layerOpen ? <CanvasNodeLayerPopover node={node} nodes={nodes} onMove={(direction) => onMoveLayer(node.id, direction)} onToggleFlag={onToggleFlag} onBulkRename={onBulkRename} /> : null}
         </div>

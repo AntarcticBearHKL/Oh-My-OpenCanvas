@@ -362,7 +362,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 if (!referenceSelectionState) onSelectCapture?.(event, data.id);
             }}
         >
-            {!referenceSelectionState && !hasImageContent && (isEditingTitle || (data.metadata?.showTitle ?? (isSelected || hovered))) && (
+            {!referenceSelectionState && !hasImageContent && (
                 <div className="absolute left-3 top-[-28px] z-[65] max-w-[calc(100%-24px)]" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                     {isEditingTitle ? (
                         <input
@@ -989,7 +989,7 @@ function ImageInfoBar({ node, onInfo }: { node: CanvasNodeData; onInfo?: (node: 
     const size = formatBytes(node.metadata?.bytes || 0);
     const cost = useGenerationCostStore((state) => state.records.find((record) => record.nodeId === node.id));
     const costText = cost?.priced ? (cost.source === "estimate" ? `~${formatUsd(cost.usd)}` : formatUsd(cost.usd)) : "";
-    const parts = [node.metadata?.showTitle === true ? node.title?.trim() : "", width && height ? `${width} x ${height}` : "", size, costText].filter(Boolean);
+    const parts = [node.title?.trim() || "", width && height ? `${width} x ${height}` : "", size, costText].filter(Boolean);
     return (
         <div className="pointer-events-none absolute left-3 top-[-28px] z-40 flex max-w-[calc(100%-24px)] items-center gap-1.5">
             <span className="min-w-0 truncate text-xs font-medium opacity-75" style={{ color: theme.node.text }}>

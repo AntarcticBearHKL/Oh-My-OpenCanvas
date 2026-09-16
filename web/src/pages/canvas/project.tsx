@@ -2129,7 +2129,6 @@ function InfiniteCanvasPage() {
                     onBulkRename={renameNodes}
                     onCaptureVideoFrame={(node, position) => void captureVideoNodeFrame(node.id, position)}
                     onComposeBoard={(node) => void handleComposeBoard(node)}
-                    onToggleName={(node, visible) => handleBoardLayerChange(node.id, { showTitle: visible })}
                 />
 
                 {hasMultipleSelectedNodes && !selectionBox ? (

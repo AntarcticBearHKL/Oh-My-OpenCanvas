@@ -117,7 +117,6 @@ export type CanvasNodeMetadata = {
     interactive?: boolean; // Plugin node interaction/move state; see CanvasNodeDefinition.interactionToggle.
     locked?: boolean;
     hidden?: boolean;
-    showTitle?: boolean;
     assetFolderName?: string;
     outputFolderName?: string;
     seed?: number;
