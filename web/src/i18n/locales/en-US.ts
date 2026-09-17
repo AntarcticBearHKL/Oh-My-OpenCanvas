@@ -181,7 +181,7 @@ export default {
         },
         node: {
             node: "Node",
-            untitled: "Untitled node", renameHint: "Double-click to rename the node", generating: "Generating", failed: "Generation failed", retry: "Retry", missingPlugin: "Plugin missing", missingPluginDescription: "The plugin for node type “{{type}}” is not installed or enabled", generateImage: "Generate image from text", generate: "Generate", editText: "Double-click to edit text", emptyImage: "Empty image node", emptyVideo: "Empty video node", emptyAudio: "Empty audio node", audio: "Audio", batchExpanded: "Image group expanded", batchCollapsed: "Image group collapsed", textBatchExpanded: "Text alternatives expanded", textBatchCollapsed: "Text alternatives collapsed", createCopy: "Create copy", setPrimary: "Set as primary", setPrimaryText: "Set as primary", imageGenerationHint: "Click to set a prompt and generate",
+            untitled: "Untitled node", renameHint: "Double-click to rename the node", generating: "Generating", failed: "Generation failed", retry: "Retry", missingPlugin: "Plugin missing", missingPluginDescription: "The plugin for node type “{{type}}” is not installed or enabled", generateImage: "Generate image from text", generate: "Generate", editText: "Double-click to edit text", emptyImage: "Empty image node", emptyVideo: "Empty video node", emptyAudio: "Empty audio node", audio: "Audio", batchExpanded: "Image group expanded", batchCollapsed: "Image group collapsed", textBatchExpanded: "Text alternatives expanded", textBatchCollapsed: "Text alternatives collapsed", createCopy: "Create copy", setPrimary: "Set as primary", setPrimaryText: "Set as primary", imageGenerationHint: "Click to set a prompt and generate", playAudio: "Play", pauseAudio: "Pause", seekAudio: "Drag to seek",
         },
         promptNode: { pick: "Pick from library", pickerTitle: "Pick a prompt", search: "Search prompts", placeholder: "Type a prompt or pick one from the library", musicTags: ["[Intro]", "[Verse]", "[Pre-Chorus]", "[Chorus]", "[Bridge]", "[Outro]", "[Instrumental]"], speechTags: ["[happy]", "[sad]", "[whispering]", "[angry]", "[calm]", "[excited]", "[serious]", "[gentle]"], tagHint: "Click a tag to insert it at the cursor", empty: "No prompts", panelHint: "Pick or edit the prompt in the panel below", dragHint: "Drag into the prompt to insert a reference" },
         videoFrames: { first: "Capture first frame", last: "Capture last frame", current: "Capture current frame", firstTitle: "{{name}} first frame", lastTitle: "{{name}} last frame", currentTitle: "{{name}} current frame", captured: "Image node created", failed: "Could not capture this frame. Try again." },
@@ -318,6 +318,8 @@ export default {
             unitImage: "image(s)",
             unitVideoSecond: "second(s)",
             unitCall: "call(s)",
+            unitAudioClip: "clip(s)",
+            unitAudioByte: "byte(s)",
         },
         agent: {
             title: "Agent permissions and audit",

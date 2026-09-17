@@ -56,7 +56,7 @@ export function ConfigGenerationCost() {
                                     {new Date(record.at).toLocaleString()} · {record.quantity} {t(unitLabelKey(record.unit))}
                                 </div>
                             </div>
-                            <div className="shrink-0 font-medium tabular-nums">{record.priced ? formatUsd(record.usd) : t("config.cost.unpriced")}</div>
+                            <div className="shrink-0 font-medium tabular-nums">{record.priced ? `${record.source === "estimate" ? "~" : ""}${formatUsd(record.usd)}` : t("config.cost.unpriced")}</div>
                         </div>
                     ))}
                 </div>
@@ -83,5 +83,7 @@ function groupByModel(records: GenerationCostRecord[]) {
 function unitLabelKey(unit: GenerationCostUnit) {
     if (unit === "video-second") return "config.cost.unitVideoSecond";
     if (unit === "call") return "config.cost.unitCall";
+    if (unit === "audio-clip") return "config.cost.unitAudioClip";
+    if (unit === "audio-byte") return "config.cost.unitAudioByte";
     return "config.cost.unitImage";
 }

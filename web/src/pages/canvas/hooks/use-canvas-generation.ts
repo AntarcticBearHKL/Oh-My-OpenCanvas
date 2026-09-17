@@ -16,6 +16,7 @@ import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
 import { NODE_STATUS_ERROR, NODE_STATUS_IDLE, NODE_STATUS_LOADING, NODE_STATUS_SUCCESS, VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH } from "@/lib/canvas/canvas-node-constants";
 import { buildAngleLabel, buildAnglePrompt, buildGenerationConfig, findRetrySourceNode, generationQueue, generationReferenceUrls, getGenerationCount, hasResumableVideoTask, isGenerationCanceled, resolveMetadataReferences, runGenerationTaskWithRetry, sourceNodeReferenceImages } from "@/lib/canvas/canvas-generation-helpers";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
+import { audioGenerationCharge } from "@/lib/canvas/generation-cost";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasImageAngleParams } from "@/components/canvas/canvas-node-angle-dialog";
 import type { CanvasImageMaskEditPayload } from "@/components/canvas/canvas-node-mask-edit-dialog";
@@ -626,8 +627,9 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                     );
                     const controller = startGenerationRequest(audioId, nodeId, nodeId, runController);
                     try {
-                        const audio = await storeGeneratedAudio(await requestAudioGeneration(generationConfig, effectivePrompt, { signal: controller.signal }, generationContext.referenceAudios), generationConfig.audioFormat);
-                        recordGenerationCost({ nodeId: audioId, model: generationConfig.model, unit: "call", quantity: 1 });
+                        const generated = await requestAudioGeneration(generationConfig, effectivePrompt, { signal: controller.signal }, generationContext.referenceAudios);
+                        const audio = await storeGeneratedAudio(generated.blob, generationConfig.audioFormat);
+                        recordGenerationCost({ nodeId: audioId, model: generationConfig.model, ...audioGenerationCharge(generationConfig.model, effectivePrompt), cost: generated.cost });
                         setNodes((prev) => prev.map((node) => (node.id === audioId ? { ...node, metadata: { ...node.metadata, ...audioMetadata(audio), prompt: effectivePrompt, ...buildAudioGenerationMetadata(generationConfig) } } : node)));
                     } finally {
                         finishGenerationRequest(audioId, controller);
@@ -852,7 +854,9 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                     return;
                 }
                 if (node.type === CanvasNodeType.Audio) {
-                    const audio = await storeGeneratedAudio(await requestAudioGeneration(generationConfig, prompt, { signal: controller.signal }, context?.referenceAudios || []), generationConfig.audioFormat);
+                    const generated = await requestAudioGeneration(generationConfig, prompt, { signal: controller.signal }, context?.referenceAudios || []);
+                    const audio = await storeGeneratedAudio(generated.blob, generationConfig.audioFormat);
+                    recordGenerationCost({ nodeId: node.id, model: generationConfig.model, ...audioGenerationCharge(generationConfig.model, prompt), cost: generated.cost });
                     setNodes((prev) => prev.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, ...audioMetadata(audio), prompt, ...buildAudioGenerationMetadata(generationConfig) } } : item)));
                     return;
                 }

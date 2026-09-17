@@ -1,6 +1,6 @@
 import { decodeChannelModel } from "@/stores/use-config-store";
 
-export type GenerationCostUnit = "image" | "video-second" | "call";
+export type GenerationCostUnit = "image" | "video-second" | "call" | "audio-clip" | "audio-byte";
 
 export type GenerationCostSource = "api" | "lookup" | "estimate";
 
@@ -17,6 +17,9 @@ export const MODEL_PRICES: Record<string, ModelPrice> = {
     "gpt-4o-mini": { unit: "call", usd: 0.0006 },
     sora: { unit: "video-second", usd: 0.1 },
     "tts-1": { unit: "call", usd: 0.015 },
+    "google/lyria-3-pro-preview": { unit: "audio-clip", usd: 0.08 },
+    "google/lyria-3-clip-preview": { unit: "audio-clip", usd: 0.04 },
+    "fish-audio/s2.1-pro": { unit: "audio-byte", usd: 0.000015 },
 };
 
 export const MODEL_TOKEN_PRICES: Record<string, ModelTokenPrice> = {
@@ -49,6 +52,15 @@ export function estimateTokenCost(model: string, usage: { promptTokens?: number;
     return { usd: Number((promptTokens * inputRate + completionTokens * price.outputImage).toFixed(6)), priced: true, source: "estimate" };
 }
 
+export function audioGenerationCharge(model: string, prompt: string): { unit: GenerationCostUnit; quantity: number } {
+    const unit = modelPrice(model)?.unit;
+    if (unit === "audio-byte") return { unit, quantity: new TextEncoder().encode(prompt).length };
+    if (unit === "audio-clip") return { unit, quantity: 1 };
+    return { unit: unit || "call", quantity: 1 };
+}
+
 export function formatUsd(usd: number): string {
+    if (usd > 0 && usd < 0.001) return `$${usd.toFixed(4)}`;
+    if (usd > 0 && usd < 0.01) return `$${usd.toFixed(3)}`;
     return `$${usd.toFixed(2)}`;
 }

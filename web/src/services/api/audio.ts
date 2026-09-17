@@ -2,12 +2,16 @@ import axios from "axios";
 
 import i18n from "@/i18n";
 import { audioMimeType, isOpenRouterMusicModel, musicAudioFormat, normalizeAudioFormatValue, normalizeAudioSpeedValue, normalizeAudioVoiceValue, speechAudioFormat, speechModelOf, speechVoiceOptions } from "@/lib/audio-generation";
+import type { GenerationCost } from "@/lib/canvas/generation-cost";
 import { getMediaBlob, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { buildApiUrl, resolveModelRequestConfig, resolveModelScript, type AiConfig } from "@/stores/use-config-store";
 import type { ReferenceAudio } from "@/types/media";
+import { fetchGenerationCost, readGenerationId } from "./image";
 import { runModelPlugin } from "./model-plugin";
 
 type RequestOptions = { signal?: AbortSignal };
+type ChatAudio = { base64: string; cost?: number };
+export type GeneratedAudio = { blob: Blob; cost?: GenerationCost };
 const apiText = (key: string, options?: Record<string, unknown>) => i18n.t(`apiErrors.${key}`, options);
 
 function aiApiUrl(config: AiConfig, path: string) {
@@ -21,7 +25,7 @@ function aiHeaders(config: AiConfig) {
     };
 }
 
-export async function requestAudioGeneration(config: AiConfig, prompt: string, options?: RequestOptions, referenceAudios: ReferenceAudio[] = []): Promise<Blob> {
+export async function requestAudioGeneration(config: AiConfig, prompt: string, options?: RequestOptions, referenceAudios: ReferenceAudio[] = []): Promise<GeneratedAudio> {
     const requestConfig = resolveModelRequestConfig(config, config.model || config.audioModel);
     const model = requestConfig.model.trim();
     const format = normalizeAudioFormatValue(config.audioFormat);
@@ -39,7 +43,7 @@ export async function requestAudioGeneration(config: AiConfig, prompt: string, o
                 params: { voice: normalizeAudioVoiceValue(config.audioVoice), format, speed: normalizeAudioSpeedValue(config.audioSpeed), instructions: config.audioInstructions.trim() },
                 signal: options?.signal,
             });
-            return await audioPluginBlob(result, format);
+            return { blob: await audioPluginBlob(result, format) };
         } catch (error) {
             throw new Error(readAxiosError(error, apiText("audioGenerationFailed")));
         }
@@ -74,13 +78,21 @@ export async function requestAudioGeneration(config: AiConfig, prompt: string, o
             { headers: aiHeaders(requestConfig), responseType: "blob", signal: options?.signal },
         );
         await assertAudioBlob(response.data);
-        return response.data.type.startsWith("audio/") ? response.data : new Blob([response.data], { type: audioMimeType(responseFormat) });
+        const blob = response.data.type.startsWith("audio/") ? response.data : new Blob([response.data], { type: audioMimeType(responseFormat) });
+        return { blob, cost: await lookupAudioCost(requestConfig, response.headers) };
     } catch (error) {
         throw new Error(readAxiosError(error, apiText("audioGenerationFailed")));
     }
 }
 
-async function requestMusicGeneration(config: AiConfig, model: string, prompt: string, format: string, signal?: AbortSignal): Promise<Blob> {
+async function lookupAudioCost(config: AiConfig, headers: unknown): Promise<GenerationCost | undefined> {
+    const generationId = readGenerationId(headers);
+    if (!generationId) return undefined;
+    const usd = await fetchGenerationCost(config, generationId);
+    return usd === undefined ? undefined : { usd: Number(usd.toFixed(6)), priced: true, source: "lookup" };
+}
+
+async function requestMusicGeneration(config: AiConfig, model: string, prompt: string, format: string, signal?: AbortSignal): Promise<GeneratedAudio> {
     const response = await axios.post<string>(
         aiApiUrl(config, "/chat/completions"),
         {
@@ -92,9 +104,9 @@ async function requestMusicGeneration(config: AiConfig, model: string, prompt: s
         },
         { headers: aiHeaders(config), responseType: "text", transformResponse: [(data) => data], signal },
     );
-    const base64 = readChatAudio(response.data);
+    const { base64, cost } = readChatAudio(response.data);
     if (!base64) throw new Error(apiText("audioGenerationFailed"));
-    return new Blob([base64AudioBytes(base64)], { type: audioMimeType(format) });
+    return { blob: new Blob([base64AudioBytes(base64)], { type: audioMimeType(format) }), cost: cost != null && Number.isFinite(cost) ? { usd: Number(cost.toFixed(6)), priced: true, source: "api" } : undefined };
 }
 
 async function speechInputReferences(audios: ReferenceAudio[], signal?: AbortSignal) {
@@ -124,40 +136,44 @@ function audioFormatFromMime(mimeType: string) {
     return "mp3";
 }
 
-function readChatAudio(payload: unknown) {
-    if (typeof payload !== "string") return "";
-    return readStreamedAudio(payload) || readMessageAudio(payload);
+function readChatAudio(payload: unknown): ChatAudio {
+    if (typeof payload !== "string") return { base64: "" };
+    const streamed = readStreamedAudio(payload);
+    return streamed.base64 ? streamed : readMessageAudio(payload);
 }
 
-function readStreamedAudio(payload: string) {
+function readStreamedAudio(payload: string): ChatAudio {
     const chunks: string[] = [];
+    let cost: number | undefined;
     for (const line of payload.split(/\r?\n/)) {
         const trimmed = line.trim();
         if (!trimmed.startsWith("data:")) continue;
         const body = trimmed.slice(5).trim();
         if (!body || body === "[DONE]") continue;
-        let parsed: { error?: { message?: string }; choices?: Array<{ delta?: { audio?: { data?: string } } }> };
+        let parsed: { error?: { message?: string }; choices?: Array<{ delta?: { audio?: { data?: string } } }>; usage?: { cost?: number } };
         try {
             parsed = JSON.parse(body);
         } catch {
             continue;
         }
         if (parsed.error?.message) throw new Error(parsed.error.message);
+        if (parsed.usage?.cost != null && Number.isFinite(Number(parsed.usage.cost))) cost = Number(parsed.usage.cost);
         const chunk = parsed.choices?.[0]?.delta?.audio?.data;
         if (chunk) chunks.push(chunk);
     }
-    return chunks.join("");
+    return { base64: chunks.join(""), cost };
 }
 
-function readMessageAudio(payload: string) {
-    let parsed: { error?: { message?: string }; choices?: Array<{ message?: { audio?: { data?: string } } }>; data?: string };
+function readMessageAudio(payload: string): ChatAudio {
+    let parsed: { error?: { message?: string }; choices?: Array<{ message?: { audio?: { data?: string } } }>; usage?: { cost?: number }; data?: string };
     try {
         parsed = JSON.parse(payload);
     } catch {
-        return "";
+        return { base64: "" };
     }
     if (parsed.error?.message) throw new Error(parsed.error.message);
-    return parsed.choices?.[0]?.message?.audio?.data || (typeof parsed.data === "string" ? parsed.data : "");
+    const cost = Number(parsed.usage?.cost);
+    return { base64: parsed.choices?.[0]?.message?.audio?.data || (typeof parsed.data === "string" ? parsed.data : ""), cost: Number.isFinite(cost) ? cost : undefined };
 }
 
 function base64AudioBytes(base64: string) {

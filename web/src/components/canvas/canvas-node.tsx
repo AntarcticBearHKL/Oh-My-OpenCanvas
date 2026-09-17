@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ChevronRight, Copy, Download, Image as ImageIcon, Info, LayoutDashboard, Lock, Music2, Puzzle, RefreshCw, Sparkles, Star, Trash2, Video } from "lucide-react";
+import { ChevronRight, Copy, Download, Image as ImageIcon, Info, LayoutDashboard, Lock, Puzzle, RefreshCw, Sparkles, Star, Trash2, Video } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { isCanvasOverlayTarget } from "@/lib/canvas/canvas-overlays";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
+import { formatAudioTime } from "@/lib/canvas/audio-waveform";
 import { formatUsd } from "@/lib/canvas/generation-cost";
 import { useGenerationCostStore } from "@/stores/use-generation-cost-store";
 import { ensureThumbnailUrl } from "@/services/image-storage";
@@ -14,6 +15,7 @@ import { resolveTextStyle, textStyleToCss } from "@/lib/canvas/text-style";
 import { buildNodeContext } from "@/lib/canvas/plugin-node-context";
 import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textarea";
 import { SmartCanvasNodeContent } from "./smart-canvas-node";
+import { AudioNodeContent } from "./nodes/audio-node-content";
 import { PromptContent } from "./nodes/prompt-node-content";
 import { CanvasNodeType, type CanvasNodeData, type CanvasNodeImage, type CanvasNodeMetadata, type CanvasNodeText, type Position } from "@/types/canvas";
 import type { CanvasNodeContext, CanvasPluginHost } from "@/types/canvas-plugin";
@@ -362,7 +364,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                 if (!referenceSelectionState) onSelectCapture?.(event, data.id);
             }}
         >
-            {!referenceSelectionState && !hasImageContent && (
+            {!referenceSelectionState && !hasImageContent && !hasAudioContent && (
                 <div className="absolute left-3 top-[-28px] z-[65] max-w-[calc(100%-24px)]" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                     {isEditingTitle ? (
                         <input
@@ -490,8 +492,8 @@ export const CanvasNode = React.memo(function CanvasNode({
                     </div>
                 ) : null}
 
-                {hasImageContent ? (
-                    <ImageInfoBar node={data} onInfo={onInfo} />
+                {hasImageContent || hasAudioContent ? (
+                    <MediaInfoBar node={data} onInfo={onInfo} />
                 ) : null}
 
                 {!hasImageContent && !hasVideoContent && !hasAudioContent ? <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12" style={{ background: `linear-gradient(to top, ${theme.canvas.background}66, transparent)` }} /> : null}
@@ -795,26 +797,6 @@ function VideoNodeContent({ node, theme }: NodeContentRendererProps) {
     return <video src={node.metadata.content} controls className="h-full w-full rounded-[18px] bg-black object-contain" data-canvas-video={node.id} data-canvas-no-zoom />;
 }
 
-function AudioNodeContent({ node, theme }: NodeContentRendererProps) {
-    const { t } = useTranslation();
-    if (!node.metadata?.content)
-        return (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-2" style={{ color: theme.node.placeholder }}>
-                <Music2 className="size-7 opacity-35" />
-                <span className="text-sm">{t("canvas.node.emptyAudio")}</span>
-            </div>
-        );
-    return (
-        <div className="flex h-full w-full flex-col justify-center gap-3 px-4" style={{ color: theme.node.text }}>
-            <div className="flex min-w-0 items-center gap-2 text-sm opacity-70">
-                <Music2 className="size-4 shrink-0" />
-                <span className="truncate">{t("canvas.node.audio")}</span>
-            </div>
-            <audio src={node.metadata.content} controls className="w-full" data-canvas-no-zoom />
-        </div>
-    );
-}
-
 function ImageContent({
     node,
     onBoard,
@@ -978,15 +960,17 @@ function ImageSlotStatus({ image }: { image?: CanvasNodeImage }) {
     );
 }
 
-function ImageInfoBar({ node, onInfo }: { node: CanvasNodeData; onInfo?: (node: CanvasNodeData) => void }) {
+function MediaInfoBar({ node, onInfo }: { node: CanvasNodeData; onInfo?: (node: CanvasNodeData) => void }) {
     const theme = useCanvasTheme();
     const { t } = useTranslation();
     const width = Math.round(node.metadata?.naturalWidth || node.width);
     const height = Math.round(node.metadata?.naturalHeight || node.height);
+    const isAudio = node.type === CanvasNodeType.Audio;
+    const info = isAudio ? (node.metadata?.durationMs ? formatAudioTime(node.metadata.durationMs / 1000) : "") : width && height ? `${width} x ${height}` : "";
     const size = formatBytes(node.metadata?.bytes || 0);
     const cost = useGenerationCostStore((state) => state.records.find((record) => record.nodeId === node.id));
     const costText = cost?.priced ? (cost.source === "estimate" ? `~${formatUsd(cost.usd)}` : formatUsd(cost.usd)) : "";
-    const parts = [node.title?.trim() || "", width && height ? `${width} x ${height}` : "", size, costText].filter(Boolean);
+    const parts = [node.title?.trim() || "", info, size, costText].filter(Boolean);
     return (
         <div className="pointer-events-none absolute left-3 top-[-28px] z-40 flex max-w-[calc(100%-24px)] items-center gap-1.5">
             <span className="min-w-0 truncate text-xs font-medium opacity-75" style={{ color: theme.node.text }}>

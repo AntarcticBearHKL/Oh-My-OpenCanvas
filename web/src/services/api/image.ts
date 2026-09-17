@@ -220,21 +220,22 @@ function parseImagePayload(payload: ImageApiResponse) {
     return images;
 }
 
-function readGenerationId(headers: unknown) {
+export function readGenerationId(headers: unknown) {
     if (!headers || typeof headers !== "object") return undefined;
     const value = (headers as Record<string, unknown>)["x-generation-id"];
     return typeof value === "string" && value ? value : undefined;
 }
 
-async function fetchGenerationCost(config: AiConfig, generationId: string) {
+export async function fetchGenerationCost(config: AiConfig, generationId: string) {
     try {
-        const response = await axios.get<{ total_cost?: number | null; usage?: number | null }>(aiApiUrl(config, "/generation"), {
+        const response = await axios.get<{ data?: { total_cost?: number | null; usage?: number | null } | null; total_cost?: number | null; usage?: number | null }>(aiApiUrl(config, "/generation"), {
             params: { id: generationId },
             headers: aiHeaders(config),
         });
-        const totalCost = response.data?.total_cost;
+        const payload = response.data?.data || response.data;
+        const totalCost = payload?.total_cost;
         if (totalCost != null && Number.isFinite(Number(totalCost))) return Number(totalCost);
-        const usage = response.data?.usage;
+        const usage = payload?.usage;
         if (usage != null && Number.isFinite(Number(usage))) return Number(usage);
     } catch {
         return undefined;
