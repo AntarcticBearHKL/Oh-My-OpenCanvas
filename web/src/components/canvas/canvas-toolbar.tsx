@@ -1,13 +1,14 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
-import { AlignLeft, AudioLines, Compass, Focus, FolderInput, Hand, HelpCircle, LayoutDashboard, ListTree, MessageSquareText, Mic, MousePointer2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
+import { AlignLeft, AudioLines, Compass, Focus, FolderInput, Hand, HelpCircle, LayoutDashboard, ListTree, MessageSquareText, Mic, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { getNodePluginId, listNodeDefinitions, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useTranslation } from "react-i18next";
+import { CanvasNodeType, type CanvasNodeTypeId } from "@/types/canvas";
 
 const SHOW_MEDIA_TOOLS = false;
 
@@ -18,14 +19,7 @@ export function CanvasToolbar({
     canRedo,
     scale,
     isMiniMapOpen,
-    onAddImageGeneration,
-    onAddMusicGeneration,
-    onAddSpeechGeneration,
-    onAddPrompt,
-    onAddAudioPrompt,
-    onAddVideo,
-    onAddSmartCanvas,
-    onAddAssets,
+    onAddNode,
     onAddExtensionNode,
     onUndo,
     onRedo,
@@ -43,14 +37,7 @@ export function CanvasToolbar({
     canRedo: boolean;
     scale: number;
     isMiniMapOpen: boolean;
-    onAddImageGeneration: () => void;
-    onAddMusicGeneration: () => void;
-    onAddSpeechGeneration: () => void;
-    onAddPrompt: () => void;
-    onAddAudioPrompt: () => void;
-    onAddVideo: () => void;
-    onAddSmartCanvas: () => void;
-    onAddAssets: () => void;
+    onAddNode: (type: CanvasNodeTypeId) => void;
     onAddExtensionNode: (type: string) => void;
     onUndo: () => void;
     onRedo: () => void;
@@ -74,6 +61,8 @@ export function CanvasToolbar({
     const [zoomOpen, setZoomOpen] = useState(false);
     const [zoomPanelX, setZoomPanelX] = useState(0);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
+    const [createMenu, setCreateMenu] = useState<"prompt" | "generator" | null>(null);
+    const [createMenuX, setCreateMenuX] = useState(0);
     // Keep extension plugin nodes synchronized with registry changes.
     useNodeRegistryVersion();
     const extensionDefs = listNodeDefinitions().filter((def) => def.showInCreateMenu !== false && getNodePluginId(def.type) !== "builtin");
@@ -81,13 +70,26 @@ export function CanvasToolbar({
     const hoverStyle = { background: theme.toolbar.itemHover, color: theme.toolbar.activeText };
     const activeStyle = { background: theme.toolbar.activeBg, color: theme.toolbar.activeText };
     const tip = hovered ? toolLabel(hovered, t) : "";
+    const createMenuItems: Record<"prompt" | "generator", { type: CanvasNodeType; label: string; icon: ReactNode }[]> = {
+        prompt: [
+            { type: CanvasNodeType.Prompt, label: t("canvas.nodeTypes.prompt"), icon: <MessageSquareText className="size-4" /> },
+            { type: CanvasNodeType.MusicPrompt, label: t("canvas.nodeTypes.musicPrompt"), icon: <Music2 className="size-4" /> },
+            { type: CanvasNodeType.SpeechPrompt, label: t("canvas.nodeTypes.speechPrompt"), icon: <AlignLeft className="size-4" /> },
+        ],
+        generator: [
+            { type: CanvasNodeType.ImageGeneration, label: t("canvas.nodeTypes.imageGeneration"), icon: <Sparkles className="size-4" /> },
+            { type: CanvasNodeType.MusicGeneration, label: t("canvas.nodeTypes.musicGeneration"), icon: <AudioLines className="size-4" /> },
+            { type: CanvasNodeType.SpeechGeneration, label: t("canvas.nodeTypes.speechGeneration"), icon: <Mic className="size-4" /> },
+        ],
+    };
 
     // Close toolbar popovers when clicking outside the toolbar and its panels, or when pressing Escape.
     useEffect(() => {
-        if (!extensionsOpen && !zoomOpen) return;
+        if (!extensionsOpen && !zoomOpen && !createMenu) return;
         const closePanels = () => {
             setExtensionsOpen(false);
             setZoomOpen(false);
+            setCreateMenu(null);
         };
         const handlePointerDown = (event: PointerEvent) => {
             if (rootRef.current && !rootRef.current.contains(event.target as Node)) closePanels();
@@ -101,7 +103,7 @@ export function CanvasToolbar({
             document.removeEventListener("pointerdown", handlePointerDown, true);
             document.removeEventListener("keydown", handleKeyDown);
         };
-    }, [extensionsOpen, zoomOpen]);
+    }, [extensionsOpen, zoomOpen, createMenu]);
 
     return (
         <div ref={rootRef} className="pointer-events-none absolute bottom-5 left-0 right-0 z-50 flex justify-center px-3">
@@ -117,30 +119,53 @@ export function CanvasToolbar({
                     <Redo2 className="size-4.5" />
                 </ToolbarButton>
                 <Divider theme={theme} />
-                <ToolbarButton id="tool-assets" label={t("canvas.nodeTypes.assets")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddAssets}>
+                <ToolbarButton id="tool-assets" label={t("canvas.nodeTypes.assets")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={() => onAddNode(CanvasNodeType.Assets)}>
                     <FolderInput className="size-4.5" />
                 </ToolbarButton>
-                <ToolbarButton id="tool-prompt" label={t("canvas.nodeTypes.prompt")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddPrompt}>
+                <ToolbarButton
+                    id="tool-prompt-group"
+                    label={t("canvas.toolbar.promptGroup")}
+                    active={createMenu === "prompt"}
+                    hovered={hovered}
+                    activeStyle={activeStyle}
+                    hoverStyle={hoverStyle}
+                    wrapRef={wrapRef}
+                    onTipX={setTipX}
+                    onHover={setHovered}
+                    onClick={(event) => {
+                        setCreateMenuX(getTipX(wrapRef.current, event.currentTarget));
+                        setExtensionsOpen(false);
+                        setZoomOpen(false);
+                        setCreateMenu((value) => (value === "prompt" ? null : "prompt"));
+                    }}
+                >
                     <MessageSquareText className="size-4.5" />
                 </ToolbarButton>
-                <ToolbarButton id="tool-audio-prompt" label={t("canvas.nodeTypes.audioPrompt")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddAudioPrompt}>
-                    <AlignLeft className="size-4.5" />
-                </ToolbarButton>
-                <ToolbarButton id="tool-image-generation" label={t("canvas.nodeTypes.imageGeneration")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddImageGeneration}>
+                <ToolbarButton
+                    id="tool-generator-group"
+                    label={t("canvas.toolbar.generatorGroup")}
+                    active={createMenu === "generator"}
+                    hovered={hovered}
+                    activeStyle={activeStyle}
+                    hoverStyle={hoverStyle}
+                    wrapRef={wrapRef}
+                    onTipX={setTipX}
+                    onHover={setHovered}
+                    onClick={(event) => {
+                        setCreateMenuX(getTipX(wrapRef.current, event.currentTarget));
+                        setExtensionsOpen(false);
+                        setZoomOpen(false);
+                        setCreateMenu((value) => (value === "generator" ? null : "generator"));
+                    }}
+                >
                     <Sparkles className="size-4.5" />
                 </ToolbarButton>
-                <ToolbarButton id="tool-music-generation" label={t("canvas.nodeTypes.musicGeneration")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddMusicGeneration}>
-                    <AudioLines className="size-4.5" />
-                </ToolbarButton>
-                <ToolbarButton id="tool-speech-generation" label={t("canvas.nodeTypes.speechGeneration")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddSpeechGeneration}>
-                    <Mic className="size-4.5" />
-                </ToolbarButton>
-                <ToolbarButton id="tool-smart-canvas" label={t("canvas.nodeTypes.smartCanvas")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddSmartCanvas}>
+                <ToolbarButton id="tool-smart-canvas" label={t("canvas.nodeTypes.smartCanvas")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={() => onAddNode(CanvasNodeType.SmartCanvas)}>
                     <LayoutDashboard className="size-4.5" />
                 </ToolbarButton>
                 {SHOW_MEDIA_TOOLS ? (
                     <>
-                        <ToolbarButton id="tool-video" label={t("canvas.toolbar.video")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddVideo}>
+                        <ToolbarButton id="tool-video" label={t("canvas.toolbar.video")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={() => onAddNode(CanvasNodeType.Video)}>
                             <Video className="size-4.5" />
                         </ToolbarButton>
                     </>
@@ -207,6 +232,36 @@ export function CanvasToolbar({
                     </>
                 ) : null}
             </div>
+
+            {createMenu ? (
+                <div
+                    className={`pointer-events-auto absolute bottom-[72px] z-30 w-[220px] -translate-x-1/2 rounded-2xl border p-2 ${frostedSurfaceClass}`}
+                    style={{ left: createMenuX || "50%", background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.item }}
+                >
+                    <div className="px-1.5 pb-1.5 text-[11px] font-medium opacity-50">{t(createMenu === "prompt" ? "canvas.toolbar.promptGroup" : "canvas.toolbar.generatorGroup")}</div>
+                    <div className="grid gap-0.5">
+                        {createMenuItems[createMenu].map((item) => (
+                            <button
+                                key={item.type}
+                                type="button"
+                                className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm transition"
+                                style={{ color: theme.toolbar.item }}
+                                onMouseEnter={(event) => (event.currentTarget.style.background = theme.toolbar.itemHover)}
+                                onMouseLeave={(event) => (event.currentTarget.style.background = "transparent")}
+                                onClick={() => {
+                                    onAddNode(item.type);
+                                    setCreateMenu(null);
+                                }}
+                            >
+                                <span className="grid size-7 shrink-0 place-items-center rounded-md text-base" style={{ background: theme.toolbar.itemHover }}>
+                                    {item.icon}
+                                </span>
+                                <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            ) : null}
 
             {extensionsOpen && extensionDefs.length ? (
                 <div
@@ -389,11 +444,8 @@ function toolLabel(id: string, t: (key: string) => string) {
     if (id === "tool-pan") return t("canvas.toolbar.pan");
     if (id === "tool-undo") return t("canvas.undo");
     if (id === "tool-redo") return t("canvas.redo");
-    if (id === "tool-image-generation") return t("canvas.nodeTypes.imageGeneration");
-    if (id === "tool-music-generation") return t("canvas.nodeTypes.musicGeneration");
-    if (id === "tool-speech-generation") return t("canvas.nodeTypes.speechGeneration");
-    if (id === "tool-prompt") return t("canvas.nodeTypes.prompt");
-    if (id === "tool-audio-prompt") return t("canvas.nodeTypes.audioPrompt");
+    if (id === "tool-prompt-group") return t("canvas.toolbar.promptGroup");
+    if (id === "tool-generator-group") return t("canvas.toolbar.generatorGroup");
     if (id === "tool-video") return t("canvas.toolbar.video");
     if (id === "tool-smart-canvas") return t("canvas.nodeTypes.smartCanvas");
     if (id === "tool-assets") return t("canvas.nodeTypes.assets");

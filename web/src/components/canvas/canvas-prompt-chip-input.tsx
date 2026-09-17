@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import type { CSSProperties, DragEvent, KeyboardEvent, MouseEvent, PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { Image } from "antd";
@@ -21,6 +21,10 @@ type Props = {
     placeholder?: string;
 };
 
+export type CanvasPromptChipInputHandle = {
+    insertText: (text: string) => void;
+};
+
 type MentionState = {
     query: string;
     rect: DOMRect | null;
@@ -32,7 +36,7 @@ type Token =
 
 // Prompt-panel contentEditable input: @ references embed thumbnail chips instead of plain label text.
 // Serialization converts chips back to reference labels so the generated value matches the former textarea semantics.
-export function CanvasPromptChipInput({ value, references, onChange, onSubmit, className, containerClassName, style, placeholder }: Props) {
+export const CanvasPromptChipInput = forwardRef<CanvasPromptChipInputHandle, Props>(function CanvasPromptChipInput({ value, references, onChange, onSubmit, className, containerClassName, style, placeholder }, ref) {
     const theme = useCanvasTheme();
     const editorRef = useRef<HTMLDivElement>(null);
     const composingRef = useRef(false);
@@ -125,6 +129,29 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
         closeMention();
         emit(serializeEditor(editor));
     };
+
+    const insertText = (text: string) => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        editor.focus();
+        const selection = window.getSelection();
+        const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+        if (range && editor.contains(range.startContainer)) {
+            range.deleteContents();
+            const node = document.createTextNode(text);
+            range.insertNode(node);
+            range.setStartAfter(node);
+            range.collapse(true);
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+        } else {
+            editor.append(document.createTextNode(text));
+            placeCaretAtEnd(editor);
+        }
+        emit(serializeEditor(editor));
+    };
+
+    useImperativeHandle(ref, () => ({ insertText }));
 
     const isReferenceDrag = (event: DragEvent<HTMLDivElement>) => event.dataTransfer.types.includes(CANVAS_REFERENCE_DRAG_TYPE);
 
@@ -227,7 +254,7 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
             {imagePreview ? <Image src={imagePreview} alt={i18n.t("canvas.composer.imagePreview")} style={{ display: "none" }} preview={{ visible: true, src: imagePreview, onVisibleChange: (visible) => !visible && setImagePreview(null) }} /> : null}
         </div>
     );
-}
+});
 
 function MentionMenu({ rect, references, activeIndex, theme, onSelect }: { rect: DOMRect | null; references: CanvasResourceReference[]; activeIndex: number; theme: (typeof canvasThemes)[keyof typeof canvasThemes]; onSelect: (reference: CanvasResourceReference) => void }) {
     const selectedRef = useRef(false);

@@ -14,7 +14,8 @@ export const NODE_DEFAULT_SIZE = {
     [CanvasNodeType.Image]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.image"); } },
     [CanvasNodeType.Text]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.text"); } },
     [CanvasNodeType.Prompt]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.prompt"); } },
-    [CanvasNodeType.AudioPrompt]: { width: 340, height: 200, get title() { return i18n.t("canvas.nodeTypes.audioPrompt"); } },
+    [CanvasNodeType.MusicPrompt]: { width: 340, height: 220, get title() { return i18n.t("canvas.nodeTypes.musicPrompt"); } },
+    [CanvasNodeType.SpeechPrompt]: { width: 360, height: 260, get title() { return i18n.t("canvas.nodeTypes.speechPrompt"); } },
     [CanvasNodeType.Config]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.config"); } },
     [CanvasNodeType.ImageGeneration]: { width: 412, height: 576, get title() { return i18n.t("canvas.nodeTypes.imageGeneration"); } },
     [CanvasNodeType.SpeechGeneration]: { width: 560, height: 340, get title() { return i18n.t("canvas.nodeTypes.speechGeneration"); } },
@@ -38,8 +39,12 @@ export const NODE_SPECS = {
         width: 340, height: 240, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.Prompt].title; },
         metadata: { prompt: "", status: "idle" },
     },
-    [CanvasNodeType.AudioPrompt]: {
-        width: 340, height: 200, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.AudioPrompt].title; },
+    [CanvasNodeType.MusicPrompt]: {
+        width: 340, height: 220, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.MusicPrompt].title; },
+        metadata: { prompt: "", status: "idle" },
+    },
+    [CanvasNodeType.SpeechPrompt]: {
+        width: 360, height: 260, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.SpeechPrompt].title; },
         metadata: { prompt: "", status: "idle" },
     },
     [CanvasNodeType.Config]: {

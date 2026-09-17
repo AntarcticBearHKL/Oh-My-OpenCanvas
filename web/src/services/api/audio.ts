@@ -2,8 +2,9 @@ import axios from "axios";
 
 import i18n from "@/i18n";
 import { audioMimeType, isOpenRouterMusicModel, musicAudioFormat, normalizeAudioFormatValue, normalizeAudioSpeedValue, normalizeAudioVoiceValue, speechAudioFormat, speechModelOf, speechVoiceOptions } from "@/lib/audio-generation";
-import { uploadMediaFile, type UploadedFile } from "@/services/file-storage";
+import { getMediaBlob, uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { buildApiUrl, resolveModelRequestConfig, resolveModelScript, type AiConfig } from "@/stores/use-config-store";
+import type { ReferenceAudio } from "@/types/media";
 import { runModelPlugin } from "./model-plugin";
 
 type RequestOptions = { signal?: AbortSignal };
@@ -20,7 +21,7 @@ function aiHeaders(config: AiConfig) {
     };
 }
 
-export async function requestAudioGeneration(config: AiConfig, prompt: string, options?: RequestOptions): Promise<Blob> {
+export async function requestAudioGeneration(config: AiConfig, prompt: string, options?: RequestOptions, referenceAudios: ReferenceAudio[] = []): Promise<Blob> {
     const requestConfig = resolveModelRequestConfig(config, config.model || config.audioModel);
     const model = requestConfig.model.trim();
     const format = normalizeAudioFormatValue(config.audioFormat);
@@ -56,6 +57,7 @@ export async function requestAudioGeneration(config: AiConfig, prompt: string, o
     const speechVoices = speechVoiceOptions(model);
     const voice = speechModel ? speechVoices.find((item) => item.value === config.audioVoice)?.value || speechVoices[0]?.value : normalizeAudioVoiceValue(config.audioVoice);
     const responseFormat = speechModel ? speechAudioFormat(format) : format;
+    const inputReferences = speechModel ? await speechInputReferences(referenceAudios, options?.signal) : [];
 
     try {
         const response = await axios.post<Blob>(
@@ -67,6 +69,7 @@ export async function requestAudioGeneration(config: AiConfig, prompt: string, o
                 speed: Number(normalizeAudioSpeedValue(config.audioSpeed)),
                 ...(voice ? { voice } : {}),
                 ...(!speechModel && instructions ? { instructions } : {}),
+                ...(inputReferences.length ? { input_references: inputReferences } : {}),
             },
             { headers: aiHeaders(requestConfig), responseType: "blob", signal: options?.signal },
         );
@@ -92,6 +95,33 @@ async function requestMusicGeneration(config: AiConfig, model: string, prompt: s
     const base64 = readChatAudio(response.data);
     if (!base64) throw new Error(apiText("audioGenerationFailed"));
     return new Blob([base64AudioBytes(base64)], { type: audioMimeType(format) });
+}
+
+async function speechInputReferences(audios: ReferenceAudio[], signal?: AbortSignal) {
+    const audio = audios[0];
+    if (!audio) return [];
+    const stored = audio.storageKey ? await getMediaBlob(audio.storageKey) : null;
+    const blob = stored || (audio.url ? await (await fetch(audio.url, { signal })).blob() : null);
+    if (!blob || !blob.size) throw new Error(apiText("invalidReferenceAudio"));
+    return [{ type: "input_audio" as const, input_audio: { data: await blobToDataUrl(blob), format: audioFormatFromMime(audio.type || blob.type) } }];
+}
+
+function blobToDataUrl(blob: Blob) {
+    return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error(apiText("invalidReferenceAudio")));
+        reader.readAsDataURL(blob);
+    });
+}
+
+function audioFormatFromMime(mimeType: string) {
+    if (mimeType.includes("wav")) return "wav";
+    if (mimeType.includes("flac")) return "flac";
+    if (mimeType.includes("ogg")) return "ogg";
+    if (mimeType.includes("m4a")) return "m4a";
+    if (mimeType.includes("pcm")) return "pcm16";
+    return "mp3";
 }
 
 function readChatAudio(payload: unknown) {

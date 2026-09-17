@@ -120,6 +120,26 @@ export function getConnectionTargetAnchor(node: CanvasNodeData, current: Connect
     };
 }
 
+const PROMPT_TARGETS: Partial<Record<CanvasNodeTypeId, CanvasNodeTypeId>> = {
+    [CanvasNodeType.Prompt]: CanvasNodeType.ImageGeneration,
+    [CanvasNodeType.MusicPrompt]: CanvasNodeType.MusicGeneration,
+    [CanvasNodeType.SpeechPrompt]: CanvasNodeType.SpeechGeneration,
+};
+
+const GENERATOR_PROMPTS: Partial<Record<CanvasNodeTypeId, CanvasNodeTypeId>> = {
+    [CanvasNodeType.ImageGeneration]: CanvasNodeType.Prompt,
+    [CanvasNodeType.MusicGeneration]: CanvasNodeType.MusicPrompt,
+    [CanvasNodeType.SpeechGeneration]: CanvasNodeType.SpeechPrompt,
+};
+
+function isPromptConnectionAllowed(fromType: CanvasNodeTypeId, toType: CanvasNodeTypeId) {
+    const fromPrompt = PROMPT_TARGETS[fromType];
+    if (fromPrompt) return GENERATOR_PROMPTS[toType] ? fromPrompt === toType : !PROMPT_TARGETS[toType];
+    const toPrompt = PROMPT_TARGETS[toType];
+    if (toPrompt) return !GENERATOR_PROMPTS[fromType] || GENERATOR_PROMPTS[fromType] === toType;
+    return true;
+}
+
 export function normalizeConnection(firstNodeId: string, secondNodeId: string, nodes: CanvasNodeData[], firstHandleType: "source" | "target") {
     const first = nodes.find((node) => node.id === firstNodeId);
     const second = nodes.find((node) => node.id === secondNodeId);
@@ -127,6 +147,9 @@ export function normalizeConnection(firstNodeId: string, secondNodeId: string, n
     const isGenerationSink = (type: CanvasNodeTypeId) => type === CanvasNodeType.Config || type === CanvasNodeType.ImageGeneration || type === CanvasNodeType.SpeechGeneration || type === CanvasNodeType.MusicGeneration;
     if (isGenerationSink(first.type) && isGenerationSink(second.type)) return null;
     const toSecond = isGenerationSink(second.type) || !isGenerationSink(first.type) || firstHandleType === "source";
-    if ((toSecond ? second : first).type === CanvasNodeType.Image) return null;
-    return toSecond ? { fromNodeId: first.id, toNodeId: second.id } : { fromNodeId: second.id, toNodeId: first.id };
+    const fromNode = toSecond ? first : second;
+    const toNode = toSecond ? second : first;
+    if (toNode.type === CanvasNodeType.Image) return null;
+    if (!isPromptConnectionAllowed(fromNode.type, toNode.type)) return null;
+    return { fromNodeId: fromNode.id, toNodeId: toNode.id };
 }

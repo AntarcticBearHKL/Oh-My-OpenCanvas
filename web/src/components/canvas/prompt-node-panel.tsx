@@ -1,4 +1,4 @@
-import { useState, type UIEvent } from "react";
+import { useRef, useState, type UIEvent } from "react";
 import { Empty, Input, Modal, Spin } from "antd";
 import { Library, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -7,32 +7,73 @@ import { usePromptList } from "@/components/prompts/use-prompt-list";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { ALL_PROMPTS_OPTION, type Prompt } from "@/services/api/prompts";
 import { CANVAS_REFERENCE_DRAG_TYPE, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
-import type { CanvasNodeData } from "@/types/canvas";
-import { CanvasPromptChipInput } from "./canvas-prompt-chip-input";
+import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
+import { CanvasNodeReferenceBar } from "./canvas-node-reference-bar";
+import { CanvasPromptChipInput, type CanvasPromptChipInputHandle } from "./canvas-prompt-chip-input";
 
-export function PromptNodePanel({ node, references = [], onContentChange }: { node: CanvasNodeData; references?: CanvasResourceReference[]; onContentChange: (nodeId: string, content: string) => void }) {
+export function PromptNodePanel({
+    node,
+    references = [],
+    tags = [],
+    showLibrary = true,
+    connectedNodes = [],
+    onDisconnectReference,
+    onStartReferenceSelection,
+    onContentChange,
+}: {
+    node: CanvasNodeData;
+    references?: CanvasResourceReference[];
+    tags?: string[];
+    showLibrary?: boolean;
+    connectedNodes?: CanvasNodeData[];
+    onDisconnectReference?: (fromNodeId: string, toNodeId: string) => void;
+    onStartReferenceSelection?: (nodeId: string) => void;
+    onContentChange: (nodeId: string, content: string) => void;
+}) {
     const { t } = useTranslation();
     const theme = useCanvasTheme();
+    const inputRef = useRef<CanvasPromptChipInputHandle>(null);
     const [pickerOpen, setPickerOpen] = useState(false);
     const [editing, setEditing] = useState(false);
+    const titleKey = node.type === CanvasNodeType.MusicPrompt ? "canvas.nodeTypes.musicPrompt" : node.type === CanvasNodeType.SpeechPrompt ? "canvas.nodeTypes.speechPrompt" : "canvas.nodeTypes.prompt";
+    const placeholderKey = node.type === CanvasNodeType.MusicPrompt ? "canvas.promptPanel.music" : node.type === CanvasNodeType.SpeechPrompt ? "canvas.promptPanel.speech" : "canvas.promptNode.placeholder";
 
     return (
         <div className="flex h-full w-full cursor-move flex-col px-3 pb-3 pt-7 text-sm" style={{ color: theme.node.text }}>
             <div className="mb-2 flex items-center justify-between gap-2">
-                <div className="shrink-0 text-sm font-semibold">{t("canvas.nodeTypes.prompt")}</div>
-                <button
-                    type="button"
-                    className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 text-[11px] transition hover:bg-black/5 dark:hover:bg-white/10"
-                    style={{ color: theme.node.text }}
-                    onMouseDown={(event) => event.stopPropagation()}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={() => setPickerOpen(true)}
-                >
-                    <Library className="size-3.5" />
-                    {t("canvas.promptNode.pick")}
-                </button>
+                <div className="shrink-0 text-sm font-semibold">{t(titleKey)}</div>
+                {showLibrary ? (
+                    <button
+                        type="button"
+                        className="inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 text-[11px] transition hover:bg-black/5 dark:hover:bg-white/10"
+                        style={{ color: theme.node.text }}
+                        onMouseDown={(event) => event.stopPropagation()}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={() => setPickerOpen(true)}
+                    >
+                        <Library className="size-3.5" />
+                        {t("canvas.promptNode.pick")}
+                    </button>
+                ) : null}
             </div>
+            {onStartReferenceSelection ? <CanvasNodeReferenceBar nodeId={node.id} connectedNodes={connectedNodes} onDisconnect={onDisconnectReference} onStartSelection={onStartReferenceSelection} /> : null}
             <PromptReferenceChips references={references} />
+            {tags.length ? (
+                <div className="mb-2 flex max-w-full shrink-0 flex-wrap items-center gap-1" title={t("canvas.promptNode.tagHint")} onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
+                    {tags.map((tag) => (
+                        <button
+                            key={tag}
+                            type="button"
+                            className="inline-flex h-7 shrink-0 cursor-pointer items-center rounded-md px-2 text-[11px] transition hover:bg-black/5 dark:hover:bg-white/10"
+                            style={{ color: theme.node.text }}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => inputRef.current?.insertText(tag)}
+                        >
+                            {tag}
+                        </button>
+                    ))}
+                </div>
+            ) : null}
             <div
                 className="flex min-h-0 flex-1 flex-col"
                 onFocus={() => setEditing(true)}
@@ -46,16 +87,17 @@ export function PromptNodePanel({ node, references = [], onContentChange }: { no
                 onWheel={(event) => event.stopPropagation()}
             >
                 <CanvasPromptChipInput
+                    ref={inputRef}
                     value={node.metadata?.prompt || ""}
                     references={references}
                     onChange={(value) => onContentChange(node.id, value)}
                     containerClassName="min-h-0 flex-1"
                     className="thin-scrollbar h-full min-h-0 w-full cursor-text rounded-xl px-2 py-1.5 text-sm leading-6"
                     style={{ background: "transparent", color: theme.node.text }}
-                    placeholder={t("canvas.promptNode.placeholder")}
+                    placeholder={t(placeholderKey)}
                 />
             </div>
-            <PromptLibraryPicker open={pickerOpen} onSelect={(item) => (onContentChange(node.id, item.prompt), setPickerOpen(false))} onClose={() => setPickerOpen(false)} />
+            {showLibrary ? <PromptLibraryPicker open={pickerOpen} onSelect={(item) => (onContentChange(node.id, item.prompt), setPickerOpen(false))} onClose={() => setPickerOpen(false)} /> : null}
         </div>
     );
 }

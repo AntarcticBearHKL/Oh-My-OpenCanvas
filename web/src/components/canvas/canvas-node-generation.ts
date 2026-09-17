@@ -53,17 +53,20 @@ export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData
         };
     }
     if (sourceNode?.type === CanvasNodeType.SpeechGeneration || sourceNode?.type === CanvasNodeType.MusicGeneration) {
-        const promptNode = connectedPromptNode(sourceNode.id, nodes, connections, [CanvasNodeType.Prompt, CanvasNodeType.AudioPrompt]);
+        const isSpeech = sourceNode.type === CanvasNodeType.SpeechGeneration;
+        const promptNode = connectedPromptNode(sourceNode.id, nodes, connections, [isSpeech ? CanvasNodeType.SpeechPrompt : CanvasNodeType.MusicPrompt]);
         const promptText = promptNode?.metadata?.prompt?.trim() || "";
+        const resourceInputs = promptNode && isSpeech ? flattenGenerationInputs(buildNodeGenerationInputs(promptNode.id, nodes, connections)) : [];
+        const referenceAudios = resourceInputs.map((input) => input.audio).filter((audio): audio is ReferenceAudio => Boolean(audio));
         return {
             prompt: [prompt, promptText].filter(Boolean).join("\n\n"),
             referenceImages: [],
             referenceVideos: [],
-            referenceAudios: [],
+            referenceAudios,
             textCount: promptNode ? 1 : 0,
             imageCount: 0,
             videoCount: 0,
-            audioCount: 0,
+            audioCount: referenceAudios.length,
         };
     }
     const inputs = buildNodeGenerationInputs(nodeId, nodes, connections);

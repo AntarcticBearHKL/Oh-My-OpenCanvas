@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 
+import { normalizeConnection } from "@/lib/canvas/canvas-node-geometry";
 import { getNodeSpec, isRegisteredNodeType } from "@/lib/canvas/node-registry";
 import { arrangeBoardImages } from "@/lib/canvas/smart-canvas";
 import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type CanvasNodeMetadata, type CanvasNodeTypeId, type ViewportTransform } from "@/types/canvas";
@@ -75,7 +76,8 @@ export function applyCanvasAgentOps(snapshot: CanvasAgentSnapshot, ops?: CanvasA
             const fromNode = nodes.find((node) => node.id === op.fromNodeId);
             const toNode = nodes.find((node) => node.id === op.toNodeId);
             if (!exists && fromNode && toNode && fromNode.type !== CanvasNodeType.ImageGeneration) {
-                connections = [...connections, { id: op.id || nanoid(), fromNodeId: op.fromNodeId, toNodeId: op.toNodeId }];
+                const connection = normalizeConnection(op.fromNodeId, op.toNodeId, nodes, "source");
+                if (connection && connection.fromNodeId === op.fromNodeId && connection.toNodeId === op.toNodeId) connections = [...connections, { id: op.id || nanoid(), ...connection }];
             }
         }
         if (op.type === "set_viewport" && op.viewport) viewport = op.viewport;

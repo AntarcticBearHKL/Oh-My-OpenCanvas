@@ -3,7 +3,7 @@ import { useCallback, useEffect, type Dispatch, type MutableRefObject, type SetS
 import { nanoid } from "nanoid";
 import { getGenerationCount } from "@/lib/canvas/canvas-generation-helpers";
 import { createCanvasNode } from "@/lib/canvas/canvas-node-factory";
-import { isNodeLocked } from "@/lib/canvas/canvas-node-geometry";
+import { isNodeLocked, normalizeConnection } from "@/lib/canvas/canvas-node-geometry";
 import { isCanvasReferenceNode } from "@/lib/canvas/canvas-resource-references";
 import { getNodeDefinition, isBuiltinNodeType as isBuiltinType } from "@/lib/canvas/node-registry";
 import type { AiConfig } from "@/stores/use-config-store";
@@ -141,7 +141,9 @@ export function useCanvasDocument(params: CanvasDocumentParams) {
         if (!referencePickerNodeId || referenceConnectedNodeIds.has(fromNodeId)) return;
         const source = nodesRef.current.find((node) => node.id === fromNodeId);
         if (!source || !isCanvasReferenceNode(source)) return;
-        setConnections((prev) => [...prev, { id: nanoid(), fromNodeId, toNodeId: referencePickerNodeId }]);
+        const connection = normalizeConnection(fromNodeId, referencePickerNodeId, nodesRef.current, "source");
+        if (!connection || connection.toNodeId !== referencePickerNodeId) return;
+        setConnections((prev) => [...prev, { id: nanoid(), ...connection }]);
     }, [referenceConnectedNodeIds, referencePickerNodeId]);
 
     useEffect(() => {

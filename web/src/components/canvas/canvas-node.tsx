@@ -518,7 +518,7 @@ export const CanvasNode = React.memo(function CanvasNode({
 });
 
 function NodeContent(props: NodeContentRendererProps) {
-    if ((props.node.type === CanvasNodeType.Config || props.node.type === CanvasNodeType.ImageGeneration || props.node.type === CanvasNodeType.SpeechGeneration || props.node.type === CanvasNodeType.MusicGeneration || props.node.type === CanvasNodeType.Prompt || props.node.type === CanvasNodeType.Assets) && props.renderNodeContent) return props.renderNodeContent(props.node);
+    if ((props.node.type === CanvasNodeType.Config || props.node.type === CanvasNodeType.ImageGeneration || props.node.type === CanvasNodeType.SpeechGeneration || props.node.type === CanvasNodeType.MusicGeneration || props.node.type === CanvasNodeType.Prompt || props.node.type === CanvasNodeType.MusicPrompt || props.node.type === CanvasNodeType.SpeechPrompt || props.node.type === CanvasNodeType.Assets) && props.renderNodeContent) return props.renderNodeContent(props.node);
     if (props.isBatchRoot && props.node.type === CanvasNodeType.Image) return <ImageNodeContent {...props} />;
     if (props.node.type === CanvasNodeType.Text && props.node.metadata?.texts?.length && (props.node.metadata.status !== "error" || props.node.metadata.texts.some((text) => text.content))) return <TextContent {...props} />;
     if (props.node.metadata?.status === "loading") return <LoadingContent theme={props.theme} />;
@@ -539,7 +539,6 @@ function NodeContent(props: NodeContentRendererProps) {
 const nodeContentRenderers: Partial<Record<CanvasNodeType, (props: NodeContentRendererProps) => ReactNode>> = {
     [CanvasNodeType.Text]: TextContent,
     [CanvasNodeType.Prompt]: PromptContent,
-    [CanvasNodeType.AudioPrompt]: AudioPromptContent,
     [CanvasNodeType.Image]: ImageNodeContent,
     [CanvasNodeType.Config]: EmptyImageContent,
     [CanvasNodeType.ImageGeneration]: ImageGenerationContent,
@@ -718,31 +717,6 @@ function TextSlotStatus({ text }: { text: CanvasNodeText }) {
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center" style={{ color: failed ? theme.node.text : theme.node.activeStroke }}>
             {failed ? <span className="text-xs leading-5">{text.errorDetails || t("canvas.node.failed")}</span> : loading ? <div className="size-10 animate-spin rounded-full border-2" style={{ borderColor: theme.node.stroke, borderTopColor: theme.node.activeStroke }} /> : <span className="text-xs">{t("apiErrors.noContent")}</span>}
             {loading ? <span className="text-[10px] tracking-[0.2em]">{t("canvas.node.generating")}</span> : null}
-        </div>
-    );
-}
-
-function AudioPromptContent({ node, theme, onContentChange }: NodeContentRendererProps) {
-    const { t } = useTranslation();
-    const [editing, setEditing] = useState(false);
-    return (
-        <div className="flex h-full w-full cursor-move flex-col p-3">
-            <textarea
-                className="thin-scrollbar min-h-0 w-full flex-1 resize-none rounded-xl bg-transparent px-2 py-1.5 text-sm leading-6 outline-none"
-                style={{ color: theme.node.text }}
-                value={node.metadata?.prompt || ""}
-                placeholder={t("canvas.promptNode.audioPlaceholder")}
-                onChange={(event) => onContentChange(node.id, event.target.value)}
-                onFocus={() => setEditing(true)}
-                onBlur={() => setEditing(false)}
-                onMouseDown={(event) => {
-                    if (editing) event.stopPropagation();
-                }}
-                onPointerDown={(event) => {
-                    if (editing) event.stopPropagation();
-                }}
-                onWheel={(event) => event.stopPropagation()}
-            />
         </div>
     );
 }
