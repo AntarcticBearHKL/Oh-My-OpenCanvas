@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Music2, Pause, Play } from "lucide-react";
+import { GripHorizontal, Music2, Pause, Play } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { AUDIO_WAVEFORM_BARS, formatAudioTime, getCachedAudioPeaks, loadAudioPeaks } from "@/lib/canvas/audio-waveform";
@@ -23,10 +23,10 @@ export function AudioNodeContent({ node, theme }: AudioNodeContentProps) {
         );
 
     const key = node.metadata?.storageKey || content;
-    return <AudioTrack key={key} content={content} cacheKey={key} durationMs={node.metadata?.durationMs} theme={theme} />;
+    return <AudioTrack key={key} content={content} cacheKey={key} durationMs={node.metadata?.durationMs} title={node.title} theme={theme} />;
 }
 
-function AudioTrack({ content, cacheKey, durationMs, theme }: { content: string; cacheKey: string; durationMs?: number; theme: CanvasTheme }) {
+function AudioTrack({ content, cacheKey, durationMs, title, theme }: { content: string; cacheKey: string; durationMs?: number; title?: string; theme: CanvasTheme }) {
     const { t } = useTranslation();
     const audioRef = useRef<HTMLAudioElement>(null);
     const trackRef = useRef<HTMLDivElement>(null);
@@ -117,7 +117,11 @@ function AudioTrack({ content, cacheKey, durationMs, theme }: { content: string;
     };
 
     return (
-        <div className="flex h-full w-full flex-col justify-center gap-2.5 px-4 py-3" style={{ color: theme.node.text }} data-canvas-no-zoom>
+        <div className="flex h-full w-full flex-col justify-center gap-2.5 px-4 py-3" style={{ color: theme.node.text }}>
+            <div className="flex h-6 w-full shrink-0 items-center gap-1.5" style={{ color: theme.node.muted }}>
+                <GripHorizontal className="size-3.5 shrink-0" />
+                {title ? <span className="truncate text-[11px]">{title}</span> : null}
+            </div>
             <div className="flex items-center gap-2">
                 <button
                     type="button"
@@ -139,6 +143,7 @@ function AudioTrack({ content, cacheKey, durationMs, theme }: { content: string;
             </div>
             <div
                 ref={trackRef}
+                data-canvas-no-zoom
                 className={`relative flex min-h-8 w-full flex-1 touch-none select-none items-center ${dragging ? "cursor-grabbing" : "cursor-ew-resize"}`}
                 title={t("canvas.node.seekAudio")}
                 aria-label={t("canvas.node.seekAudio")}
