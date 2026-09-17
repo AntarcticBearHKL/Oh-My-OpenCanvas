@@ -727,6 +727,7 @@ function ImageNodeContent(props: NodeContentRendererProps) {
     return (
         <ImageContent
             node={props.node}
+            onBoard={Boolean(props.node.metadata?.boardId && props.boardLayersById?.has(props.node.metadata.boardId))}
             batchExpanded={props.batchExpanded}
             onToggleBatch={props.onToggleBatch}
             onSetBatchPrimary={props.onSetBatchPrimary}
@@ -816,6 +817,7 @@ function AudioNodeContent({ node, theme }: NodeContentRendererProps) {
 
 function ImageContent({
     node,
+    onBoard,
     batchExpanded,
     onToggleBatch,
     onSetBatchPrimary,
@@ -826,6 +828,7 @@ function ImageContent({
     onViewBatchImage,
 }: {
     node: CanvasNodeData;
+    onBoard: boolean;
     batchExpanded: boolean;
     onToggleBatch?: () => void;
     onSetBatchPrimary?: (imageId: string) => void;
@@ -852,7 +855,7 @@ function ImageContent({
                       .map((image, index) => <ExpandedImageCard key={image.id} node={node} image={image} index={index} onView={() => onViewBatchImage?.(image.id)} onSetPrimary={() => onSetBatchPrimary?.(image.id)} onDuplicate={() => onDuplicateBatchImage?.(image.id)} onDownload={() => onDownloadBatchImage?.(image.id)} onRetry={() => onRetryBatchImage?.(image.id)} onDelete={() => onDeleteBatchImage?.(image.id)} />)
                 : null}
             <div className="h-full w-full overflow-hidden rounded-3xl">
-                {primaryContent ? (
+                {onBoard ? null : primaryContent ? (
                     <CanvasImage
                         content={primaryContent}
                         storageKey={node.metadata?.storageKey}
