@@ -1,7 +1,7 @@
 import axios from "axios";
 
 import i18n from "@/i18n";
-import { audioMimeType, normalizeAudioFormatValue, normalizeAudioSpeedValue, normalizeAudioVoiceValue } from "@/lib/audio-generation";
+import { audioMimeType, isOpenRouterMusicModel, musicAudioFormat, normalizeAudioFormatValue, normalizeAudioSpeedValue, normalizeAudioVoiceValue } from "@/lib/audio-generation";
 import { uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { buildApiUrl, resolveModelRequestConfig, resolveModelScript, type AiConfig } from "@/stores/use-config-store";
 import { runModelPlugin } from "./model-plugin";
@@ -44,6 +44,13 @@ export async function requestAudioGeneration(config: AiConfig, prompt: string, o
         }
     }
     assertAudioConfig(requestConfig, model);
+    if (isOpenRouterMusicModel(model)) {
+        try {
+            return await requestMusicGeneration(requestConfig, model, prompt, format, options?.signal);
+        } catch (error) {
+            throw new Error(readAxiosError(error, apiText("audioGenerationFailed")));
+        }
+    }
     const instructions = config.audioInstructions.trim();
 
     try {
@@ -64,6 +71,66 @@ export async function requestAudioGeneration(config: AiConfig, prompt: string, o
     } catch (error) {
         throw new Error(readAxiosError(error, apiText("audioGenerationFailed")));
     }
+}
+
+async function requestMusicGeneration(config: AiConfig, model: string, prompt: string, format: string, signal?: AbortSignal): Promise<Blob> {
+    const response = await axios.post<string>(
+        aiApiUrl(config, "/chat/completions"),
+        {
+            model,
+            messages: [{ role: "user", content: prompt }],
+            modalities: ["text", "audio"],
+            audio: { format: musicAudioFormat(format) },
+            stream: true,
+        },
+        { headers: aiHeaders(config), responseType: "text", transformResponse: [(data) => data], signal },
+    );
+    const base64 = readChatAudio(response.data);
+    if (!base64) throw new Error(apiText("audioGenerationFailed"));
+    return new Blob([base64AudioBytes(base64)], { type: audioMimeType(format) });
+}
+
+function readChatAudio(payload: unknown) {
+    if (typeof payload !== "string") return "";
+    return readStreamedAudio(payload) || readMessageAudio(payload);
+}
+
+function readStreamedAudio(payload: string) {
+    const chunks: string[] = [];
+    for (const line of payload.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const body = trimmed.slice(5).trim();
+        if (!body || body === "[DONE]") continue;
+        let parsed: { error?: { message?: string }; choices?: Array<{ delta?: { audio?: { data?: string } } }> };
+        try {
+            parsed = JSON.parse(body);
+        } catch {
+            continue;
+        }
+        if (parsed.error?.message) throw new Error(parsed.error.message);
+        const chunk = parsed.choices?.[0]?.delta?.audio?.data;
+        if (chunk) chunks.push(chunk);
+    }
+    return chunks.join("");
+}
+
+function readMessageAudio(payload: string) {
+    let parsed: { error?: { message?: string }; choices?: Array<{ message?: { audio?: { data?: string } } }>; data?: string };
+    try {
+        parsed = JSON.parse(payload);
+    } catch {
+        return "";
+    }
+    if (parsed.error?.message) throw new Error(parsed.error.message);
+    return parsed.choices?.[0]?.message?.audio?.data || (typeof parsed.data === "string" ? parsed.data : "");
+}
+
+function base64AudioBytes(base64: string) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return bytes;
 }
 
 async function audioPluginBlob(result: unknown, format: string): Promise<Blob> {

@@ -15,14 +15,21 @@ export const audioVoiceOptions = [
 ];
 
 export const openRouterAudioModels = [
-    { value: "google/lyria-3-pro-preview", label: "Google: Lyria 3 Pro Preview" },
-    { value: "google/lyria-3-clip-preview", label: "Google: Lyria 3 Clip Preview" },
     { value: "openai/gpt-audio", label: "OpenAI: GPT Audio" },
     { value: "openai/gpt-audio-mini", label: "OpenAI: GPT Audio Mini" },
 ];
 
+export const openRouterMusicModels = [
+    { value: "google/lyria-3-pro-preview", label: "Google: Lyria 3 Pro Preview" },
+    { value: "google/lyria-3-clip-preview", label: "Google: Lyria 3 Clip Preview" },
+];
+
 export function isOpenRouterAudioModel(value: string | undefined): value is string {
     return openRouterAudioModels.some((model) => model.value === value);
+}
+
+export function isOpenRouterMusicModel(value: string | undefined): value is string {
+    return openRouterMusicModels.some((model) => model.value === value);
 }
 
 export const audioFormatOptions = [
@@ -40,6 +47,21 @@ export function normalizeAudioVoiceValue(value: string) {
 
 export function normalizeAudioFormatValue(value: string) {
     return audioFormatOptions.some((item) => item.value === value) ? value : "mp3";
+}
+
+export const musicFormatOptions = [
+    { value: "mp3", label: "MP3" },
+    { value: "wav", label: "WAV" },
+    { value: "flac", label: "FLAC" },
+    { value: "opus", label: "Opus" },
+    { value: "pcm", label: "PCM" },
+];
+
+export function musicAudioFormat(value: string) {
+    const format = normalizeAudioFormatValue(value);
+    if (format === "pcm") return "pcm16";
+    if (format === "aac") return "mp3";
+    return format;
 }
 
 export function normalizeAudioSpeedValue(value: string) {

@@ -50,6 +50,7 @@ import { CanvasNodePromptPanel, type CanvasNodeGenerationMode } from "@/componen
 import { PromptNodePanel } from "@/components/canvas/prompt-node-panel";
 import { SmartCanvasSettingsPopover } from "@/components/canvas/smart-canvas-settings-popover";
 import { SmartCanvasLayerPopover } from "@/components/canvas/smart-canvas-layer-popover";
+import { SmartCanvasLayerPanel } from "@/components/canvas/smart-canvas-layer-panel";
 import { CanvasToolbar } from "@/components/canvas/canvas-toolbar";
 import { AssetPickerModal } from "@/components/canvas/asset-picker-modal";
 import { CanvasSidePanel } from "@/components/canvas/canvas-side-panel";
@@ -452,7 +453,7 @@ function InfiniteCanvasPage() {
     );
 
     const createConnectedNode = useCallback(
-        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio | CanvasNodeType.AudioGeneration, pending: PendingConnectionCreate) => {
+        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio | CanvasNodeType.AudioGeneration | CanvasNodeType.MusicGeneration, pending: PendingConnectionCreate) => {
             const metadata = type === CanvasNodeType.Config ? { model: effectiveConfig.imageModel || effectiveConfig.model, size: effectiveConfig.size, count: getGenerationCount(effectiveConfig.canvasImageCount || effectiveConfig.count) } : undefined;
             const newNode = createCanvasNode(type, pending.position, metadata);
             const connection = normalizeConnection(pending.connection.nodeId, newNode.id, [...nodesRef.current, newNode], pending.connection.handleType);
@@ -530,6 +531,8 @@ function InfiniteCanvasPage() {
     // The toolbar follows a single selected node selected by click, creation, marquee, or keyboard.
     // It stays hidden for multi-selection and while isNodeDragging is true.
     const singleSelectedNodeId = selectedNodeIds.size === 1 ? Array.from(selectedNodeIds)[0] : null;
+    const singleSelectedNode = singleSelectedNodeId ? nodeById.get(singleSelectedNodeId) || null : null;
+    const selectedBoard = singleSelectedNode?.type === CanvasNodeType.SmartCanvas ? singleSelectedNode : null;
     const toolbarNode = (toolbarNodeId ? nodeById.get(toolbarNodeId) || null : null) || (singleSelectedNodeId ? nodeById.get(singleSelectedNodeId) || null : null);
     const infoNode = infoNodeId ? nodeById.get(infoNodeId) || null : null;
     const cropNode = cropNodeId ? nodeById.get(cropNodeId) || null : null;
@@ -1946,7 +1949,7 @@ function InfiniteCanvasPage() {
             if (contentNode.type === CanvasNodeType.Prompt) return <PromptNodePanel node={contentNode} references={mentionReferencesByNodeId.get(contentNode.id) || EMPTY_REFERENCES} onContentChange={handleNodeContentChange} />;
             if (contentNode.type === CanvasNodeType.Assets)
                 return <AssetsNodeContent node={contentNode} onInsert={(file) => void insertFolderFile(file)} onOutputFolderBind={() => handleOutputFolderBind(contentNode.id)} onOutputFolderUnbind={() => handleOutputFolderUnbind(contentNode.id)} />;
-            if (contentNode.type === CanvasNodeType.AudioGeneration)
+            if (contentNode.type === CanvasNodeType.AudioGeneration || contentNode.type === CanvasNodeType.MusicGeneration)
                 return (
                     <div className="w-full">
                         <CanvasNodePromptPanel
@@ -2062,7 +2065,7 @@ function InfiniteCanvasPage() {
                             isConnectionTarget={connectionTargetNodeId === node.id}
                             isConnecting={Boolean(connectingParams)}
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node) ? "disabled" : "available"}
-                            showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.AudioGeneration && node.type !== CanvasNodeType.Prompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
+                            showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.AudioGeneration && node.type !== CanvasNodeType.MusicGeneration && node.type !== CanvasNodeType.Prompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             isBoardDropTarget={dropTargetBoardId === node.id}
                             isAssetsDropTarget={dropTargetAssetsNodeId === node.id}
                             returnFrom={returningNodes.get(node.id)}
@@ -2286,6 +2289,19 @@ function InfiniteCanvasPage() {
 
                 <AssetPickerModal open={assetPickerOpen} onInsert={handleAssetInsert} onClose={() => setAssetPickerOpen(false)} />
             </section>
+            {selectedBoard ? (
+                <div className="flex h-full shrink-0 pt-14">
+                    <SmartCanvasLayerPanel
+                        node={selectedBoard}
+                        layers={boardOrderedLayersById.get(selectedBoard.id) || []}
+                        onBoardChange={(patch) => handleSmartCanvasChange(selectedBoard.id, patch)}
+                        onMove={(imageId, direction) => handleSmartCanvasChange(selectedBoard.id, { boardLayers: moveBoardLayer(selectedBoard, boardOrderedLayersById.get(selectedBoard.id) || [], imageId, direction) })}
+                        onToggleHidden={(imageId) => toggleNodeFlag(imageId, "hidden")}
+                        onBlendModeChange={(imageId, id) => handleBoardLayerChange(imageId, { blendMode: id })}
+                        onOpacityChange={(imageId, value) => handleBoardLayerChange(imageId, { opacity: value })}
+                    />
+                </div>
+            ) : null}
         </main>
     );
 }

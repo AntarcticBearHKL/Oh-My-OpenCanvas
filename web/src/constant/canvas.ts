@@ -17,6 +17,7 @@ export const NODE_DEFAULT_SIZE = {
     [CanvasNodeType.Config]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.config"); } },
     [CanvasNodeType.ImageGeneration]: { width: 412, height: 576, get title() { return i18n.t("canvas.nodeTypes.imageGeneration"); } },
     [CanvasNodeType.AudioGeneration]: { width: 560, height: 340, get title() { return i18n.t("canvas.nodeTypes.audioGeneration"); } },
+    [CanvasNodeType.MusicGeneration]: { width: 560, height: 340, get title() { return i18n.t("canvas.nodeTypes.musicGeneration"); } },
     [CanvasNodeType.Video]: { width: 420, height: 236, get title() { return i18n.t("canvas.nodeTypes.video"); } },
     [CanvasNodeType.Audio]: { width: 340, height: 120, get title() { return i18n.t("canvas.nodeTypes.audio"); } },
     [CanvasNodeType.SmartCanvas]: { width: 640, height: 360, get title() { return i18n.t("canvas.nodeTypes.smartCanvas"); } },
@@ -47,6 +48,10 @@ export const NODE_SPECS = {
     [CanvasNodeType.AudioGeneration]: {
         width: 560, height: 340, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.AudioGeneration].title; },
         metadata: { status: "idle", generationMode: "audio" },
+    },
+    [CanvasNodeType.MusicGeneration]: {
+        width: 560, height: 340, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.MusicGeneration].title; },
+        metadata: { status: "idle", generationMode: "audio", model: "google/lyria-3-pro-preview", audioFormat: "mp3" },
     },
     [CanvasNodeType.Video]: {
         width: 420, height: 236, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.Video].title; },
