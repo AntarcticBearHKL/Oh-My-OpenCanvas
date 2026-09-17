@@ -1955,42 +1955,24 @@ function InfiniteCanvasPage() {
             if (contentNode.type === CanvasNodeType.SpeechPrompt) return <PromptNodePanel node={contentNode} tags={speechTags} showLibrary={false} references={mentionReferencesByNodeId.get(contentNode.id) || EMPTY_REFERENCES} connectedNodes={connectedNodesByNodeId.get(contentNode.id) || []} onDisconnectReference={disconnectNodeReference} onStartReferenceSelection={startNodeReferenceSelection} onContentChange={handleNodeContentChange} />;
             if (contentNode.type === CanvasNodeType.Assets)
                 return <AssetsNodeContent node={contentNode} onInsert={(file) => void insertFolderFile(file)} onOutputFolderBind={() => handleOutputFolderBind(contentNode.id)} onOutputFolderUnbind={() => handleOutputFolderUnbind(contentNode.id)} />;
-            if (contentNode.type === CanvasNodeType.SpeechGeneration || contentNode.type === CanvasNodeType.MusicGeneration)
-                return (
-                    <div className="w-full">
-                        <CanvasNodePromptPanel
-                            node={contentNode}
-                            nodes={nodes}
-                            isRunning={runningNodeId === contentNode.id}
-                            mentionReferences={mentionReferencesByNodeId.get(contentNode.id) || EMPTY_REFERENCES}
-                            connectedNodes={connectedNodesByNodeId.get(contentNode.id) || []}
-                            onPromptChange={handleNodePromptChange}
-                            onConfigChange={handleConfigNodeChange}
-                            onGenerate={handleGenerateNode}
-                            onStop={confirmStopGeneration}
-                            onDisconnectReference={disconnectNodeReference}
-                            onStartReferenceSelection={startNodeReferenceSelection}
-                            modeOverride="audio"
-                        />
-                    </div>
-                );
             return (
             <CanvasConfigNodePanel
                 node={contentNode}
                 isRunning={runningNodeId === contentNode.id}
-                hasPromptConnection={(connectedNodesByNodeId.get(contentNode.id) || []).some((node) => node.type === CanvasNodeType.Prompt)}
+                hasPromptConnection={(connectedNodesByNodeId.get(contentNode.id) || []).some((node) => node.type === (contentNode.type === CanvasNodeType.MusicGeneration ? CanvasNodeType.MusicPrompt : contentNode.type === CanvasNodeType.SpeechGeneration ? CanvasNodeType.SpeechPrompt : CanvasNodeType.Prompt))}
                 inputSummary={getInputSummary(configInputsById.get(contentNode.id) || [])}
                 onConfigChange={handleConfigNodeChange}
                 onComposerToggle={() => setDialogNodeId((current) => (current === contentNode.id ? null : contentNode.id))}
                 onStop={confirmStopGeneration}
                 onGenerate={(nodeId) => {
                     const target = nodesRef.current.find((item) => item.id === nodeId);
-                    void handleGenerateNode(nodeId, target?.metadata?.generationMode || "image", target?.metadata?.composerContent ?? target?.metadata?.prompt ?? "");
+                    const targetMode = target?.type === CanvasNodeType.SpeechGeneration || target?.type === CanvasNodeType.MusicGeneration ? "audio" : target?.metadata?.generationMode || "image";
+                    void handleGenerateNode(nodeId, targetMode, target?.metadata?.composerContent ?? target?.metadata?.prompt ?? "");
                 }}
             />
             );
         },
-        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleNodePromptChange, handleOutputFolderBind, handleOutputFolderUnbind, insertFolderFile, mentionReferencesByNodeId, nodes, runningNodeId, startNodeReferenceSelection, t],
+        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleOutputFolderBind, handleOutputFolderUnbind, insertFolderFile, mentionReferencesByNodeId, runningNodeId, startNodeReferenceSelection, t],
     );
 
     if (!projectLoaded && !loadedOnceRef.current) return <CanvasRefreshShell />;
