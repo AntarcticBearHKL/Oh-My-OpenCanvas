@@ -8,7 +8,7 @@ import type { NodeGenerationInput } from "@/components/canvas/canvas-node-genera
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasImageAngleParams } from "@/components/canvas/canvas-node-angle-dialog";
 import type { ReferenceImage } from "@/types/image";
-import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, type CanvasGenerationVersion, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
+import { CanvasNodeType, type CanvasAssistantSession, type CanvasConnection, type CanvasNodeData, type CanvasNodeMetadata } from "@/types/canvas";
 
 export function imageExtension(dataUrl: string) {
     return dataUrl.match(/^data:image[/]([^;]+)/)?.[1] || dataUrl.match(/image[/]([^;]+)/)?.[1] || "png";
@@ -187,7 +187,6 @@ export function buildAnglePrompt(params: CanvasImageAngleParams) {
 export const GENERATION_CONCURRENCY = 2;
 export const GENERATION_MAX_ATTEMPTS = 3;
 export const GENERATION_RETRY_DELAY_MS = 2000;
-export const GENERATION_VERSION_LIMIT = 5;
 
 export function createGenerationQueue(limit = GENERATION_CONCURRENCY) {
     const waiting: Array<() => void> = [];
@@ -233,16 +232,4 @@ export async function runGenerationTaskWithRetry<T>(task: () => Promise<T>, opti
         }
     }
     throw lastError;
-}
-
-export function createGenerationSeed() {
-    return Math.floor(Math.random() * 2147483647);
-}
-
-export function pushGenerationVersion(versions: CanvasGenerationVersion[] | undefined, version: CanvasGenerationVersion, limit = GENERATION_VERSION_LIMIT) {
-    return [version, ...(versions || [])].slice(0, limit);
-}
-
-export function resolveGenerationSeed(versions: CanvasGenerationVersion[] | undefined) {
-    return versions?.find((version) => typeof version.seed === "number")?.seed;
 }

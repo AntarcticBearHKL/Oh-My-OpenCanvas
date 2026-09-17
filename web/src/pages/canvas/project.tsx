@@ -292,7 +292,7 @@ function InfiniteCanvasPage() {
         [cleanupAssetImages],
     );
 
-    const { handleGenerateNode, handleRetryNode, handleReplayNode, pollVideoNodeTask, confirmStopGeneration, maskEditImageNode, generateAngleNode } = useCanvasGeneration({
+    const { handleGenerateNode, handleRetryNode, pollVideoNodeTask, confirmStopGeneration, maskEditImageNode, generateAngleNode } = useCanvasGeneration({
         effectiveConfig,
         isAiConfigReady,
         openConfigDialog,
@@ -1974,7 +1974,6 @@ function InfiniteCanvasPage() {
                 onConfigChange={handleConfigNodeChange}
                 onComposerToggle={() => setDialogNodeId((current) => (current === contentNode.id ? null : contentNode.id))}
                 onStop={confirmStopGeneration}
-                onReplay={handleReplayNode}
                 onGenerate={(nodeId) => {
                     const target = nodesRef.current.find((item) => item.id === nodeId);
                     void handleGenerateNode(nodeId, target?.metadata?.generationMode || "image", target?.metadata?.composerContent ?? target?.metadata?.prompt ?? "");
@@ -1982,7 +1981,7 @@ function InfiniteCanvasPage() {
             />
             );
         },
-        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleNodePromptChange, handleOutputFolderBind, handleOutputFolderUnbind, handleReplayNode, insertFolderFile, mentionReferencesByNodeId, nodes, runningNodeId, startNodeReferenceSelection],
+        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleNodePromptChange, handleOutputFolderBind, handleOutputFolderUnbind, insertFolderFile, mentionReferencesByNodeId, nodes, runningNodeId, startNodeReferenceSelection],
     );
 
     if (!projectLoaded && !loadedOnceRef.current) return <CanvasRefreshShell />;

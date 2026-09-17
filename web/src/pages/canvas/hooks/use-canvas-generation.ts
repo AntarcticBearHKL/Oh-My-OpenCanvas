@@ -14,7 +14,7 @@ import { buildNodeGenerationContext, buildNodeResponseMessages, hydrateNodeGener
 import { audioMetadata, buildAudioGenerationMetadata, buildImageGenerationMetadata, imageMetadata, videoMetadata } from "@/lib/canvas/canvas-node-factory";
 import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
 import { NODE_STATUS_ERROR, NODE_STATUS_IDLE, NODE_STATUS_LOADING, NODE_STATUS_SUCCESS, VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH } from "@/lib/canvas/canvas-node-constants";
-import { buildAngleLabel, buildAnglePrompt, buildGenerationConfig, createGenerationSeed, findRetrySourceNode, generationQueue, generationReferenceUrls, getGenerationCount, hasResumableVideoTask, isGenerationCanceled, pushGenerationVersion, resolveGenerationSeed, resolveMetadataReferences, runGenerationTaskWithRetry, sourceNodeReferenceImages } from "@/lib/canvas/canvas-generation-helpers";
+import { buildAngleLabel, buildAnglePrompt, buildGenerationConfig, findRetrySourceNode, generationQueue, generationReferenceUrls, getGenerationCount, hasResumableVideoTask, isGenerationCanceled, resolveMetadataReferences, runGenerationTaskWithRetry, sourceNodeReferenceImages } from "@/lib/canvas/canvas-generation-helpers";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import type { CanvasNodeGenerationMode } from "@/components/canvas/canvas-node-prompt-panel";
 import type { CanvasImageAngleParams } from "@/components/canvas/canvas-node-angle-dialog";
@@ -328,7 +328,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
     );
 
     const handleGenerateNode = useCallback(
-        async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string, replaySeed?: number) => {
+        async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string) => {
             const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
             const generationConfig = buildGenerationConfig(effectiveConfig, sourceNode, mode);
             if (!isAiConfigReady(generationConfig, generationConfig.model)) {
@@ -472,20 +472,18 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                     setDialogNodeId(nodeId);
 
                     const controller = rootId === nodeId ? runController : startGenerationRequest(rootId, nodeId, nodeId, runController);
-                    const baseSeed = replaySeed ?? createGenerationSeed();
                     let hasSuccess = false;
                     let hasFailure = false;
                     let firstError = "";
                     await Promise.all(
-                        imageIds.map((imageId, index) =>
+                        imageIds.map((imageId) =>
                             generationQueue.run(imageId, async () => {
                                 try {
-                                    const seed = baseSeed + index;
                                     const result = await runGenerationTaskWithRetry(
                                         () =>
                                             referenceImages.length
-                                                ? requestEdit({ ...generationConfig, count: "1" }, effectivePrompt, referenceImages, { signal: controller.signal, seed })
-                                                : requestGeneration({ ...generationConfig, count: "1" }, effectivePrompt, { signal: controller.signal, seed }),
+                                                ? requestEdit({ ...generationConfig, count: "1" }, effectivePrompt, referenceImages, { signal: controller.signal })
+                                                : requestGeneration({ ...generationConfig, count: "1" }, effectivePrompt, { signal: controller.signal }),
                                         { signal: controller.signal },
                                     );
                                     const image = result.images[0];
@@ -548,9 +546,6 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                                           ...node.metadata,
                                           status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR,
                                           errorDetails: hasSuccess ? undefined : t("canvas.projectPage.generationFailed"),
-                                          ...(hasSuccess
-                                              ? { seed: baseSeed, generationVersions: pushGenerationVersion(node.metadata?.generationVersions, { id: nanoid(), prompt: effectivePrompt, seed: baseSeed, model: generationConfig.model, size: generationConfig.size, createdAt: Date.now() }) }
-                                              : {}),
                                       },
                                   }
                                 : node.id === rootId
@@ -783,16 +778,6 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
         [completeVideoNodeTask, effectiveConfig, finishGenerationRequest, isAiConfigReady, message, openConfigDialog, startGenerationRequest, t],
     );
 
-    const handleReplayNode = useCallback(
-        (nodeId: string) => {
-            const node = nodesRef.current.find((item) => item.id === nodeId);
-            const seed = resolveGenerationSeed(node?.metadata?.generationVersions) ?? node?.metadata?.seed;
-            if (!node || seed === undefined) return;
-            void handleGenerateNode(nodeId, node.metadata?.generationMode || "image", node.metadata?.composerContent ?? node.metadata?.prompt ?? "", seed);
-        },
-        [handleGenerateNode],
-    );
-
     const handleRetryNode = useCallback(
         async (node: CanvasNodeData, imageId?: string) => {
             if (hasResumableVideoTask(node)) {
@@ -950,5 +935,5 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
         [completeVideoNodeTask, effectiveConfig, finishGenerationRequest, isAiConfigReady, message, openConfigDialog, pollVideoNodeTask, startGenerationRequest, t],
     );
 
-    return { handleGenerateNode, handleRetryNode, handleReplayNode, pollVideoNodeTask, confirmStopGeneration, maskEditImageNode, generateAngleNode };
+    return { handleGenerateNode, handleRetryNode, pollVideoNodeTask, confirmStopGeneration, maskEditImageNode, generateAngleNode };
 }

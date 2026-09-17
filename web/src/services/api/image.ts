@@ -62,9 +62,9 @@ type ImageApiResponse = {
     code?: number;
     msg?: string;
 };
-type RequestOptions = { signal?: AbortSignal; seed?: number };
+type RequestOptions = { signal?: AbortSignal };
 
-export type GeneratedImage = { id: string; dataUrl: string; seed?: number };
+export type GeneratedImage = { id: string; dataUrl: string };
 export type ImageRequestResult = { images: GeneratedImage[]; cost?: GenerationCost };
 
 const QUALITY_BASE: Record<string, number> = {
@@ -205,9 +205,9 @@ function parseImagePayload(payload: ImageApiResponse) {
     const images = imageList
         .map((item) => {
             const dataUrl = resolveImageSource(item);
-            return dataUrl ? { id: nanoid(), dataUrl, ...(typeof item.seed === "number" ? { seed: item.seed } : {}) } : null;
+            return dataUrl ? { id: nanoid(), dataUrl } : null;
         })
-        .filter((value): value is { id: string; dataUrl: string; seed?: number } => Boolean(value));
+        .filter((value): value is { id: string; dataUrl: string } => Boolean(value));
 
     if (images.length === 0) {
         // Check whether the response contains data in an unrecognized format.
@@ -500,7 +500,6 @@ export async function requestGeneration(config: AiConfig, prompt: string, option
                 prompt: withSystemPrompt(requestConfig, prompt),
                 n,
                 ...resolveImageRequestOptions(config),
-                ...(options?.seed === undefined ? {} : { seed: options.seed }),
                 output_format: IMAGE_OUTPUT_FORMAT,
             },
             { headers: aiHeaders(requestConfig, "application/json"), signal: options?.signal },
@@ -548,7 +547,6 @@ export async function requestEdit(config: AiConfig, prompt: string, references: 
                 n: 1,
                 ...resolveImageRequestOptions(config),
                 input_references: inputReferences,
-                ...(options?.seed === undefined ? {} : { seed: options.seed }),
                 output_format: IMAGE_OUTPUT_FORMAT,
             },
             { headers: aiHeaders(requestConfig, "application/json"), signal: options?.signal },

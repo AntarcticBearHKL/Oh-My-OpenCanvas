@@ -163,7 +163,7 @@ const LIB_ASSERTIONS = `(async () => {
     ok("distribute needs three", align.alignNodes(trio, new Set(["a", "b"]), "distribute-y").size === 0);
 
     const generation = await import("/src/lib/canvas/canvas-generation-helpers.ts");
-    ok("generation limits", generation.GENERATION_CONCURRENCY === 2 && generation.GENERATION_MAX_ATTEMPTS === 3 && generation.GENERATION_VERSION_LIMIT === 5 && generation.GENERATION_RETRY_DELAY_MS === 2000);
+    ok("generation limits", generation.GENERATION_CONCURRENCY === 2 && generation.GENERATION_MAX_ATTEMPTS === 3 && generation.GENERATION_RETRY_DELAY_MS === 2000);
 
     const queue = generation.createGenerationQueue();
     await Promise.all(
@@ -193,13 +193,6 @@ const LIB_ASSERTIONS = `(async () => {
         return "done";
     }, { delayMs: 0 });
     ok("retry recovers before cap", recoveredValue === "done" && recovered === 2, recovered);
-
-    let versions = [];
-    for (let index = 0; index < 7; index += 1) versions = generation.pushGenerationVersion(versions, { id: String(index), prompt: "p", seed: index, createdAt: index });
-    ok("versions pruned to 5 newest", versions.length === 5 && versions[0].id === "6" && versions[4].id === "2", versions.map((version) => version.id).join(","));
-
-    const version = { id: "v", prompt: "p", seed: 12345, createdAt: 1 };
-    ok("seed round-trips through versions", generation.resolveGenerationSeed(generation.pushGenerationVersion(undefined, version)) === 12345, generation.resolveGenerationSeed(generation.pushGenerationVersion(undefined, version)));
 
     const cost = await import("/src/lib/canvas/generation-cost.ts");
     const unpriced = cost.estimateGenerationCost("openrouter::mystery-model", "image", 1);

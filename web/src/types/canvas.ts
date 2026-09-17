@@ -50,16 +50,6 @@ export type CanvasNodeText = {
     content: string;
 };
 
-export type CanvasGenerationVersion = {
-    id: string;
-    prompt: string;
-    seed: number;
-    model?: string;
-    size?: string;
-    count?: number;
-    createdAt: number;
-};
-
 export type CanvasNodeMetadata = {
     content?: string;
     composerContent?: string;
@@ -121,8 +111,6 @@ export type CanvasNodeMetadata = {
     hidden?: boolean;
     assetFolderName?: string;
     outputFolderName?: string;
-    seed?: number;
-    generationVersions?: CanvasGenerationVersion[];
 };
 
 export type CanvasNodeData = {

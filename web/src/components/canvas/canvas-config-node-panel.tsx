@@ -1,4 +1,4 @@
-import { Image as ImageIcon, LoaderCircle, MessageSquare, Music2, Play, RefreshCw, Settings2, Square, Video } from "lucide-react";
+import { Image as ImageIcon, LoaderCircle, MessageSquare, Music2, Play, Settings2, Square, Video } from "lucide-react";
 import { Button, Segmented } from "antd";
 import { useTranslation } from "react-i18next";
 
@@ -19,7 +19,6 @@ type CanvasConfigNodePanelProps = {
     inputSummary: { textCount: number; imageCount: number; videoCount: number; audioCount: number };
     onConfigChange: (nodeId: string, patch: Partial<CanvasNodeMetadata>) => void;
     onGenerate: (nodeId: string) => void;
-    onReplay: (nodeId: string) => void;
     onStop: (nodeId: string) => void;
     onComposerToggle: () => void;
 };
@@ -27,7 +26,7 @@ type CanvasConfigNodePanelProps = {
 const IMAGE_GEN_DESIGN_WIDTH = 412;
 const IMAGE_GEN_DESIGN_HEIGHT = 576;
 
-export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, inputSummary, onConfigChange, onGenerate, onReplay, onStop, onComposerToggle }: CanvasConfigNodePanelProps) {
+export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, inputSummary, onConfigChange, onGenerate, onStop, onComposerToggle }: CanvasConfigNodePanelProps) {
     const { t } = useTranslation();
     const globalConfig = useEffectiveConfig();
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
@@ -38,7 +37,6 @@ export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, in
     const hasAnyInput = Boolean(inputSummary.textCount || inputSummary.imageCount || inputSummary.videoCount || inputSummary.audioCount);
     const hasComposerContent = Boolean((node.metadata?.composerContent ?? node.metadata?.prompt ?? "").trim());
     const canGenerate = isImageGenerationNode || hasComposerContent || (mode === "audio" ? inputSummary.textCount > 0 : hasAnyInput);
-    const canReplay = mode === "image" && typeof node.metadata?.seed === "number";
     const flatButtonClass = "inline-flex h-7 shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 text-[11px] transition hover:bg-black/5 dark:hover:bg-white/10";
     const summaryParts = [
         inputSummary.textCount ? `${t("canvas.configNode.prompt")} ${inputSummary.textCount}` : "",
@@ -155,20 +153,12 @@ export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, in
                 ) : null}
 
                 <div className="flex shrink-0 flex-col gap-2 pt-2">
-                    {isImageGenerationNode && !canReplay ? null : (
+                    {isImageGenerationNode ? null : (
                         <div className="flex min-w-0 flex-wrap items-center gap-1" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
-                            {isImageGenerationNode ? null : (
-                                <button type="button" className={flatButtonClass} style={{ color: theme.node.text }} onClick={onComposerToggle}>
-                                    <Settings2 className="size-3.5" />
-                                    {t("canvas.configNode.compose")}
-                                </button>
-                            )}
-                            {canReplay ? (
-                                <button type="button" className={flatButtonClass} style={{ color: theme.node.text }} onClick={() => onReplay(node.id)}>
-                                    <RefreshCw className="size-3.5" />
-                                    {t("canvas.configNode.replaySeed")}
-                                </button>
-                            ) : null}
+                            <button type="button" className={flatButtonClass} style={{ color: theme.node.text }} onClick={onComposerToggle}>
+                                <Settings2 className="size-3.5" />
+                                {t("canvas.configNode.compose")}
+                            </button>
                         </div>
                     )}
 
