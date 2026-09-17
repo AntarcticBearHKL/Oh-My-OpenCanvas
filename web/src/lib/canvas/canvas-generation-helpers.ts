@@ -1,6 +1,6 @@
 import { defaultConfig, resolveModelForCapability, type AiConfig } from "@/stores/use-config-store";
 import i18n from "@/i18n";
-import { isOpenRouterAudioModel, isOpenRouterMusicModel, isOpenRouterSpeechModel } from "@/lib/audio-generation";
+import { isOpenRouterMusicModel, isOpenRouterSpeechModel } from "@/lib/audio-generation";
 import { resolveImageUrl, uploadImage } from "@/services/image-storage";
 import { resolveMediaUrl } from "@/services/file-storage";
 import { imageMetadata, referenceUrl } from "@/lib/canvas/canvas-node-factory";
@@ -98,7 +98,7 @@ export function buildGenerationConfig(config: AiConfig, node: CanvasNodeData | u
     const nodeModel = node?.metadata?.model;
     return {
         ...config,
-        model: mode === "audio" && (isOpenRouterAudioModel(nodeModel) || isOpenRouterSpeechModel(nodeModel) || isOpenRouterMusicModel(nodeModel)) ? nodeModel : resolveModelForCapability(config, nodeModel, mode),
+        model: mode === "audio" && (isOpenRouterSpeechModel(nodeModel) || isOpenRouterMusicModel(nodeModel)) ? nodeModel : resolveModelForCapability(config, nodeModel, mode),
         reasoningEffort: node?.metadata?.reasoningEffort || config.reasoningEffort || defaultConfig.reasoningEffort,
         quality: node?.metadata?.quality || config.quality || defaultConfig.quality,
         size: node?.metadata?.size || config.size || defaultConfig.size,

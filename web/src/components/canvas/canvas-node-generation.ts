@@ -52,7 +52,7 @@ export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData
             audioCount: referenceAudios.length,
         };
     }
-    if (sourceNode?.type === CanvasNodeType.AudioGeneration) {
+    if (sourceNode?.type === CanvasNodeType.SpeechGeneration || sourceNode?.type === CanvasNodeType.MusicGeneration) {
         const promptNode = connectedPromptNode(sourceNode.id, nodes, connections, [CanvasNodeType.Prompt, CanvasNodeType.AudioPrompt]);
         const promptText = promptNode?.metadata?.prompt?.trim() || "";
         return {

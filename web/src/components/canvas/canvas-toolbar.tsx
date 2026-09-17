@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
-import { AlignLeft, Compass, Focus, FolderInput, Hand, HelpCircle, LayoutDashboard, ListTree, MessageSquareText, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
+import { AlignLeft, AudioLines, Compass, Focus, FolderInput, Hand, HelpCircle, LayoutDashboard, ListTree, MessageSquareText, Mic, MousePointer2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -19,11 +19,11 @@ export function CanvasToolbar({
     scale,
     isMiniMapOpen,
     onAddImageGeneration,
-    onAddAudioGeneration,
+    onAddMusicGeneration,
+    onAddSpeechGeneration,
     onAddPrompt,
     onAddAudioPrompt,
     onAddVideo,
-    onAddAudio,
     onAddSmartCanvas,
     onAddAssets,
     onAddExtensionNode,
@@ -44,11 +44,11 @@ export function CanvasToolbar({
     scale: number;
     isMiniMapOpen: boolean;
     onAddImageGeneration: () => void;
-    onAddAudioGeneration: () => void;
+    onAddMusicGeneration: () => void;
+    onAddSpeechGeneration: () => void;
     onAddPrompt: () => void;
     onAddAudioPrompt: () => void;
     onAddVideo: () => void;
-    onAddAudio: () => void;
     onAddSmartCanvas: () => void;
     onAddAssets: () => void;
     onAddExtensionNode: (type: string) => void;
@@ -129,8 +129,11 @@ export function CanvasToolbar({
                 <ToolbarButton id="tool-image-generation" label={t("canvas.nodeTypes.imageGeneration")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddImageGeneration}>
                     <Sparkles className="size-4.5" />
                 </ToolbarButton>
-                <ToolbarButton id="tool-audio-generation" label={t("canvas.nodeTypes.audioGeneration")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddAudioGeneration}>
-                    <Music2 className="size-4.5" />
+                <ToolbarButton id="tool-music-generation" label={t("canvas.nodeTypes.musicGeneration")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddMusicGeneration}>
+                    <AudioLines className="size-4.5" />
+                </ToolbarButton>
+                <ToolbarButton id="tool-speech-generation" label={t("canvas.nodeTypes.speechGeneration")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddSpeechGeneration}>
+                    <Mic className="size-4.5" />
                 </ToolbarButton>
                 <ToolbarButton id="tool-smart-canvas" label={t("canvas.nodeTypes.smartCanvas")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddSmartCanvas}>
                     <LayoutDashboard className="size-4.5" />
@@ -139,9 +142,6 @@ export function CanvasToolbar({
                     <>
                         <ToolbarButton id="tool-video" label={t("canvas.toolbar.video")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddVideo}>
                             <Video className="size-4.5" />
-                        </ToolbarButton>
-                        <ToolbarButton id="tool-audio" label={t("canvas.toolbar.audio")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddAudio}>
-                            <Music2 className="size-4.5" />
                         </ToolbarButton>
                     </>
                 ) : null}
@@ -390,11 +390,11 @@ function toolLabel(id: string, t: (key: string) => string) {
     if (id === "tool-undo") return t("canvas.undo");
     if (id === "tool-redo") return t("canvas.redo");
     if (id === "tool-image-generation") return t("canvas.nodeTypes.imageGeneration");
-    if (id === "tool-audio-generation") return t("canvas.nodeTypes.audioGeneration");
+    if (id === "tool-music-generation") return t("canvas.nodeTypes.musicGeneration");
+    if (id === "tool-speech-generation") return t("canvas.nodeTypes.speechGeneration");
     if (id === "tool-prompt") return t("canvas.nodeTypes.prompt");
     if (id === "tool-audio-prompt") return t("canvas.nodeTypes.audioPrompt");
     if (id === "tool-video") return t("canvas.toolbar.video");
-    if (id === "tool-audio") return t("canvas.toolbar.audio");
     if (id === "tool-smart-canvas") return t("canvas.nodeTypes.smartCanvas");
     if (id === "tool-assets") return t("canvas.nodeTypes.assets");
     if (id === "tool-extensions") return t("canvas.toolbar.extensions");

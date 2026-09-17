@@ -453,7 +453,7 @@ function InfiniteCanvasPage() {
     );
 
     const createConnectedNode = useCallback(
-        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio | CanvasNodeType.AudioGeneration | CanvasNodeType.SpeechGeneration | CanvasNodeType.MusicGeneration, pending: PendingConnectionCreate) => {
+        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio | CanvasNodeType.SpeechGeneration | CanvasNodeType.MusicGeneration, pending: PendingConnectionCreate) => {
             const metadata = type === CanvasNodeType.Config ? { model: effectiveConfig.imageModel || effectiveConfig.model, size: effectiveConfig.size, count: getGenerationCount(effectiveConfig.canvasImageCount || effectiveConfig.count) } : undefined;
             const newNode = createCanvasNode(type, pending.position, metadata);
             const connection = normalizeConnection(pending.connection.nodeId, newNode.id, [...nodesRef.current, newNode], pending.connection.handleType);
@@ -608,7 +608,7 @@ function InfiniteCanvasPage() {
     const configInputsById = useMemo(() => {
         const map = new Map<string, NodeGenerationInput[]>();
         nodes.forEach((node) => {
-            if (node.type !== CanvasNodeType.Config && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.AudioGeneration) return;
+            if (node.type !== CanvasNodeType.Config && node.type !== CanvasNodeType.ImageGeneration) return;
             map.set(node.id, buildNodeGenerationInputs(node.id, nodes, connections));
         });
         return map;
@@ -2065,7 +2065,7 @@ function InfiniteCanvasPage() {
                             isConnectionTarget={connectionTargetNodeId === node.id}
                             isConnecting={Boolean(connectingParams)}
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node) ? "disabled" : "available"}
-                            showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.AudioGeneration && node.type !== CanvasNodeType.SpeechGeneration && node.type !== CanvasNodeType.MusicGeneration && node.type !== CanvasNodeType.Prompt && node.type !== CanvasNodeType.AudioPrompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
+                            showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.SpeechGeneration && node.type !== CanvasNodeType.MusicGeneration && node.type !== CanvasNodeType.Prompt && node.type !== CanvasNodeType.AudioPrompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             isBoardDropTarget={dropTargetBoardId === node.id}
                             isAssetsDropTarget={dropTargetAssetsNodeId === node.id}
                             returnFrom={returningNodes.get(node.id)}
@@ -2182,11 +2182,11 @@ function InfiniteCanvasPage() {
                     canUndo={historyState.canUndo}
                     canRedo={historyState.canRedo}
                     onAddImageGeneration={() => createNode(CanvasNodeType.ImageGeneration)}
-                    onAddAudioGeneration={() => createNode(CanvasNodeType.AudioGeneration)}
+                    onAddMusicGeneration={() => createNode(CanvasNodeType.MusicGeneration)}
+                    onAddSpeechGeneration={() => createNode(CanvasNodeType.SpeechGeneration)}
                     onAddPrompt={() => createNode(CanvasNodeType.Prompt)}
                     onAddAudioPrompt={() => createNode(CanvasNodeType.AudioPrompt)}
                     onAddVideo={() => createNode(CanvasNodeType.Video)}
-                    onAddAudio={() => createNode(CanvasNodeType.Audio)}
                     onAddSmartCanvas={() => createNode(CanvasNodeType.SmartCanvas)}
                     onAddAssets={() => createNode(CanvasNodeType.Assets)}
                     onAddExtensionNode={(type) => createNode(type)}

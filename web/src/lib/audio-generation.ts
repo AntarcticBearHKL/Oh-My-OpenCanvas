@@ -14,19 +14,10 @@ export const audioVoiceOptions = [
     { value: "cedar", label: "Cedar" },
 ];
 
-export const openRouterAudioModels = [
-    { value: "openai/gpt-audio", label: "OpenAI: GPT Audio" },
-    { value: "openai/gpt-audio-mini", label: "OpenAI: GPT Audio Mini" },
-];
-
 export const openRouterMusicModels = [
     { value: "google/lyria-3-pro-preview", label: "Google: Lyria 3 Pro Preview" },
     { value: "google/lyria-3-clip-preview", label: "Google: Lyria 3 Clip Preview" },
 ];
-
-export function isOpenRouterAudioModel(value: string | undefined): value is string {
-    return openRouterAudioModels.some((model) => model.value === value);
-}
 
 export function isOpenRouterMusicModel(value: string | undefined): value is string {
     return openRouterMusicModels.some((model) => model.value === value);
@@ -36,18 +27,6 @@ export type SpeechModelOption = { value: string; label: string; voices?: { value
 
 export const openRouterSpeechModels: SpeechModelOption[] = [
     { value: "fish-audio/s2.1-pro", label: "Fish Audio: S2.1 Pro" },
-    { value: "fish-audio/s2-pro", label: "Fish Audio: S2 Pro" },
-    { value: "fish-audio/s2.1-pro-free:free", label: "Fish Audio: S2.1 Pro Free" },
-    {
-        value: "microsoft/mai-voice-2-flash",
-        label: "Microsoft AI: MAI-Voice-2-Flash",
-        voices: [
-            { value: "en-US-Harper:MAI-Voice-2", label: "Harper" },
-            { value: "es-MX-Valeria:MAI-Voice-2", label: "Valeria" },
-            { value: "fr-FR-Soleil:MAI-Voice-2", label: "Soleil" },
-            { value: "de-DE-Klaus:MAI-Voice-2", label: "Klaus" },
-        ],
-    },
 ];
 
 export function isOpenRouterSpeechModel(value: string | undefined): value is string {
