@@ -19,6 +19,7 @@ export function CanvasToolbar({
     scale,
     isMiniMapOpen,
     onAddImageGeneration,
+    onAddAudioGeneration,
     onAddPrompt,
     onAddVideo,
     onAddAudio,
@@ -42,6 +43,7 @@ export function CanvasToolbar({
     scale: number;
     isMiniMapOpen: boolean;
     onAddImageGeneration: () => void;
+    onAddAudioGeneration: () => void;
     onAddPrompt: () => void;
     onAddVideo: () => void;
     onAddAudio: () => void;
@@ -121,6 +123,9 @@ export function CanvasToolbar({
                 </ToolbarButton>
                 <ToolbarButton id="tool-image-generation" label={t("canvas.nodeTypes.imageGeneration")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddImageGeneration}>
                     <Sparkles className="size-4.5" />
+                </ToolbarButton>
+                <ToolbarButton id="tool-audio-generation" label={t("canvas.nodeTypes.audioGeneration")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddAudioGeneration}>
+                    <Music2 className="size-4.5" />
                 </ToolbarButton>
                 <ToolbarButton id="tool-smart-canvas" label={t("canvas.nodeTypes.smartCanvas")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddSmartCanvas}>
                     <LayoutDashboard className="size-4.5" />
@@ -380,6 +385,7 @@ function toolLabel(id: string, t: (key: string) => string) {
     if (id === "tool-undo") return t("canvas.undo");
     if (id === "tool-redo") return t("canvas.redo");
     if (id === "tool-image-generation") return t("canvas.nodeTypes.imageGeneration");
+    if (id === "tool-audio-generation") return t("canvas.nodeTypes.audioGeneration");
     if (id === "tool-prompt") return t("canvas.nodeTypes.prompt");
     if (id === "tool-video") return t("canvas.toolbar.video");
     if (id === "tool-audio") return t("canvas.toolbar.audio");

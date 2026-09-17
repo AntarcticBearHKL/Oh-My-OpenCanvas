@@ -2182,6 +2182,7 @@ function InfiniteCanvasPage() {
                     canUndo={historyState.canUndo}
                     canRedo={historyState.canRedo}
                     onAddImageGeneration={() => createNode(CanvasNodeType.ImageGeneration)}
+                    onAddAudioGeneration={() => createNode(CanvasNodeType.AudioGeneration)}
                     onAddPrompt={() => createNode(CanvasNodeType.Prompt)}
                     onAddVideo={() => createNode(CanvasNodeType.Video)}
                     onAddAudio={() => createNode(CanvasNodeType.Audio)}
