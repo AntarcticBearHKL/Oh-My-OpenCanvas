@@ -124,7 +124,7 @@ export function normalizeConnection(firstNodeId: string, secondNodeId: string, n
     const first = nodes.find((node) => node.id === firstNodeId);
     const second = nodes.find((node) => node.id === secondNodeId);
     if (!first || !second || first.id === second.id) return null;
-    const isGenerationSink = (type: CanvasNodeTypeId) => type === CanvasNodeType.Config || type === CanvasNodeType.ImageGeneration;
+    const isGenerationSink = (type: CanvasNodeTypeId) => type === CanvasNodeType.Config || type === CanvasNodeType.ImageGeneration || type === CanvasNodeType.AudioGeneration;
     if (isGenerationSink(first.type) && isGenerationSink(second.type)) return null;
     const toSecond = isGenerationSink(second.type) || !isGenerationSink(first.type) || firstHandleType === "source";
     if ((toSecond ? second : first).type === CanvasNodeType.Image) return null;

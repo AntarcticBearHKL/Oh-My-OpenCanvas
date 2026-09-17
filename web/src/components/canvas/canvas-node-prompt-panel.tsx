@@ -7,6 +7,7 @@ import { ModelPicker } from "@/components/model-picker";
 import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { frostedSurfaceClass } from "@/lib/canvas-theme";
+import { openRouterAudioModels } from "@/lib/audio-generation";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasPromptLibrary } from "./canvas-prompt-library";
 import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
@@ -115,7 +116,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         </>
                     ) : mode === "audio" ? (
                         <>
-                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="audio" onMissingConfig={() => openConfigDialog()} className="max-w-[190px]" />
+                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="audio" models={node.type === CanvasNodeType.AudioGeneration ? openRouterAudioModels : undefined} onMissingConfig={() => openConfigDialog()} className="max-w-[190px]" />
                             <CanvasAudioSettingsPopover config={config} buttonClassName="!h-10 !max-w-[170px] !justify-start !rounded-full !px-3" onConfigChange={(key, value) => onConfigChange(node.id, audioConfigPatch(key, value))} />
                         </>
                     ) : (
@@ -170,7 +171,7 @@ function defaultMode(type: CanvasNodeData["type"]): CanvasNodeGenerationMode {
 function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: CanvasNodeGenerationMode): AiConfig {
     return {
         ...globalConfig,
-        model: resolveModelForCapability(globalConfig, node.metadata?.model, mode),
+        model: node.type === CanvasNodeType.AudioGeneration ? node.metadata?.model || globalConfig.audioModel : resolveModelForCapability(globalConfig, node.metadata?.model, mode),
         reasoningEffort: node.metadata?.reasoningEffort || globalConfig.reasoningEffort || defaultConfig.reasoningEffort,
         quality: node.metadata?.quality || globalConfig.quality || defaultConfig.quality,
         size: node.metadata?.size || globalConfig.size || defaultConfig.size,

@@ -12,18 +12,20 @@ type ModelPickerProps = {
     value?: string;
     onChange: (model: string) => void;
     capability?: ModelCapability;
+    models?: { value: string; label: string }[];
     className?: string;
     fullWidth?: boolean;
     placeholder?: string;
     onMissingConfig?: () => void;
 };
 
-export function ModelPicker({ config, value, onChange, capability, className, fullWidth = false, placeholder, onMissingConfig }: ModelPickerProps) {
+export function ModelPicker({ config, value, onChange, capability, models, className, fullWidth = false, placeholder, onMissingConfig }: ModelPickerProps) {
     const { t } = useTranslation();
     const pickerId = useId();
     const [open, setOpen] = useState(false);
-    const options = useMemo(() => Array.from(new Set([...(config.channelMode === "local" && !capability ? [value] : []), ...selectableModelsByCapability(config, capability)].filter((model): model is string => Boolean(model)))), [capability, config, value]);
+    const options = useMemo(() => models?.map((item) => item.value) ?? Array.from(new Set([...(config.channelMode === "local" && !capability ? [value] : []), ...selectableModelsByCapability(config, capability)].filter((model): model is string => Boolean(model)))), [capability, config, models, value]);
     const current = value || "";
+    const optionLabel = (model: string) => models?.find((item) => item.value === model)?.label || modelOptionLabel(config, model);
     const pickerPlaceholder = placeholder || t("settingsPanels.model.select");
 
     useEffect(() => {
@@ -54,10 +56,10 @@ export function ModelPicker({ config, value, onChange, capability, className, fu
                 )}
                 onMouseDown={(event) => event.stopPropagation()}
                 onPointerDown={(event) => event.stopPropagation()}
-                title={current ? modelOptionLabel(config, current) : pickerPlaceholder}
+                title={current ? optionLabel(current) : pickerPlaceholder}
             >
                 <ModelIcon model={current} />
-                <span className="canvas-model-picker-text min-w-0 flex-1 truncate text-left">{current ? modelOptionLabel(config, current) : pickerPlaceholder}</span>
+                <span className="canvas-model-picker-text min-w-0 flex-1 truncate text-left">{current ? optionLabel(current) : pickerPlaceholder}</span>
             </SelectTrigger>
             <SelectContent
                 data-canvas-no-zoom
@@ -71,8 +73,8 @@ export function ModelPicker({ config, value, onChange, capability, className, fu
             >
                 {options.length ? (
                     options.map((model) => (
-                        <SelectItem key={model} value={model} textValue={modelOptionLabel(config, model)}>
-                            <ModelLabel config={config} model={model} />
+                        <SelectItem key={model} value={model} textValue={optionLabel(model)}>
+                            <ModelLabel config={config} model={model} label={optionLabel(model)} />
                         </SelectItem>
                     ))
                 ) : (
@@ -91,11 +93,11 @@ function emptyModelLabel(config: AiConfig, capability?: ModelCapability) {
     return config.models.length ? i18n.t("settingsPanels.model.noMatch", { capability: label }) : i18n.t("settingsPanels.model.addFirst");
 }
 
-function ModelLabel({ config, model }: { config: AiConfig; model: string }) {
+function ModelLabel({ config, model, label }: { config: AiConfig; model: string; label?: string }) {
     return (
         <span className="flex min-w-0 items-center gap-2">
             <ModelIcon model={model} />
-            <span className="truncate">{modelOptionLabel(config, model)}</span>
+            <span className="truncate">{label || modelOptionLabel(config, model)}</span>
         </span>
     );
 }

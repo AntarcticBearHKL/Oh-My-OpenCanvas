@@ -452,7 +452,7 @@ function InfiniteCanvasPage() {
     );
 
     const createConnectedNode = useCallback(
-        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio, pending: PendingConnectionCreate) => {
+        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio | CanvasNodeType.AudioGeneration, pending: PendingConnectionCreate) => {
             const metadata = type === CanvasNodeType.Config ? { model: effectiveConfig.imageModel || effectiveConfig.model, size: effectiveConfig.size, count: getGenerationCount(effectiveConfig.canvasImageCount || effectiveConfig.count) } : undefined;
             const newNode = createCanvasNode(type, pending.position, metadata);
             const connection = normalizeConnection(pending.connection.nodeId, newNode.id, [...nodesRef.current, newNode], pending.connection.handleType);
@@ -1946,6 +1946,25 @@ function InfiniteCanvasPage() {
             if (contentNode.type === CanvasNodeType.Prompt) return <PromptNodePanel node={contentNode} references={mentionReferencesByNodeId.get(contentNode.id) || EMPTY_REFERENCES} onContentChange={handleNodeContentChange} />;
             if (contentNode.type === CanvasNodeType.Assets)
                 return <AssetsNodeContent node={contentNode} onInsert={(file) => void insertFolderFile(file)} onOutputFolderBind={() => handleOutputFolderBind(contentNode.id)} onOutputFolderUnbind={() => handleOutputFolderUnbind(contentNode.id)} />;
+            if (contentNode.type === CanvasNodeType.AudioGeneration)
+                return (
+                    <div className="w-full">
+                        <CanvasNodePromptPanel
+                            node={contentNode}
+                            nodes={nodes}
+                            isRunning={runningNodeId === contentNode.id}
+                            mentionReferences={mentionReferencesByNodeId.get(contentNode.id) || EMPTY_REFERENCES}
+                            connectedNodes={connectedNodesByNodeId.get(contentNode.id) || []}
+                            onPromptChange={handleNodePromptChange}
+                            onConfigChange={handleConfigNodeChange}
+                            onGenerate={handleGenerateNode}
+                            onStop={confirmStopGeneration}
+                            onDisconnectReference={disconnectNodeReference}
+                            onStartReferenceSelection={startNodeReferenceSelection}
+                            modeOverride="audio"
+                        />
+                    </div>
+                );
             return (
             <CanvasConfigNodePanel
                 node={contentNode}
@@ -1963,7 +1982,7 @@ function InfiniteCanvasPage() {
             />
             );
         },
-        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleOutputFolderBind, handleOutputFolderUnbind, handleReplayNode, insertFolderFile, mentionReferencesByNodeId, runningNodeId],
+        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleNodePromptChange, handleOutputFolderBind, handleOutputFolderUnbind, handleReplayNode, insertFolderFile, mentionReferencesByNodeId, nodes, runningNodeId, startNodeReferenceSelection],
     );
 
     if (!projectLoaded && !loadedOnceRef.current) return <CanvasRefreshShell />;
@@ -2044,7 +2063,7 @@ function InfiniteCanvasPage() {
                             isConnectionTarget={connectionTargetNodeId === node.id}
                             isConnecting={Boolean(connectingParams)}
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node) ? "disabled" : "available"}
-                            showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.Prompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
+                            showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.AudioGeneration && node.type !== CanvasNodeType.Prompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             isBoardDropTarget={dropTargetBoardId === node.id}
                             isAssetsDropTarget={dropTargetAssetsNodeId === node.id}
                             returnFrom={returningNodes.get(node.id)}

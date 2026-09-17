@@ -14,6 +14,17 @@ export const audioVoiceOptions = [
     { value: "cedar", label: "Cedar" },
 ];
 
+export const openRouterAudioModels = [
+    { value: "google/lyria-3-pro-preview", label: "Google: Lyria 3 Pro Preview" },
+    { value: "google/lyria-3-clip-preview", label: "Google: Lyria 3 Clip Preview" },
+    { value: "openai/gpt-audio", label: "OpenAI: GPT Audio" },
+    { value: "openai/gpt-audio-mini", label: "OpenAI: GPT Audio Mini" },
+];
+
+export function isOpenRouterAudioModel(value: string | undefined): value is string {
+    return openRouterAudioModels.some((model) => model.value === value);
+}
+
 export const audioFormatOptions = [
     { value: "mp3", label: "MP3" },
     { value: "wav", label: "WAV" },

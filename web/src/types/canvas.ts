@@ -15,6 +15,7 @@ export enum CanvasNodeType {
     Prompt = "prompt",
     Config = "config",
     ImageGeneration = "image-generation",
+    AudioGeneration = "audio-generation",
     Video = "video",
     Audio = "audio",
     SmartCanvas = "smart-canvas",
