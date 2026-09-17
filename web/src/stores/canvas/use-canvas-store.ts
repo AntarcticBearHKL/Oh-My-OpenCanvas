@@ -98,7 +98,7 @@ export const useCanvasStore = create<CanvasStore>()(
                     activeChatId: null,
                     viewport: initialViewport,
                 };
-                set((state) => ({ projects: [project, ...state.projects] }));
+                set((state) => ({ projects: [...state.projects, project] }));
                 return id;
             },
             importProject: (source) => {
@@ -116,7 +116,7 @@ export const useCanvasStore = create<CanvasStore>()(
                     activeChatId: source.activeChatId || null,
                     viewport: source.viewport || initialViewport,
                 };
-                set((state) => ({ projects: [project, ...state.projects] }));
+                set((state) => ({ projects: [...state.projects, project] }));
                 return project.id;
             },
             openProject: (id) => {

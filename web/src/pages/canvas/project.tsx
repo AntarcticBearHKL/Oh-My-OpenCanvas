@@ -1922,24 +1922,26 @@ function InfiniteCanvasPage() {
                     />
                 </div>
             ) : (
-                <CanvasNodePromptPanel
-                    node={panelNode}
-                    nodes={nodes}
-                    isRunning={runningNodeId === panelNode.id}
-                    mentionReferences={mentionReferencesByNodeId.get(panelNode.id) || EMPTY_REFERENCES}
-                    connectedNodes={connectedNodesByNodeId.get(panelNode.id) || []}
-                    onPromptChange={handleNodePromptChange}
-                    onConfigChange={handleConfigNodeChange}
-                    onGenerate={handleGenerateNode}
-                    onStop={confirmStopGeneration}
-                    onDisconnectReference={disconnectNodeReference}
-                    onStartReferenceSelection={startNodeReferenceSelection}
-                    modeOverride={getNodeDefinition(panelNode.type)?.useBuiltinPanel?.mode}
-                    onImageSettingsOpenChange={(open) => {
-                        setNodeImageSettingsOpen(open);
-                        if (open) setToolbarNodeId(null);
-                    }}
-                />
+                <div data-canvas-no-zoom>
+                    <CanvasNodePromptPanel
+                        node={panelNode}
+                        nodes={nodes}
+                        isRunning={runningNodeId === panelNode.id}
+                        mentionReferences={mentionReferencesByNodeId.get(panelNode.id) || EMPTY_REFERENCES}
+                        connectedNodes={connectedNodesByNodeId.get(panelNode.id) || []}
+                        onPromptChange={handleNodePromptChange}
+                        onConfigChange={handleConfigNodeChange}
+                        onGenerate={handleGenerateNode}
+                        onStop={confirmStopGeneration}
+                        onDisconnectReference={disconnectNodeReference}
+                        onStartReferenceSelection={startNodeReferenceSelection}
+                        modeOverride={getNodeDefinition(panelNode.type)?.useBuiltinPanel?.mode}
+                        onImageSettingsOpenChange={(open) => {
+                            setNodeImageSettingsOpen(open);
+                            if (open) setToolbarNodeId(null);
+                        }}
+                    />
+                </div>
             ),
         [boardOrderedLayersById, configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleArrangeBoard, handleBoardLayerChange, handleComposeBoard, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleNodePromptChange, handleSmartCanvasChange, mentionReferencesByNodeId, nodes, renderPluginPanel, runningNodeId, startNodeReferenceSelection, t, theme.node.text, toggleNodeFlag],
     );

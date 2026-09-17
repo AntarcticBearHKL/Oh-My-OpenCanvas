@@ -1,6 +1,6 @@
 import { Fragment, useMemo, useRef, useState } from "react";
 import { Input } from "antd";
-import { Folder, Search } from "lucide-react";
+import { Folder, Plus, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -15,6 +15,7 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
     const projects = useCanvasStore((state) => state.projects);
     const groups = useCanvasStore((state) => state.groups);
     const reorderProjects = useCanvasStore((state) => state.reorderProjects);
+    const createProject = useCanvasStore((state) => state.createProject);
     const [keyword, setKeyword] = useState("");
     const [dragId, setDragId] = useState<string | null>(null);
     const [dropIndex, setDropIndex] = useState<number | null>(null);
@@ -46,7 +47,17 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
     return (
         <div className="flex h-full min-h-0 flex-col gap-2 px-3 pb-3">
             <div className="flex items-center gap-1.5">
-                <Input size="small" allowClear prefix={<Search className="size-3.5 opacity-60" />} placeholder={t("canvas.switcher.search")} value={keyword} onChange={(event) => setKeyword(event.target.value)} />
+                <Input size="small" className="min-w-0 flex-1" allowClear prefix={<Search className="size-3.5 opacity-60" />} placeholder={t("canvas.switcher.search")} value={keyword} onChange={(event) => setKeyword(event.target.value)} />
+                <button
+                    type="button"
+                    className="grid size-6 shrink-0 place-items-center rounded-md opacity-55 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
+                    style={{ color: theme.node.text }}
+                    title={t("canvas.switcher.new")}
+                    aria-label={t("canvas.switcher.new")}
+                    onClick={() => navigate(`/canvas/${createProject(undefined, groupId)}`)}
+                >
+                    <Plus className="size-3.5" />
+                </button>
             </div>
             {groupName ? (
                 <div className="mt-1 flex items-center gap-1.5 border-t px-2 pt-2.5" style={{ borderColor: theme.toolbar.border }}>
