@@ -7,7 +7,7 @@ import { ModelPicker } from "@/components/model-picker";
 import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { frostedSurfaceClass } from "@/lib/canvas-theme";
-import { openRouterAudioModels, openRouterMusicModels } from "@/lib/audio-generation";
+import { openRouterAudioModels, openRouterMusicModels, openRouterSpeechModels } from "@/lib/audio-generation";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasPromptLibrary } from "./canvas-prompt-library";
 import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
@@ -46,7 +46,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
     const hasTextContent = node.type === CanvasNodeType.Text && Boolean(node.metadata?.content?.trim());
     const hasImageContent = node.type === CanvasNodeType.Image && Boolean(node.metadata?.content);
     const isEditingExistingContent = hasTextContent || hasImageContent;
-    const promptPlaceholderKey = node.type === CanvasNodeType.MusicGeneration ? "music" : mode === "image" && hasImageContent ? "editImage" : mode === "text" && hasTextContent ? "editText" : mode;
+    const promptPlaceholderKey = node.type === CanvasNodeType.MusicGeneration ? "music" : node.type === CanvasNodeType.SpeechGeneration ? "speech" : mode === "image" && hasImageContent ? "editImage" : mode === "text" && hasTextContent ? "editText" : mode;
     const [prompt, setPrompt] = useState(node.metadata?.composerContent ?? node.metadata?.prompt ?? "");
     const [expanded, setExpanded] = useState(false);
 
@@ -117,7 +117,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         </>
                     ) : mode === "audio" ? (
                         <>
-                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="audio" models={node.type === CanvasNodeType.AudioGeneration ? openRouterAudioModels : node.type === CanvasNodeType.MusicGeneration ? openRouterMusicModels : undefined} onMissingConfig={() => openConfigDialog()} className="max-w-[190px]" />
+                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="audio" models={node.type === CanvasNodeType.AudioGeneration ? openRouterAudioModels : node.type === CanvasNodeType.SpeechGeneration ? openRouterSpeechModels : node.type === CanvasNodeType.MusicGeneration ? openRouterMusicModels : undefined} onMissingConfig={() => openConfigDialog()} className="max-w-[190px]" />
                             <CanvasAudioSettingsPopover config={config} variant={node.type === CanvasNodeType.MusicGeneration ? "music" : "speech"} buttonClassName="!h-10 !max-w-[170px] !justify-start !rounded-full !px-3" onConfigChange={(key, value) => onConfigChange(node.id, audioConfigPatch(key, value))} />
                         </>
                     ) : (
@@ -172,7 +172,7 @@ function defaultMode(type: CanvasNodeData["type"]): CanvasNodeGenerationMode {
 function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: CanvasNodeGenerationMode): AiConfig {
     return {
         ...globalConfig,
-        model: node.type === CanvasNodeType.AudioGeneration ? node.metadata?.model || globalConfig.audioModel : node.type === CanvasNodeType.MusicGeneration ? node.metadata?.model || openRouterMusicModels[0].value : resolveModelForCapability(globalConfig, node.metadata?.model, mode),
+        model: node.type === CanvasNodeType.AudioGeneration ? node.metadata?.model || globalConfig.audioModel : node.type === CanvasNodeType.SpeechGeneration ? node.metadata?.model || openRouterSpeechModels[0].value : node.type === CanvasNodeType.MusicGeneration ? node.metadata?.model || openRouterMusicModels[0].value : resolveModelForCapability(globalConfig, node.metadata?.model, mode),
         reasoningEffort: node.metadata?.reasoningEffort || globalConfig.reasoningEffort || defaultConfig.reasoningEffort,
         quality: node.metadata?.quality || globalConfig.quality || defaultConfig.quality,
         size: node.metadata?.size || globalConfig.size || defaultConfig.size,

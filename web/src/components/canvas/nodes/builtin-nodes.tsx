@@ -1,4 +1,4 @@
-import { AudioLines, FileText, FolderInput, Image as ImageIcon, LayoutDashboard, MessageSquareText, Music2, Settings2, Sparkles, Video } from "lucide-react";
+import { AudioLines, FileText, FolderInput, Image as ImageIcon, LayoutDashboard, MessageSquareText, Mic, Music2, Settings2, Sparkles, Video } from "lucide-react";
 
 import i18n from "@/i18n";
 
@@ -29,6 +29,7 @@ const BUILTIN_DEFINITIONS: CanvasNodeDefinition[] = [
     { type: CanvasNodeType.Config, title: i18n.t("canvas.configNode.title"), icon: <Settings2 className={iconClass} />, minimapColor: "#60a5fa", hasSourceHandle: false },
     { type: CanvasNodeType.ImageGeneration, title: i18n.t("canvas.nodeTypes.imageGeneration"), icon: <Sparkles className={iconClass} />, minimapColor: "#f472b6", hasSourceHandle: false, useBuiltinPanel: { mode: "image" } as const, keepAspectRatio: () => true },
     { type: CanvasNodeType.AudioGeneration, title: i18n.t("canvas.nodeTypes.audioGeneration"), icon: <Music2 className={iconClass} />, minimapColor: "#a855f7", hasSourceHandle: false, useBuiltinPanel: { mode: "audio" } as const },
+    { type: CanvasNodeType.SpeechGeneration, title: i18n.t("canvas.nodeTypes.speechGeneration"), icon: <Mic className={iconClass} />, minimapColor: "#0ea5e9", hasSourceHandle: false, useBuiltinPanel: { mode: "audio" } as const },
     { type: CanvasNodeType.MusicGeneration, title: i18n.t("canvas.nodeTypes.musicGeneration"), icon: <AudioLines className={iconClass} />, minimapColor: "#c026d3", hasSourceHandle: false, useBuiltinPanel: { mode: "audio" } as const },
     { type: CanvasNodeType.SmartCanvas, title: i18n.t("canvas.nodeTypes.smartCanvas"), icon: <LayoutDashboard className={iconClass} />, minimapColor: "#14b8a6", keepAspectRatio: () => true },
     { type: CanvasNodeType.Assets, title: i18n.t("canvas.nodeTypes.assets"), icon: <FolderInput className={iconClass} />, minimapColor: "#64748b", hasSourceHandle: false, hidePanel: true },

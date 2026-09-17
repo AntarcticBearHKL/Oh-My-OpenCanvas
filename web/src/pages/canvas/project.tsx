@@ -453,7 +453,7 @@ function InfiniteCanvasPage() {
     );
 
     const createConnectedNode = useCallback(
-        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio | CanvasNodeType.AudioGeneration | CanvasNodeType.MusicGeneration, pending: PendingConnectionCreate) => {
+        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio | CanvasNodeType.AudioGeneration | CanvasNodeType.SpeechGeneration | CanvasNodeType.MusicGeneration, pending: PendingConnectionCreate) => {
             const metadata = type === CanvasNodeType.Config ? { model: effectiveConfig.imageModel || effectiveConfig.model, size: effectiveConfig.size, count: getGenerationCount(effectiveConfig.canvasImageCount || effectiveConfig.count) } : undefined;
             const newNode = createCanvasNode(type, pending.position, metadata);
             const connection = normalizeConnection(pending.connection.nodeId, newNode.id, [...nodesRef.current, newNode], pending.connection.handleType);
@@ -1949,7 +1949,7 @@ function InfiniteCanvasPage() {
             if (contentNode.type === CanvasNodeType.Prompt) return <PromptNodePanel node={contentNode} references={mentionReferencesByNodeId.get(contentNode.id) || EMPTY_REFERENCES} onContentChange={handleNodeContentChange} />;
             if (contentNode.type === CanvasNodeType.Assets)
                 return <AssetsNodeContent node={contentNode} onInsert={(file) => void insertFolderFile(file)} onOutputFolderBind={() => handleOutputFolderBind(contentNode.id)} onOutputFolderUnbind={() => handleOutputFolderUnbind(contentNode.id)} />;
-            if (contentNode.type === CanvasNodeType.AudioGeneration || contentNode.type === CanvasNodeType.MusicGeneration)
+            if (contentNode.type === CanvasNodeType.AudioGeneration || contentNode.type === CanvasNodeType.SpeechGeneration || contentNode.type === CanvasNodeType.MusicGeneration)
                 return (
                     <div className="w-full">
                         <CanvasNodePromptPanel
@@ -2065,7 +2065,7 @@ function InfiniteCanvasPage() {
                             isConnectionTarget={connectionTargetNodeId === node.id}
                             isConnecting={Boolean(connectingParams)}
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node) ? "disabled" : "available"}
-                            showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.AudioGeneration && node.type !== CanvasNodeType.MusicGeneration && node.type !== CanvasNodeType.Prompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
+                            showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.AudioGeneration && node.type !== CanvasNodeType.SpeechGeneration && node.type !== CanvasNodeType.MusicGeneration && node.type !== CanvasNodeType.Prompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             isBoardDropTarget={dropTargetBoardId === node.id}
                             isAssetsDropTarget={dropTargetAssetsNodeId === node.id}
                             returnFrom={returningNodes.get(node.id)}

@@ -32,6 +32,50 @@ export function isOpenRouterMusicModel(value: string | undefined): value is stri
     return openRouterMusicModels.some((model) => model.value === value);
 }
 
+export type SpeechModelOption = { value: string; label: string; voices?: { value: string; label: string }[] };
+
+export const openRouterSpeechModels: SpeechModelOption[] = [
+    { value: "fish-audio/s2.1-pro", label: "Fish Audio: S2.1 Pro" },
+    { value: "fish-audio/s2-pro", label: "Fish Audio: S2 Pro" },
+    { value: "fish-audio/s2.1-pro-free:free", label: "Fish Audio: S2.1 Pro Free" },
+    {
+        value: "microsoft/mai-voice-2-flash",
+        label: "Microsoft AI: MAI-Voice-2-Flash",
+        voices: [
+            { value: "en-US-Harper:MAI-Voice-2", label: "Harper" },
+            { value: "es-MX-Valeria:MAI-Voice-2", label: "Valeria" },
+            { value: "fr-FR-Soleil:MAI-Voice-2", label: "Soleil" },
+            { value: "de-DE-Klaus:MAI-Voice-2", label: "Klaus" },
+        ],
+    },
+];
+
+export function isOpenRouterSpeechModel(value: string | undefined): value is string {
+    return openRouterSpeechModels.some((model) => model.value === value);
+}
+
+export function speechModelOf(value: string | undefined) {
+    return openRouterSpeechModels.find((model) => model.value === value);
+}
+
+export function speechVoiceOptions(model: string | undefined) {
+    return speechModelOf(model)?.voices || [];
+}
+
+export function speechVoiceLabel(model: string | undefined, value: string) {
+    const voices = speechVoiceOptions(model);
+    return voices.find((item) => item.value === value)?.label || voices[0]?.label || value;
+}
+
+export const speechFormatOptions = [
+    { value: "mp3", label: "MP3" },
+    { value: "pcm", label: "PCM" },
+];
+
+export function speechAudioFormat(value: string) {
+    return normalizeAudioFormatValue(value) === "pcm" ? "pcm" : "mp3";
+}
+
 export const audioFormatOptions = [
     { value: "mp3", label: "MP3" },
     { value: "wav", label: "WAV" },

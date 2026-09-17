@@ -2,7 +2,7 @@ import { type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { ImageSettingsTheme } from "@/components/image-settings-panel";
-import { audioFormatOptions, audioSpeedLabel, audioVoiceOptions, musicFormatOptions, normalizeAudioFormatValue, normalizeAudioSpeedValue, normalizeAudioVoiceValue } from "@/lib/audio-generation";
+import { audioFormatOptions, audioSpeedLabel, audioVoiceOptions, musicFormatOptions, normalizeAudioFormatValue, normalizeAudioSpeedValue, speechAudioFormat, speechFormatOptions, speechModelOf, speechVoiceOptions } from "@/lib/audio-generation";
 import { type CanvasTheme } from "@/lib/canvas-theme";
 import type { AiConfig } from "@/stores/use-config-store";
 
@@ -22,18 +22,21 @@ type AudioSettingsPanelProps = {
 export function AudioSettingsPanel({ config, onConfigChange, theme, showTitle = true, className = "w-[320px] space-y-4 rounded-2xl px-1 py-0.5", variant = "speech" }: AudioSettingsPanelProps) {
     const { t } = useTranslation();
     const isMusic = variant === "music";
-    const voice = normalizeAudioVoiceValue(config.audioVoice);
-    const format = normalizeAudioFormatValue(config.audioFormat);
+    const speechModel = speechModelOf(config.model);
+    const voiceOptions = speechModel ? speechVoiceOptions(config.model) : audioVoiceOptions;
+    const voice = voiceOptions.some((item) => item.value === config.audioVoice) ? config.audioVoice : voiceOptions[0]?.value || "";
+    const format = speechModel ? speechAudioFormat(config.audioFormat) : normalizeAudioFormatValue(config.audioFormat);
+    const formatOptions = speechModel ? speechFormatOptions : audioFormatOptions;
     const speed = normalizeAudioSpeedValue(config.audioSpeed);
 
     return (
         <ImageSettingsTheme theme={theme}>
             <div className={className} style={{ color: theme.node.text }} onMouseDown={(event) => event.stopPropagation()}>
                 {showTitle && !isMusic ? <div className="text-lg font-semibold">{t("settingsPanels.audio.title")}</div> : null}
-                {isMusic ? null : (
+                {isMusic || !voiceOptions.length ? null : (
                     <SettingGroup title={t("settingsPanels.audio.voice")} color={theme.node.muted}>
                         <div className="grid grid-cols-3 gap-2.5">
-                            {audioVoiceOptions.map((item) => (
+                            {voiceOptions.map((item) => (
                                 <OptionPill key={item.value} selected={voice === item.value} theme={theme} onClick={() => onConfigChange("audioVoice", item.value)}>
                                     {item.label}
                                 </OptionPill>
@@ -43,7 +46,7 @@ export function AudioSettingsPanel({ config, onConfigChange, theme, showTitle = 
                 )}
                 <SettingGroup title={t("settingsPanels.audio.format")} color={theme.node.muted}>
                     <div className="grid grid-cols-3 gap-2.5">
-                        {(isMusic ? musicFormatOptions : audioFormatOptions).map((item) => (
+                        {(isMusic ? musicFormatOptions : formatOptions).map((item) => (
                             <OptionPill key={item.value} selected={format === item.value} theme={theme} onClick={() => onConfigChange("audioFormat", item.value)}>
                                 {item.label}
                             </OptionPill>
@@ -73,16 +76,18 @@ export function AudioSettingsPanel({ config, onConfigChange, theme, showTitle = 
                                 onMouseDown={(event) => event.stopPropagation()}
                             />
                         </SettingGroup>
-                        <SettingGroup title={t("settingsPanels.audio.instructions")} color={theme.node.muted}>
-                            <textarea
-                                value={config.audioInstructions || ""}
-                                placeholder={t("settingsPanels.audio.instructionsPlaceholder")}
-                                className="thin-scrollbar h-20 w-full resize-none rounded-xl border bg-transparent px-3 py-2 text-sm leading-5 outline-none"
-                                style={{ borderColor: theme.node.stroke, color: theme.node.text }}
-                                onChange={(event) => onConfigChange("audioInstructions", event.target.value)}
-                                onMouseDown={(event) => event.stopPropagation()}
-                            />
-                        </SettingGroup>
+                        {speechModel ? null : (
+                            <SettingGroup title={t("settingsPanels.audio.instructions")} color={theme.node.muted}>
+                                <textarea
+                                    value={config.audioInstructions || ""}
+                                    placeholder={t("settingsPanels.audio.instructionsPlaceholder")}
+                                    className="thin-scrollbar h-20 w-full resize-none rounded-xl border bg-transparent px-3 py-2 text-sm leading-5 outline-none"
+                                    style={{ borderColor: theme.node.stroke, color: theme.node.text }}
+                                    onChange={(event) => onConfigChange("audioInstructions", event.target.value)}
+                                    onMouseDown={(event) => event.stopPropagation()}
+                                />
+                            </SettingGroup>
+                        )}
                     </>
                 )}
             </div>

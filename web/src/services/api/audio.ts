@@ -1,7 +1,7 @@
 import axios from "axios";
 
 import i18n from "@/i18n";
-import { audioMimeType, isOpenRouterMusicModel, musicAudioFormat, normalizeAudioFormatValue, normalizeAudioSpeedValue, normalizeAudioVoiceValue } from "@/lib/audio-generation";
+import { audioMimeType, isOpenRouterMusicModel, musicAudioFormat, normalizeAudioFormatValue, normalizeAudioSpeedValue, normalizeAudioVoiceValue, speechAudioFormat, speechModelOf, speechVoiceOptions } from "@/lib/audio-generation";
 import { uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { buildApiUrl, resolveModelRequestConfig, resolveModelScript, type AiConfig } from "@/stores/use-config-store";
 import { runModelPlugin } from "./model-plugin";
@@ -52,6 +52,10 @@ export async function requestAudioGeneration(config: AiConfig, prompt: string, o
         }
     }
     const instructions = config.audioInstructions.trim();
+    const speechModel = speechModelOf(model);
+    const speechVoices = speechVoiceOptions(model);
+    const voice = speechModel ? speechVoices.find((item) => item.value === config.audioVoice)?.value || speechVoices[0]?.value : normalizeAudioVoiceValue(config.audioVoice);
+    const responseFormat = speechModel ? speechAudioFormat(format) : format;
 
     try {
         const response = await axios.post<Blob>(
@@ -59,15 +63,15 @@ export async function requestAudioGeneration(config: AiConfig, prompt: string, o
             {
                 model,
                 input: prompt,
-                voice: normalizeAudioVoiceValue(config.audioVoice),
-                response_format: format,
+                response_format: responseFormat,
                 speed: Number(normalizeAudioSpeedValue(config.audioSpeed)),
-                ...(instructions ? { instructions } : {}),
+                ...(voice ? { voice } : {}),
+                ...(!speechModel && instructions ? { instructions } : {}),
             },
             { headers: aiHeaders(requestConfig), responseType: "blob", signal: options?.signal },
         );
         await assertAudioBlob(response.data);
-        return response.data.type.startsWith("audio/") ? response.data : new Blob([response.data], { type: audioMimeType(format) });
+        return response.data.type.startsWith("audio/") ? response.data : new Blob([response.data], { type: audioMimeType(responseFormat) });
     } catch (error) {
         throw new Error(readAxiosError(error, apiText("audioGenerationFailed")));
     }

@@ -16,6 +16,7 @@ export enum CanvasNodeType {
     Config = "config",
     ImageGeneration = "image-generation",
     AudioGeneration = "audio-generation",
+    SpeechGeneration = "speech-generation",
     MusicGeneration = "music-generation",
     Video = "video",
     Audio = "audio",
