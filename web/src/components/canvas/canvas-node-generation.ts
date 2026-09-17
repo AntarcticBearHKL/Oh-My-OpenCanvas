@@ -52,6 +52,20 @@ export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData
             audioCount: referenceAudios.length,
         };
     }
+    if (sourceNode?.type === CanvasNodeType.AudioGeneration) {
+        const promptNode = connectedPromptNode(sourceNode.id, nodes, connections, [CanvasNodeType.Prompt, CanvasNodeType.AudioPrompt]);
+        const promptText = promptNode?.metadata?.prompt?.trim() || "";
+        return {
+            prompt: [prompt, promptText].filter(Boolean).join("\n\n"),
+            referenceImages: [],
+            referenceVideos: [],
+            referenceAudios: [],
+            textCount: promptNode ? 1 : 0,
+            imageCount: 0,
+            videoCount: 0,
+            audioCount: 0,
+        };
+    }
     const inputs = buildNodeGenerationInputs(nodeId, nodes, connections);
     if (sourceNode?.type === CanvasNodeType.Config && Boolean(sourceNode.metadata?.composerContent?.trim())) {
         return buildComposerGenerationContext(inputs, prompt);
@@ -147,11 +161,11 @@ export function buildNodeGenerationInputs(nodeId: string, nodes: CanvasNodeData[
     return getGenerationResourceNodes(nodeId, nodes, connections).flatMap(readNodeGenerationResource);
 }
 
-function connectedPromptNode(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[]) {
+function connectedPromptNode(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[], types: CanvasNodeType[] = [CanvasNodeType.Prompt]) {
     return connections
         .filter((connection) => connection.toNodeId === nodeId)
         .map((connection) => nodes.find((item) => item.id === connection.fromNodeId))
-        .find((item): item is CanvasNodeData => item?.type === CanvasNodeType.Prompt);
+        .find((item): item is CanvasNodeData => Boolean(item && types.includes(item.type as CanvasNodeType)));
 }
 
 function flattenGenerationInputs(inputs: NodeGenerationInput[]) {

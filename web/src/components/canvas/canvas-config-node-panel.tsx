@@ -6,6 +6,7 @@ import { ImageSettingsPanel } from "@/components/image-settings-panel";
 import { ModelPicker } from "@/components/model-picker";
 import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveConfig, type AiConfig } from "@/stores/use-config-store";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
+import { openRouterAudioModels } from "@/lib/audio-generation";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
@@ -31,8 +32,9 @@ export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, in
     const globalConfig = useEffectiveConfig();
     const openConfigDialog = useConfigStore((state) => state.openConfigDialog);
     const theme = useCanvasTheme();
-    const mode = node.metadata?.generationMode || "image";
     const isImageGenerationNode = node.type === CanvasNodeType.ImageGeneration;
+    const isAudioGenerationNode = node.type === CanvasNodeType.AudioGeneration;
+    const mode = isAudioGenerationNode ? "audio" : node.metadata?.generationMode || "image";
     const config = buildNodeConfig(globalConfig, node, mode);
     const hasAnyInput = Boolean(inputSummary.textCount || inputSummary.imageCount || inputSummary.videoCount || inputSummary.audioCount);
     const hasComposerContent = Boolean((node.metadata?.composerContent ?? node.metadata?.prompt ?? "").trim());
@@ -54,7 +56,7 @@ export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, in
                 className={scaledLayout ? "absolute left-1/2 top-1/2 flex flex-col justify-center px-3 pb-5 pt-5 text-sm" : "contents"}
                 style={scaledLayout ? { width: IMAGE_GEN_DESIGN_WIDTH, height: IMAGE_GEN_DESIGN_HEIGHT, transform: `translate(-50%, -50%) scale(${layoutScale})`, color: theme.node.text } : undefined}
             >
-                {isImageGenerationNode ? null : (
+                {isImageGenerationNode || isAudioGenerationNode ? null : (
                     <div className="mb-2 flex items-center justify-between gap-3">
                         <div className="shrink-0 text-sm font-semibold">{t("canvas.configNode.title")}</div>
                         <div className="cursor-default" onMouseDown={(event) => event.stopPropagation()}>
@@ -117,6 +119,7 @@ export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, in
                         value={config.model}
                         onChange={(model) => onConfigChange(node.id, { model })}
                         capability={mode}
+                        models={isAudioGenerationNode ? openRouterAudioModels : undefined}
                         onMissingConfig={() => openConfigDialog()}
                         fullWidth
                     />
@@ -153,7 +156,7 @@ export function CanvasConfigNodePanel({ node, isRunning, hasPromptConnection, in
                 ) : null}
 
                 <div className="flex shrink-0 flex-col gap-2 pt-2">
-                    {isImageGenerationNode ? null : (
+                    {isImageGenerationNode || isAudioGenerationNode ? null : (
                         <div className="flex min-w-0 flex-wrap items-center gap-1" onMouseDown={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
                             <button type="button" className={flatButtonClass} style={{ color: theme.node.text }} onClick={onComposerToggle}>
                                 <Settings2 className="size-3.5" />

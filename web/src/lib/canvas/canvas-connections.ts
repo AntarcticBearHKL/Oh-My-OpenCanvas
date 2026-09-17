@@ -8,6 +8,7 @@ const SOURCE_RELATIONS: Record<string, string> = {
     [CanvasNodeType.SmartCanvas]: "composite",
     [CanvasNodeType.Text]: "prompt",
     [CanvasNodeType.Prompt]: "prompt",
+    [CanvasNodeType.AudioPrompt]: "prompt",
     [CanvasNodeType.Video]: "video-reference",
     [CanvasNodeType.Audio]: "audio-reference",
     [CanvasNodeType.Image]: "reference",

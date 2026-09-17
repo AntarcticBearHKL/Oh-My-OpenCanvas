@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
-import { Compass, Focus, FolderInput, Hand, HelpCircle, LayoutDashboard, ListTree, MessageSquareText, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
+import { AlignLeft, Compass, Focus, FolderInput, Hand, HelpCircle, LayoutDashboard, ListTree, MessageSquareText, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -21,6 +21,7 @@ export function CanvasToolbar({
     onAddImageGeneration,
     onAddAudioGeneration,
     onAddPrompt,
+    onAddAudioPrompt,
     onAddVideo,
     onAddAudio,
     onAddSmartCanvas,
@@ -45,6 +46,7 @@ export function CanvasToolbar({
     onAddImageGeneration: () => void;
     onAddAudioGeneration: () => void;
     onAddPrompt: () => void;
+    onAddAudioPrompt: () => void;
     onAddVideo: () => void;
     onAddAudio: () => void;
     onAddSmartCanvas: () => void;
@@ -120,6 +122,9 @@ export function CanvasToolbar({
                 </ToolbarButton>
                 <ToolbarButton id="tool-prompt" label={t("canvas.nodeTypes.prompt")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddPrompt}>
                     <MessageSquareText className="size-4.5" />
+                </ToolbarButton>
+                <ToolbarButton id="tool-audio-prompt" label={t("canvas.nodeTypes.audioPrompt")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddAudioPrompt}>
+                    <AlignLeft className="size-4.5" />
                 </ToolbarButton>
                 <ToolbarButton id="tool-image-generation" label={t("canvas.nodeTypes.imageGeneration")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={onAddImageGeneration}>
                     <Sparkles className="size-4.5" />
@@ -387,6 +392,7 @@ function toolLabel(id: string, t: (key: string) => string) {
     if (id === "tool-image-generation") return t("canvas.nodeTypes.imageGeneration");
     if (id === "tool-audio-generation") return t("canvas.nodeTypes.audioGeneration");
     if (id === "tool-prompt") return t("canvas.nodeTypes.prompt");
+    if (id === "tool-audio-prompt") return t("canvas.nodeTypes.audioPrompt");
     if (id === "tool-video") return t("canvas.toolbar.video");
     if (id === "tool-audio") return t("canvas.toolbar.audio");
     if (id === "tool-smart-canvas") return t("canvas.nodeTypes.smartCanvas");

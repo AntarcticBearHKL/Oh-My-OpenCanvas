@@ -608,7 +608,7 @@ function InfiniteCanvasPage() {
     const configInputsById = useMemo(() => {
         const map = new Map<string, NodeGenerationInput[]>();
         nodes.forEach((node) => {
-            if (node.type !== CanvasNodeType.Config && node.type !== CanvasNodeType.ImageGeneration) return;
+            if (node.type !== CanvasNodeType.Config && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.AudioGeneration) return;
             map.set(node.id, buildNodeGenerationInputs(node.id, nodes, connections));
         });
         return map;
@@ -1239,7 +1239,7 @@ function InfiniteCanvasPage() {
         setNodes((prev) =>
             prev.map((node) => {
                 if (node.id !== nodeId) return node;
-                if (node.type === CanvasNodeType.Prompt) return { ...node, metadata: { ...node.metadata, prompt: content } };
+                if (node.type === CanvasNodeType.Prompt || node.type === CanvasNodeType.AudioPrompt) return { ...node, metadata: { ...node.metadata, prompt: content } };
                 return { ...node, metadata: { ...node.metadata, content, texts: node.metadata?.texts?.map((text) => (text.id === node.metadata?.primaryTextId ? { ...text, content } : text)) } };
             }),
         );
@@ -1949,7 +1949,7 @@ function InfiniteCanvasPage() {
             if (contentNode.type === CanvasNodeType.Prompt) return <PromptNodePanel node={contentNode} references={mentionReferencesByNodeId.get(contentNode.id) || EMPTY_REFERENCES} onContentChange={handleNodeContentChange} />;
             if (contentNode.type === CanvasNodeType.Assets)
                 return <AssetsNodeContent node={contentNode} onInsert={(file) => void insertFolderFile(file)} onOutputFolderBind={() => handleOutputFolderBind(contentNode.id)} onOutputFolderUnbind={() => handleOutputFolderUnbind(contentNode.id)} />;
-            if (contentNode.type === CanvasNodeType.AudioGeneration || contentNode.type === CanvasNodeType.SpeechGeneration || contentNode.type === CanvasNodeType.MusicGeneration)
+            if (contentNode.type === CanvasNodeType.SpeechGeneration || contentNode.type === CanvasNodeType.MusicGeneration)
                 return (
                     <div className="w-full">
                         <CanvasNodePromptPanel
@@ -2065,7 +2065,7 @@ function InfiniteCanvasPage() {
                             isConnectionTarget={connectionTargetNodeId === node.id}
                             isConnecting={Boolean(connectingParams)}
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node) ? "disabled" : "available"}
-                            showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.AudioGeneration && node.type !== CanvasNodeType.SpeechGeneration && node.type !== CanvasNodeType.MusicGeneration && node.type !== CanvasNodeType.Prompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
+                            showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.AudioGeneration && node.type !== CanvasNodeType.SpeechGeneration && node.type !== CanvasNodeType.MusicGeneration && node.type !== CanvasNodeType.Prompt && node.type !== CanvasNodeType.AudioPrompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             isBoardDropTarget={dropTargetBoardId === node.id}
                             isAssetsDropTarget={dropTargetAssetsNodeId === node.id}
                             returnFrom={returningNodes.get(node.id)}
@@ -2184,6 +2184,7 @@ function InfiniteCanvasPage() {
                     onAddImageGeneration={() => createNode(CanvasNodeType.ImageGeneration)}
                     onAddAudioGeneration={() => createNode(CanvasNodeType.AudioGeneration)}
                     onAddPrompt={() => createNode(CanvasNodeType.Prompt)}
+                    onAddAudioPrompt={() => createNode(CanvasNodeType.AudioPrompt)}
                     onAddVideo={() => createNode(CanvasNodeType.Video)}
                     onAddAudio={() => createNode(CanvasNodeType.Audio)}
                     onAddSmartCanvas={() => createNode(CanvasNodeType.SmartCanvas)}

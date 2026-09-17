@@ -164,7 +164,7 @@ export default {
         miniMapOpen: "打开小地图",
         miniMapClose: "关闭小地图",
         resetView: "重置视图",
-        nodeTypes: { image: "图片", text: "文本", prompt: "提示词", config: "生成配置", imageGeneration: "图片生成", audioGeneration: "音频生成", speechGeneration: "语音生成", musicGeneration: "音乐生成", video: "视频", audio: "音频", smartCanvas: "智能画布", assets: "资源" },
+        nodeTypes: { image: "图片", text: "文本", prompt: "提示词", audioPrompt: "音频提示词", config: "生成配置", imageGeneration: "图片生成", audioGeneration: "音频生成", speechGeneration: "语音生成", musicGeneration: "音乐生成", video: "视频", audio: "音频", smartCanvas: "智能画布", assets: "资源" },
         relations: { reference: "参考图", referenceNumbered: "参考图 {{index}}", "video-reference": "参考视频", "audio-reference": "参考音频", prompt: "提示词", composite: "合成图", generation: "生成结果", crop: "裁剪结果", split: "切图结果", upscale: "放大结果", "ai-upscale": "AI 提升结果", mask: "局部编辑结果", "background-removal": "抠图结果", frame: "视频截帧", linked: "关联" },
         toolbar: {
             select: "选择", pan: "移动", text: "文本", video: "视频", audio: "音频", config: "生成配置", extensions: "扩展节点", upload: "上传资产", zoom: "缩放",
@@ -183,7 +183,7 @@ export default {
             node: "节点",
             untitled: "未命名节点", renameHint: "双击修改节点名称", generating: "生成中", failed: "生成失败", retry: "重试", missingPlugin: "缺少插件", missingPluginDescription: "节点类型“{{type}}”的插件未安装或未启用", generateImage: "用文本生图", generate: "生图", editText: "双击编辑文字", emptyImage: "空图片节点", emptyVideo: "空视频节点", emptyAudio: "空音频节点", audio: "音频", batchExpanded: "图片组已展开", batchCollapsed: "图片组已收起", textBatchExpanded: "备选文本已展开", textBatchCollapsed: "备选文本已收起", createCopy: "创建副本", setPrimary: "设为主图", setPrimaryText: "设为主文本", imageGenerationHint: "点击设置提示词并生成图片",
         },
-        promptNode: { pick: "从预设库选择", pickerTitle: "从预设库选择提示词", search: "搜索提示词", placeholder: "输入或从预设库选择提示词", empty: "暂无提示词", panelHint: "在下方提示词面板中选择或编辑", dragHint: "拖到提示词中插入引用" },
+        promptNode: { pick: "从预设库选择", pickerTitle: "从预设库选择提示词", search: "搜索提示词", placeholder: "输入或从预设库选择提示词", audioPlaceholder: "输入给音频生成的提示词", empty: "暂无提示词", panelHint: "在下方提示词面板中选择或编辑", dragHint: "拖到提示词中插入引用" },
         videoFrames: { first: "截取首帧", last: "截取尾帧", current: "截取当前帧", firstTitle: "{{name}} 首帧", lastTitle: "{{name}} 尾帧", currentTitle: "{{name}} 当前帧", captured: "已生成图片节点", failed: "无法截取该画面，请重试" },
         switcher: { placeholder: "切换画布", nodes: "{{count}} 个节点", search: "搜索画布", new: "新建画布", empty: "此分组下没有画布", group: "分组：{{name}}" }, align: { left: "左对齐", centerX: "水平居中", right: "右对齐", top: "顶对齐", centerY: "垂直居中", bottom: "底对齐", distributeX: "水平等距", distributeY: "垂直等距" }, sidePanel: {
             assets: "资产", canvases: "画布", resize: "调整左侧面板宽度", exportFailed: "导出失败，请重试",

@@ -14,6 +14,7 @@ export const NODE_DEFAULT_SIZE = {
     [CanvasNodeType.Image]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.image"); } },
     [CanvasNodeType.Text]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.text"); } },
     [CanvasNodeType.Prompt]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.prompt"); } },
+    [CanvasNodeType.AudioPrompt]: { width: 340, height: 200, get title() { return i18n.t("canvas.nodeTypes.audioPrompt"); } },
     [CanvasNodeType.Config]: { width: 340, height: 240, get title() { return i18n.t("canvas.nodeTypes.config"); } },
     [CanvasNodeType.ImageGeneration]: { width: 412, height: 576, get title() { return i18n.t("canvas.nodeTypes.imageGeneration"); } },
     [CanvasNodeType.AudioGeneration]: { width: 560, height: 340, get title() { return i18n.t("canvas.nodeTypes.audioGeneration"); } },
@@ -36,6 +37,10 @@ export const NODE_SPECS = {
     },
     [CanvasNodeType.Prompt]: {
         width: 340, height: 240, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.Prompt].title; },
+        metadata: { prompt: "", status: "idle" },
+    },
+    [CanvasNodeType.AudioPrompt]: {
+        width: 340, height: 200, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.AudioPrompt].title; },
         metadata: { prompt: "", status: "idle" },
     },
     [CanvasNodeType.Config]: {
