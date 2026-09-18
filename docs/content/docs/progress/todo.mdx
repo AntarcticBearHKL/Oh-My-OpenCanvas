@@ -5,5 +5,5 @@ description: Planned follow-up work
 
 # TODO
 
-- Replace the Claude Code CLI adapter with a Claude Agent SDK adapter and improve the tool queue, following the [Local Agent Integration Plan](/docs/progress/local-agent-integration-plan).
-- Add Skill installation from web search, Skill resource-file management, and controlled local-memory persistence.
+- Local workspace sync: `use-workspace-store` and `lib/workspace/workspace-sync` implement the logic but nothing mounts them, so the feature has no UI entry point. Decide whether to add an entry point or remove the dead code.
+- Removed-Agent leftovers: the local data model still carries `CanvasAssistantSession`, `chatSessions` / `activeChatId`, `hydrateAssistantImages` and the `agent_chat_messages` storage label from the deleted chat. Clean them up (including export/import) or keep them intentionally.

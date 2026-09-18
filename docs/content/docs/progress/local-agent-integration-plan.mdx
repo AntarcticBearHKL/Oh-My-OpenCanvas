@@ -1,11 +1,11 @@
 ---
 title: Local Canvas MCP Plan
-description: Plan for exposing the active browser canvas to local MCP clients through canvas-mcp
+description: Completed plan that originally exposed the active browser canvas to local MCP clients through canvas-mcp (now merged into the web app)
 ---
 
 # Local Canvas MCP Plan
 
-> Note: this plan started as a separate `canvas-mcp` package. The final implementation merged the canvas MCP into the web app: its own server exposes the browser bridge and `/mcp` on the same port (3000) as the canvas, with no separate package, no Codex/Claude chat, and no token. The sections below are kept as the original plan.
+> Note: this plan is complete and closed. It started as a separate `canvas-mcp` package; the final implementation merged the canvas MCP into the web app, whose own server exposes the browser bridge and `/mcp` on the same port (3000) as the canvas, with no separate package, no Codex/Claude chat, no Skills, no approvals, no attachments and no token. The sections below are kept only as the original design record.
 
 ## Goal
 
@@ -31,4 +31,4 @@ Tools cover state and selection reads, node creation and updates, connections, b
 
 ## Status
 
-Implemented as `canvas-mcp`. The MVP is complete: an MCP client can connect to the active canvas, read state and selection, apply visible node operations, start a generation workflow, return structured errors, and remain isolated across tabs. Chat, Codex, Claude, approval, and attachment features were removed.
+Done. The MCP bridge shipped inside the web app: an MCP client can connect to the active canvas, read state and selection, apply visible node operations, start a generation workflow, return structured errors, and remain isolated across tabs. Chat, Codex, Claude, approval, attachment and Skill features were removed, and only the headless bridge plus the Settings → Agent permission/audit tab remain. No further work is planned in this document; see `pending-test` and `todo` for current status.

@@ -1,11 +1,11 @@
 ---
 title: 本地 Agent 接入规划
-description: 规划通过本地 Canvas Agent、MCP 和侧边栏助手连接 Codex / Claude Code 操作画布
+description: 已完成规划：最初通过本地 Canvas Agent、MCP 与侧边栏助手连接 Codex / Claude Code，现已收敛进前端应用
 ---
 
 # 本地 Agent 接入规划
 
-> 说明：本规划最初的形态是「本机 `canvas-mcp` + Codex / Claude Code 侧边栏」。最终实现已收敛为：画布 MCP 融合进前端应用，前端服务在同一端口 3000 上同时提供浏览器桥接与 `/mcp`，不再有独立包、Codex / Claude 对话或 token。以下内容保留为早期规划记录。
+> 说明：本规划已完成并关闭。它最初的形态是「本机 `canvas-mcp` + Codex / Claude Code 侧边栏」，最终实现收敛为：画布 MCP 融合进前端应用，前端服务在同一端口 3000 上同时提供浏览器桥接与 `/mcp`，不再有独立包、Codex / Claude 对话、Skill、审批、附件或 token。以下内容仅保留为早期设计记录。
 
 本文档规划个人用户在访问线上画布网页时，如何连接自己电脑上的 Codex / Claude Code，并让 Agent 通过对话和工具调用操作当前画布。
 
