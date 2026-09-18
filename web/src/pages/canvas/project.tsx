@@ -452,6 +452,11 @@ function InfiniteCanvasPage() {
 
     const hideNodeToolbar = useCallback(() => {}, []);
 
+    const selectConnection = useCallback((connectionId: string) => {
+        setSelectedConnectionId(connectionId);
+        setSelectedNodeIds(new Set());
+    }, []);
+
     const connectNodes = useCallback(
         (current: ConnectionHandle, targetNodeId: string) => {
             if (current.nodeId === targetNodeId) return;
@@ -534,9 +539,8 @@ function InfiniteCanvasPage() {
 
     const visibleNodes = useMemo(() => {
         const padding = 280;
-        const rect = containerRef.current?.getBoundingClientRect();
-        const width = rect?.width || size.width;
-        const height = rect?.height || size.height;
+        const width = size.width;
+        const height = size.height;
         const viewLeft = -viewport.x / viewport.k - padding;
         const viewTop = -viewport.y / viewport.k - padding;
         const viewRight = viewLeft + width / viewport.k + padding * 2;
@@ -669,6 +673,30 @@ function InfiniteCanvasPage() {
         return map;
     }, [connections, nodeUpdatedAt, nodes]);
     const referenceConnectedNodeIds = useMemo(() => new Set([referencePickerNodeId, ...(referencePickerNodeId ? connectedNodesByNodeId.get(referencePickerNodeId)?.map((node) => node.id) || [] : [])].filter((id): id is string => Boolean(id))), [connectedNodesByNodeId, referencePickerNodeId]);
+    const connectionPaths = useMemo(
+        () =>
+            connections.map((connection) => {
+                const from = nodeById.get(connection.fromNodeId);
+                const to = nodeById.get(connection.toNodeId);
+                if (!from || !to) return null;
+                const fromPreview = dragPreview?.get(from.id);
+                const toPreview = dragPreview?.get(to.id);
+
+                return (
+                    <ConnectionPath
+                        key={connection.id}
+                        connection={connection}
+                        from={fromPreview ? { ...from, position: fromPreview } : from}
+                        to={toPreview ? { ...to, position: toPreview } : to}
+                        active={selectedConnectionId === connection.id || relatedHighlight.connectionIds.has(connection.id)}
+                        referenceIndex={promptReferenceIndexByConnectionId.get(connection.id)}
+                        scale={viewport.k}
+                        onSelect={selectConnection}
+                    />
+                );
+            }),
+        [connections, dragPreview, nodeById, promptReferenceIndexByConnectionId, relatedHighlight, selectConnection, selectedConnectionId, viewport.k],
+    );
     const { applyAgentOps } = useAgentBridge({
         projectId,
         title: currentProject?.title,
@@ -873,6 +901,7 @@ function InfiniteCanvasPage() {
         historyPausedRef.current = true;
         nodeDraggingRef.current = true;
         setIsNodeDragging(true);
+        if (containerRef.current) containerRef.current.dataset.canvasDragging = "true";
     }, []);
 
     const collectImageIntoAssets = useCallback((node: CanvasNodeData, permission: Promise<boolean>) => {
@@ -949,6 +978,7 @@ function InfiniteCanvasPage() {
         historyPausedRef.current = false;
         nodeDraggingRef.current = false;
         setIsNodeDragging(false);
+        delete containerRef.current?.dataset.canvasDragging;
         setDropTargetBoardId(null);
         setDropTargetAssetsNodeId(null);
         setDropTargetModifierNodeId(null);
@@ -1318,9 +1348,13 @@ function InfiniteCanvasPage() {
     }, []);
 
     const handleNodeResizeStart = useCallback(() => {
+        if (containerRef.current) containerRef.current.dataset.canvasDragging = "true";
         setIsNodeResizing(true);
     }, []);
-    const handleNodeResizeEnd = useCallback(() => setIsNodeResizing(false), []);
+    const handleNodeResizeEnd = useCallback(() => {
+        delete containerRef.current?.dataset.canvasDragging;
+        setIsNodeResizing(false);
+    }, []);
 
     const toggleNodeFreeResize = useCallback((nodeId: string) => {
         setNodes((prev) =>
@@ -2136,9 +2170,7 @@ function InfiniteCanvasPage() {
                     viewport={viewport}
                     tool={canvasTool}
                     backgroundMode={effectiveConfig.canvasBackgroundMode}
-                    onViewportChange={(next) => {
-                        setViewport(next);
-                    }}
+                    onViewportChange={setViewport}
                     onCanvasMouseDown={(event) => {
                         if (!referencePickerNodeId) handleCanvasMouseDown(event);
                     }}
@@ -2146,30 +2178,7 @@ function InfiniteCanvasPage() {
                     onDrop={handleDrop}
                 >
                     <svg className="absolute left-0 top-0 h-[10000px] w-[10000px] overflow-visible" style={{ pointerEvents: "none", transform: "translateZ(0)", zIndex: 0 }}>
-                        {connections
-                            .map((connection) => {
-                                const from = nodeById.get(connection.fromNodeId);
-                                const to = nodeById.get(connection.toNodeId);
-                                if (!from || !to) return null;
-                                const fromPreview = dragPreview?.get(from.id);
-                                const toPreview = dragPreview?.get(to.id);
-
-                                return (
-                                    <ConnectionPath
-                                        key={connection.id}
-                                        connection={connection}
-                                        from={fromPreview ? { ...from, position: fromPreview } : from}
-                                        to={toPreview ? { ...to, position: toPreview } : to}
-                                        active={selectedConnectionId === connection.id || relatedHighlight.connectionIds.has(connection.id)}
-                                        referenceIndex={promptReferenceIndexByConnectionId.get(connection.id)}
-                                        scale={viewport.k}
-                                        onSelect={() => {
-                                            setSelectedConnectionId(connection.id);
-                                            setSelectedNodeIds(new Set());
-                                        }}
-                                    />
-                                );
-                            })}
+                        {connectionPaths}
                         {cutStroke && cutStroke.length > 1 ? (
                             <polyline points={cutStroke.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" stroke={theme.canvas.selectionStroke} strokeWidth={2 / viewport.k} strokeLinecap="round" strokeLinejoin="round" />
                         ) : null}

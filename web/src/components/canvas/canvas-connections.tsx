@@ -1,8 +1,10 @@
+import { memo } from "react";
+
 import { connectionGeometry, connectionRelationLabel } from "@/lib/canvas/canvas-connections";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import type { CanvasConnection, CanvasNodeData, ConnectionHandle, Position } from "@/types/canvas";
 
-export function ConnectionPath({
+export const ConnectionPath = memo(function ConnectionPath({
     connection,
     from,
     to,
@@ -16,7 +18,7 @@ export function ConnectionPath({
     to: CanvasNodeData;
     active: boolean;
     referenceIndex?: number;
-    onSelect: () => void;
+    onSelect: (connectionId: string) => void;
     scale: number;
 }) {
     const theme = useCanvasTheme();
@@ -34,7 +36,7 @@ export function ConnectionPath({
                 style={{ cursor: "pointer", pointerEvents: "stroke" }}
                 onClick={(event) => {
                     event.stopPropagation();
-                    onSelect();
+                    onSelect(connection.id);
                 }}
             />
             <path
@@ -63,7 +65,7 @@ export function ConnectionPath({
                     style={{ pointerEvents: "all", cursor: "pointer" }}
                     onClick={(event) => {
                         event.stopPropagation();
-                        onSelect();
+                        onSelect(connection.id);
                     }}
                 >
                     {label}
@@ -71,7 +73,7 @@ export function ConnectionPath({
             ) : null}
         </g>
     );
-}
+});
 
 export function ActiveConnectionPath({ node, handle, mouseWorld, target }: { node?: CanvasNodeData; handle: ConnectionHandle; mouseWorld: Position; target?: CanvasNodeData }) {
     const theme = useCanvasTheme();

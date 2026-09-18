@@ -1,11 +1,11 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { frostedSurfaceClass } from "@/lib/canvas-theme";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { type CanvasNodeData, type ViewportTransform } from "@/types/canvas";
 
-export function Minimap({ nodes, viewport, viewportSize, onViewportChange }: { nodes: CanvasNodeData[]; viewport: ViewportTransform; viewportSize: { width: number; height: number }; onViewportChange: (viewport: ViewportTransform) => void }) {
+export const Minimap = memo(function Minimap({ nodes, viewport, viewportSize, onViewportChange }: { nodes: CanvasNodeData[]; viewport: ViewportTransform; viewportSize: { width: number; height: number }; onViewportChange: (viewport: ViewportTransform) => void }) {
     const theme = useCanvasTheme();
     const containerRef = useRef<HTMLDivElement>(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -95,6 +95,29 @@ export function Minimap({ nodes, viewport, viewportSize, onViewportChange }: { n
         });
     };
 
+    const nodeRects = useMemo(
+        () =>
+            nodes.map((node) => {
+                const pos = toMinimap(node.position.x, node.position.y);
+                const color = getNodeDefinition(node.type)?.minimapColor || theme.node.muted;
+                return (
+                    <div
+                        key={node.id}
+                        className="absolute rounded-[1px]"
+                        style={{
+                            left: pos.x,
+                            top: pos.y,
+                            width: Math.max(node.width * scale, 2),
+                            height: Math.max(node.height * scale, 2),
+                            backgroundColor: color,
+                            opacity: 0.8,
+                        }}
+                    />
+                );
+            }),
+        [nodes, scale, theme.node.muted, toMinimap],
+    );
+
     return (
         <div className={`absolute bottom-24 left-6 z-50 overflow-hidden rounded-2xl border ${frostedSurfaceClass}`} style={{ width, height, background: theme.toolbar.panel, borderColor: theme.toolbar.border }}>
             <div
@@ -112,26 +135,9 @@ export function Minimap({ nodes, viewport, viewportSize, onViewportChange }: { n
                 onPointerUp={() => setIsDragging(false)}
                 onPointerLeave={() => setIsDragging(false)}
             >
-                {nodes.map((node) => {
-                    const pos = toMinimap(node.position.x, node.position.y);
-                    const color = getNodeDefinition(node.type)?.minimapColor || theme.node.muted;
-                    return (
-                        <div
-                            key={node.id}
-                            className="absolute rounded-[1px]"
-                            style={{
-                                left: pos.x,
-                                top: pos.y,
-                                width: Math.max(node.width * scale, 2),
-                                height: Math.max(node.height * scale, 2),
-                                backgroundColor: color,
-                                opacity: 0.8,
-                            }}
-                        />
-                    );
-                })}
+                {nodeRects}
                 <div className="pointer-events-none absolute border" style={{ left: viewportRect.x, top: viewportRect.y, width: viewportRect.w, height: viewportRect.h, borderColor: theme.node.activeStroke, background: `${theme.node.activeStroke}18` }} />
             </div>
         </div>
     );
-}
+});
