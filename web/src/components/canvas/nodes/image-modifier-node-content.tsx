@@ -18,7 +18,7 @@ import {
     normalizeImageModifierParams,
 } from "@/lib/canvas/image-modifier";
 import { resolveImageUrl } from "@/services/image-storage";
-import type { CanvasImageModifierCurvePoint, CanvasImageModifierParams, CanvasNodeData } from "@/types/canvas";
+import type { CanvasImageModifierCurvePoint, CanvasImageModifierParamKey, CanvasImageModifierParams, CanvasNodeData } from "@/types/canvas";
 
 const MODIFIER_DESIGN_WIDTH = 460;
 const MODIFIER_DESIGN_HEIGHT = 644;
@@ -120,9 +120,16 @@ export function ImageModifierNodeContent({
         const height = canvas.height;
         const innerWidth = width - CURVE_PADDING * 2;
         const innerHeight = height - CURVE_PADDING * 2;
+        const first = curve[0];
+        const lastPoint = curve[curve.length - 1];
         context.clearRect(0, 0, width, height);
         context.fillStyle = theme.node.fill;
         context.fillRect(0, 0, width, height);
+        context.fillStyle = theme.node.muted;
+        context.globalAlpha = 0.15;
+        context.fillRect(CURVE_PADDING, CURVE_PADDING, first.x * innerWidth, innerHeight);
+        context.fillRect(CURVE_PADDING + lastPoint.x * innerWidth, CURVE_PADDING, (1 - lastPoint.x) * innerWidth, innerHeight);
+        context.globalAlpha = 1;
         if (histogram) {
             let peak = 0;
             for (let index = 0; index < histogram.length; index++) peak = Math.max(peak, histogram[index]);
@@ -145,7 +152,7 @@ export function ImageModifierNodeContent({
         context.beginPath();
         for (let step = 0; step <= 64; step++) {
             const x = step / 64;
-            const y = curveSample(curve, x);
+            const y = curveSample(curve, Math.min(lastPoint.x, Math.max(first.x, x)));
             const px = CURVE_PADDING + x * innerWidth;
             const py = CURVE_PADDING + (1 - y) * innerHeight;
             if (step === 0) context.moveTo(px, py);
@@ -166,11 +173,25 @@ export function ImageModifierNodeContent({
 
     const updateCurvePoint = (index: number, x: number, y: number) => {
         const next = curve.map((point) => ({ ...point }));
+        const last = next.length - 1;
         const minX = index === 0 ? 0 : next[index - 1].x + IMAGE_MODIFIER_CURVE_GAP;
-        const maxX = index === next.length - 1 ? 1 : next[index + 1].x - IMAGE_MODIFIER_CURVE_GAP;
+        const maxX = index === last ? 1 : next[index + 1].x - IMAGE_MODIFIER_CURVE_GAP;
         next[index].x = Math.min(maxX, Math.max(minX, x));
-        next[index].y = Math.min(1, Math.max(index === 0 ? 0 : next[index - 1].y, y));
+        next[index].y = index === 0 ? 0 : index === last ? 1 : Math.min(1, Math.max(next[index - 1].y, y));
+        if (index === 0 || index === last) onParamsChange({ ...params, blackPoint: Math.round(next[0].x * 255), whitePoint: Math.round(next[last].x * 255) });
         onCurveChange(next);
+    };
+
+    const toneParamValue = (key: CanvasImageModifierParamKey) => (key === "blackPoint" ? Math.round(curve[0].x * 255) : key === "whitePoint" ? Math.round(curve[curve.length - 1].x * 255) : params[key]);
+
+    const changeToneParam = (key: CanvasImageModifierParamKey, value: number) => {
+        if (key === "blackPoint") updateCurvePoint(0, value / 255, 0);
+        else if (key === "whitePoint") updateCurvePoint(curve.length - 1, value / 255, 1);
+        else {
+            const next = { ...params };
+            next[key] = value;
+            onParamsChange(next);
+        }
     };
 
     const handleCurvePointer = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -310,22 +331,18 @@ export function ImageModifierNodeContent({
                                 <label key={spec.key} className="flex h-8 flex-col justify-between">
                                     <span className="flex min-w-0 items-center justify-between gap-1 text-[10px] leading-4" style={{ color: theme.node.muted }}>
                                         <span className="truncate">{t(spec.labelKey)}</span>
-                                        <span className="shrink-0 tabular-nums">{formatImageModifierValue(spec, params[spec.key])}</span>
+                                        <span className="shrink-0 tabular-nums">{formatImageModifierValue(spec, toneParamValue(spec.key))}</span>
                                     </span>
                                     <input
                                         type="range"
                                         min={spec.min}
                                         max={spec.max}
                                         step={spec.step}
-                                        value={params[spec.key]}
+                                        value={toneParamValue(spec.key)}
                                         className="m-0 h-4 w-full"
                                         style={{ accentColor: theme.node.activeStroke }}
                                         aria-label={t(spec.labelKey)}
-                                        onChange={(event) => {
-                                            const next = { ...params };
-                                            next[spec.key] = Number(event.target.value);
-                                            onParamsChange(next);
-                                        }}
+                                        onChange={(event) => changeToneParam(spec.key, Number(event.target.value))}
                                     />
                                 </label>
                             ))}
@@ -349,6 +366,7 @@ export function ImageModifierNodeContent({
                                 width={428}
                                 height={CURVE_HEIGHT}
                                 className="h-[150px] w-full shrink-0 cursor-crosshair touch-none rounded-xl"
+                                title={t("canvas.imageModifier.curveHint")}
                                 onPointerDown={(event) => {
                                     event.stopPropagation();
                                     handleCurvePointer(event);

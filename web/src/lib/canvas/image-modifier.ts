@@ -68,11 +68,12 @@ export function normalizeImageModifierCurve(curve?: CanvasImageModifierCurvePoin
         x: Number.isFinite(curve[index]?.x) ? curve[index].x : fallback.x,
         y: Number.isFinite(curve[index]?.y) ? curve[index].y : fallback.y,
     }));
-    points[0] = { x: 0, y: 0 };
-    points[points.length - 1] = { x: 1, y: 1 };
-    for (let index = 1; index < points.length - 1; index++) {
-        points[index].x = Math.min(1 - (points.length - 1 - index) * IMAGE_MODIFIER_CURVE_GAP, Math.max(points[index - 1].x + IMAGE_MODIFIER_CURVE_GAP, points[index].x));
-        points[index].y = Math.min(1, Math.max(points[index - 1].y, points[index].y));
+    const last = points.length - 1;
+    for (let index = 0; index <= last; index++) {
+        const minX = index === 0 ? 0 : points[index - 1].x + IMAGE_MODIFIER_CURVE_GAP;
+        const maxX = index === last ? 1 : 1 - (last - index) * IMAGE_MODIFIER_CURVE_GAP;
+        points[index].x = Math.min(maxX, Math.max(minX, points[index].x));
+        points[index].y = index === 0 ? 0 : index === last ? 1 : Math.min(1, Math.max(points[index - 1].y, points[index].y));
     }
     return points;
 }
@@ -89,9 +90,10 @@ export function formatImageModifierValue(spec: Pick<ImageModifierParamSpec, "ste
 
 export function imageModifierLut(params?: Partial<CanvasImageModifierParams> | null, curve?: CanvasImageModifierCurvePoint[] | null): Uint8ClampedArray {
     const normalized = normalizeImageModifierParams(params);
-    const sample = curveSampler(normalizeImageModifierCurve(curve));
-    const black = Math.min(254, normalized.blackPoint) / 255;
-    const white = Math.max(normalized.blackPoint + 1, normalized.whitePoint) / 255;
+    const points = normalizeImageModifierCurve(curve);
+    const sample = curveSampler(points);
+    const black = points[0].x;
+    const white = points[points.length - 1].x;
     const span = white - black;
     const gamma = 1 / Math.max(0.01, normalized.gamma);
     const gain = 2 ** normalized.exposure;
@@ -103,7 +105,7 @@ export function imageModifierLut(params?: Partial<CanvasImageModifierParams> | n
         tone = Math.min(1, Math.max(0, tone * gain));
         tone = Math.pow(tone, gamma);
         tone = Math.min(1, Math.max(0, tone + shadows * (1 - tone) ** 2 + highlights * tone ** 2));
-        lut[value] = Math.round(Math.min(1, Math.max(0, sample(tone))) * 255);
+        lut[value] = Math.round(Math.min(1, Math.max(0, sample(black + tone * span))) * 255);
     }
     return lut;
 }
