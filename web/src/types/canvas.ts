@@ -65,9 +65,17 @@ export type CanvasImageModifierParams = {
     sepia: number;
     invert: number;
     opacity: number;
+    blackPoint: number;
+    whitePoint: number;
+    gamma: number;
+    exposure: number;
+    highlights: number;
+    shadows: number;
 };
 
 export type CanvasImageModifierParamKey = keyof CanvasImageModifierParams;
+
+export type CanvasImageModifierCurvePoint = { x: number; y: number };
 
 export type CanvasImageModifierSource = {
     content: string;
@@ -143,6 +151,7 @@ export type CanvasNodeMetadata = {
     outputFolderName?: string;
     modifierSource?: CanvasImageModifierSource;
     modifierParams?: CanvasImageModifierParams;
+    modifierCurve?: CanvasImageModifierCurvePoint[];
     modifierEmit?: boolean;
     modifierError?: string;
 };

@@ -899,7 +899,7 @@ function InfiniteCanvasPage() {
     }, []);
 
     const bakeImageModifierNode = useCallback(
-        async (anchor: CanvasNodeData, source: { content?: string; storageKey?: string }, params?: CanvasNodeMetadata["modifierParams"]) => {
+        async (anchor: CanvasNodeData, source: { content?: string; storageKey?: string }, params?: CanvasNodeMetadata["modifierParams"], curve?: CanvasNodeMetadata["modifierCurve"]) => {
             const sourceUrl = await resolveImageUrl(source.storageKey, source.content || "");
             if (!sourceUrl) {
                 applyNodeMetadata(anchor.id, { modifierError: t("canvas.imageModifier.noSource") });
@@ -907,7 +907,7 @@ function InfiniteCanvasPage() {
                 return;
             }
             try {
-                const blob = await renderImageModifierBlob(sourceUrl, params);
+                const blob = await renderImageModifierBlob(sourceUrl, params, curve);
                 const image = await uploadImage(blob);
                 insertDerivedAsset(
                     {
@@ -984,6 +984,7 @@ function InfiniteCanvasPage() {
             if (target) {
                 const emit = Boolean(target.metadata?.modifierEmit);
                 const params = target.metadata?.modifierParams;
+                const curve = target.metadata?.modifierCurve;
                 const droppedNode = nodesRef.current.find((node) => {
                     if (node.type !== CanvasNodeType.Image || (!node.metadata?.content && !node.metadata?.storageKey)) return false;
                     const initial = initialPositions.find((item) => item.id === node.id);
@@ -996,7 +997,7 @@ function InfiniteCanvasPage() {
                     const dropped = previewPositions?.get(droppedNode.id) || { x: initial.x + dx, y: initial.y + dy };
                     returned.set(droppedNode.id, dropped);
                     if (emit) {
-                        void bakeImageModifierNode(target, { content: droppedNode.metadata?.content, storageKey: droppedNode.metadata?.storageKey }, params);
+                        void bakeImageModifierNode(target, { content: droppedNode.metadata?.content, storageKey: droppedNode.metadata?.storageKey }, params, curve);
                     } else {
                         applyNodeMetadata(target.id, {
                             modifierSource: {
@@ -2083,8 +2084,9 @@ function InfiniteCanvasPage() {
                     <ImageModifierNodeContent
                         node={contentNode}
                         onParamsChange={(params) => applyNodeMetadata(contentNode.id, { modifierParams: params, modifierError: undefined })}
+                        onCurveChange={(curve) => applyNodeMetadata(contentNode.id, { modifierCurve: curve, modifierError: undefined })}
                         onEmitChange={(emit) => applyNodeMetadata(contentNode.id, { modifierEmit: emit })}
-                        onGenerate={() => bakeImageModifierNode(contentNode, contentNode.metadata?.modifierSource || {}, contentNode.metadata?.modifierParams)}
+                        onGenerate={() => bakeImageModifierNode(contentNode, contentNode.metadata?.modifierSource || {}, contentNode.metadata?.modifierParams, contentNode.metadata?.modifierCurve)}
                         onClearSource={() => applyNodeMetadata(contentNode.id, { modifierSource: undefined, modifierError: undefined })}
                     />
                 );
