@@ -164,10 +164,10 @@ export default {
         miniMapOpen: "打开小地图",
         miniMapClose: "关闭小地图",
         resetView: "重置视图",
-        nodeTypes: { image: "图片", text: "文本", prompt: "提示词", musicPrompt: "音乐提示词", speechPrompt: "语音提示词", config: "生成配置", imageGeneration: "图片生成", speechGeneration: "语音生成", musicGeneration: "音乐生成", video: "视频", audio: "音频", smartCanvas: "智能画布", assets: "资源" },
+        nodeTypes: { image: "图片", text: "文本", prompt: "提示词", musicPrompt: "音乐提示词", speechPrompt: "语音提示词", config: "生成配置", imageGeneration: "图片生成", speechGeneration: "语音生成", musicGeneration: "音乐生成", video: "视频", audio: "音频", smartCanvas: "智能画布", assets: "资源", recording: "录音" },
         relations: { reference: "参考图", referenceNumbered: "参考图 {{index}}", "video-reference": "参考视频", "audio-reference": "参考音频", prompt: "提示词", composite: "合成图", generation: "生成结果", crop: "裁剪结果", split: "切图结果", upscale: "放大结果", "ai-upscale": "AI 提升结果", mask: "局部编辑结果", "background-removal": "抠图结果", frame: "视频截帧", linked: "关联" },
         toolbar: {
-            select: "选择", pan: "移动", text: "文本", video: "视频", config: "生成配置", extensions: "扩展节点", upload: "上传资产", zoom: "缩放", promptGroup: "提示词", generatorGroup: "生成器",
+            select: "选择", pan: "移动", text: "文本", video: "视频", config: "生成配置", extensions: "扩展节点", upload: "上传资产", zoom: "缩放", promptGroup: "提示词", generatorGroup: "生成器", inputOutputGroup: "输入输出",
             light: "白", dark: "黑", dots: "点", lines: "线", blank: "空白",
         },
         project: {
@@ -201,6 +201,7 @@ export default {
         },
         assetPicker: { title: "选择资产", insert: "插入", search: "搜索资产", empty: "没有资产" },
         assets: { bind: "绑定文件夹", rebind: "更换文件夹", refresh: "刷新", unbound: "绑定一个本地文件夹，把里面的图片、视频、音频或文本拖到画布上。", count: "{{count}} 个文件", capped: "只显示前 {{count}} 个文件", empty: "文件夹里没有可用的文件", scanFailed: "读取文件夹失败，请重试", dropHint: "拖拽缩略图到画布", collectSaving: "保存到文件夹…", collectSaved: "已保存到文件夹", collectFailed: "保存失败", outputBind: "绑定输出文件夹", outputRebind: "更换输出文件夹", outputUnbind: "解除输出文件夹绑定", outputUnbound: "未绑定输出文件夹", outputUnsupported: "浏览器不支持", outputWriting: "写入中…", outputFailed: "写入失败" },
+        recording: { start: "开始录音", stop: "停止录音", resultTitle: "录音", saved: "录音已生成音频节点", saveFailed: "录音保存失败，请重试", hint: "点击麦克风开始录音，停止后会在旁边生成音频节点", status: { idle: "点击开始录音", requesting: "正在请求麦克风权限…", recording: "正在录音…", saving: "正在保存录音…", saved: "已生成音频节点", denied: "麦克风权限被拒绝，请在浏览器中允许后重试", noMic: "没有检测到麦克风设备", unsupported: "当前浏览器不支持录音", noData: "没有录到声音，请重试", failed: "录音失败，请重试" } },
         imageTools: { locked: "锁比例", free: "自由比例", lockTitle: "切换为等比缩放", freeTitle: "切换为自由比例", mask: "局部编辑", maskTitle: "添加蒙版遮罩后局部修改", crop: "裁剪", cropTitle: "裁剪并生成新节点", split: "切图", splitTitle: "按行列切分图片", resolution: "分辨率", resolutionTitle: "调整图片分辨率", angle: "多角度", angleTitle: "生成角度", view: "查看大图", info: "图片信息", showLabels: "显示文字", removeBackground: "抠图", removeBackgroundTitle: "移除图片背景并生成透明底图片", removeBackgroundRunning: "正在抠图…（首次需下载模型，约 40MB）", removeBackgroundProgress: "正在抠图 {{percent}}%", removeBackgroundDownloading: "正在下载抠图模型 {{percent}}%", removeBackgroundDone: "已生成抠图结果", removeBackgroundFailed: "抠图失败", removeBackgroundResult: "抠图结果", resolutionResult: "分辨率结果", resolutionAiResult: "AI 提升结果", resolutionAiRunning: "正在提升分辨率…", resolutionAiDone: "AI 提升完成", resolutionAiFailed: "AI 提升失败", analyze: "图片分析", analyzeTitle: "分析图片配色、EXIF 与感知哈希", ocr: "识别文字", ocrTitle: "提取图片中的文字并生成文本节点", ocrRunning: "正在识别图片文字…", ocrResult: "OCR 结果", ocrEmpty: "未识别到文字", ocrFailed: "文字识别失败", segment: "分割", segmentTitle: "在图片上点选提示点生成分割蒙版" },
         imageAnalysis: { title: "图片分析", palette: "主色板", exif: "EXIF 信息", exifEmpty: "没有可用的 EXIF 信息", hash: "感知哈希", smartCrop: "智能裁剪", cropRatio: "裁剪比例", cropDone: "已生成裁剪图片", cropFailed: "裁剪失败" },
         segment: { title: "图片分割", hint: "点击图片添加提示点：左键为前景，Alt 或右键为背景；点好后再点「开始分割」。", foreground: "前景点", background: "背景点", undoPoint: "撤销上一个点", clearPoints: "清空点位", run: "开始分割", running: "正在分割…", score: "IoU {{score}}", empty: "还没有添加提示点", prepare: "下载分割模型", preparing: "正在准备模型 {{percent}}%", prepareFailed: "模型准备失败，请重试", result: "分割结果" },

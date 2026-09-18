@@ -27,6 +27,7 @@ import { ActiveConnectionPath, ConnectionPath } from "@/components/canvas/canvas
 import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
 import { CanvasConfigNodePanel } from "@/components/canvas/canvas-config-node-panel";
 import { AssetsNodeContent } from "@/components/canvas/nodes/assets-node-content";
+import { RecordingNodeContent } from "@/components/canvas/nodes/recording-node-content";
 import { CanvasImageAnalysisDialog } from "@/components/canvas/canvas-image-analysis-dialog";
 import { CanvasNodeAngleDialog } from "@/components/canvas/canvas-node-angle-dialog";
 import { CanvasNodeCropDialog, type CanvasImageCropRect } from "@/components/canvas/canvas-node-crop-dialog";
@@ -63,7 +64,7 @@ import { useCanvasHistory } from "@/pages/canvas/hooks/use-canvas-history";
 import { useCanvasDocument } from "@/pages/canvas/hooks/use-canvas-document";
 import { NODE_STATUS_SUCCESS, VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH } from "@/lib/canvas/canvas-node-constants";
 import { buildNodeMentionReferences, isCanvasReferenceNode, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
-import { applyNodeConfigPatch, createCanvasNode } from "@/lib/canvas/canvas-node-factory";
+import { applyNodeConfigPatch, audioMetadata, createCanvasNode } from "@/lib/canvas/canvas-node-factory";
 import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
 import { extractImageText, ocrPrompt } from "@/lib/canvas/canvas-ocr";
 import { arrangeBoardImages, BOARD_LAYOUT_TEMPLATES, boardLayerImageIds, composeSmartCanvas, moveBoardLayer, orderBoardImages, SMART_CANVAS_DEFAULT_FONT_SIZE, smartCanvasBackground, smartCanvasBackgroundOpacity, smartCanvasSizeForRatio, smartCanvasTexts, type BoardLayoutTemplate } from "@/lib/canvas/smart-canvas";
@@ -1946,6 +1947,29 @@ function InfiniteCanvasPage() {
         [boardOrderedLayersById, configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleArrangeBoard, handleBoardLayerChange, handleComposeBoard, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleNodePromptChange, handleSmartCanvasChange, mentionReferencesByNodeId, nodes, renderPluginPanel, runningNodeId, startNodeReferenceSelection, t, theme.node.text, toggleNodeFlag],
     );
 
+    const handleRecordingSaved = useCallback(
+        async (source: CanvasNodeData, blob: Blob) => {
+            try {
+                const audio = await uploadMediaFile(blob, "audio");
+                insertDerivedAsset(
+                    {
+                        source,
+                        children: [{ id: nanoid(), type: CanvasNodeType.Audio, title: t("canvas.recording.resultTitle"), size: NODE_DEFAULT_SIZE[CanvasNodeType.Audio], position: { x: source.position.x + source.width + 40, y: source.position.y }, metadata: audioMetadata(audio) }],
+                        select: "children",
+                        clearSelectedConnection: true,
+                        openDialog: null,
+                    },
+                    { setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+                );
+                message.success(t("canvas.recording.saved"));
+            } catch {
+                message.error(t("canvas.recording.saveFailed"));
+                throw new Error("recording-save-failed");
+            }
+        },
+        [message, t],
+    );
+
     const renderNodeContentPanel = useCallback(
         (contentNode: CanvasNodeData) => {
             const musicTags = t("canvas.promptNode.musicTags", { returnObjects: true }) as unknown as string[];
@@ -1955,6 +1979,7 @@ function InfiniteCanvasPage() {
             if (contentNode.type === CanvasNodeType.SpeechPrompt) return <PromptNodePanel node={contentNode} tags={speechTags} showLibrary={false} references={mentionReferencesByNodeId.get(contentNode.id) || EMPTY_REFERENCES} connectedNodes={connectedNodesByNodeId.get(contentNode.id) || []} onDisconnectReference={disconnectNodeReference} onStartReferenceSelection={startNodeReferenceSelection} onContentChange={handleNodeContentChange} />;
             if (contentNode.type === CanvasNodeType.Assets)
                 return <AssetsNodeContent node={contentNode} onInsert={(file) => void insertFolderFile(file)} onOutputFolderBind={() => handleOutputFolderBind(contentNode.id)} onOutputFolderUnbind={() => handleOutputFolderUnbind(contentNode.id)} />;
+            if (contentNode.type === CanvasNodeType.Recording) return <RecordingNodeContent onRecorded={(blob) => handleRecordingSaved(contentNode, blob)} />;
             return (
             <CanvasConfigNodePanel
                 node={contentNode}
@@ -1972,7 +1997,7 @@ function InfiniteCanvasPage() {
             />
             );
         },
-        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleOutputFolderBind, handleOutputFolderUnbind, insertFolderFile, mentionReferencesByNodeId, runningNodeId, startNodeReferenceSelection, t],
+        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleOutputFolderBind, handleOutputFolderUnbind, handleRecordingSaved, insertFolderFile, mentionReferencesByNodeId, runningNodeId, startNodeReferenceSelection, t],
     );
 
     if (!projectLoaded && !loadedOnceRef.current) return <CanvasRefreshShell />;

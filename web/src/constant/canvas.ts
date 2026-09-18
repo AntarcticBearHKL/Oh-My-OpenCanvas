@@ -24,6 +24,7 @@ export const NODE_DEFAULT_SIZE = {
     [CanvasNodeType.Audio]: { width: 340, height: 120, get title() { return i18n.t("canvas.nodeTypes.audio"); } },
     [CanvasNodeType.SmartCanvas]: { width: 640, height: 360, get title() { return i18n.t("canvas.nodeTypes.smartCanvas"); } },
     [CanvasNodeType.Assets]: { width: 360, height: 320, get title() { return i18n.t("canvas.nodeTypes.assets"); } },
+    [CanvasNodeType.Recording]: { width: 300, height: 220, get title() { return i18n.t("canvas.nodeTypes.recording"); } },
 } satisfies Record<CanvasNodeType, { width: number; height: number; title: string }>;
 
 export const NODE_SPECS = {
@@ -77,6 +78,10 @@ export const NODE_SPECS = {
     },
     [CanvasNodeType.Assets]: {
         width: 360, height: 320, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.Assets].title; },
+        metadata: {},
+    },
+    [CanvasNodeType.Recording]: {
+        width: 300, height: 220, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.Recording].title; },
         metadata: {},
     },
 } satisfies Record<CanvasNodeType, CanvasNodeSpec>;
