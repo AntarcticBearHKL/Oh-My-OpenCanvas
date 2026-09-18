@@ -103,14 +103,18 @@ export function findBoardDropTarget(movedIds: Set<string>, nodes: CanvasNodeData
     );
 }
 
-function findDropTargetForSource(movedIds: Set<string>, nodes: CanvasNodeData[], sourceType: CanvasNodeTypeId) {
+function findDropTargetForSource(movedIds: Set<string>, nodes: CanvasNodeData[], sourceType: CanvasNodeTypeId, targetType?: CanvasNodeTypeId) {
     const movingNodes = nodes.filter((node) => movedIds.has(node.id) && node.type === sourceType);
     if (!movingNodes.length) return null;
-    return [...nodes].reverse().find((target) => !movedIds.has(target.id) && resolveCanvasDropBinding(sourceType, target.type) !== null && movingNodes.some((node) => nodeCenterInside(node, target))) || null;
+    return [...nodes].reverse().find((target) => !movedIds.has(target.id) && (!targetType || target.type === targetType) && resolveCanvasDropBinding(sourceType, target.type) !== null && movingNodes.some((node) => nodeCenterInside(node, target))) || null;
 }
 
 export function findAssetsDropTarget(movedIds: Set<string>, nodes: CanvasNodeData[]) {
-    return findDropTargetForSource(movedIds, nodes, CanvasNodeType.Image);
+    return findDropTargetForSource(movedIds, nodes, CanvasNodeType.Image, CanvasNodeType.Assets);
+}
+
+export function findImageModifierDropTarget(movedIds: Set<string>, nodes: CanvasNodeData[]) {
+    return findDropTargetForSource(movedIds, nodes, CanvasNodeType.Image, CanvasNodeType.ImageModifier);
 }
 
 export function getConnectionTargetAnchor(node: CanvasNodeData, current: ConnectionHandle) {

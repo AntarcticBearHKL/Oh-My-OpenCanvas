@@ -157,7 +157,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     const hasVideoContent = data.type === CanvasNodeType.Video && Boolean(data.metadata?.content);
     const hasAudioContent = data.type === CanvasNodeType.Audio && Boolean(data.metadata?.content);
     const isBoard = data.type === CanvasNodeType.SmartCanvas;
-    const isAssetsFolderDropTarget = data.type === CanvasNodeType.Assets && isAssetsDropTarget;
+    const isNodeDropTarget = (data.type === CanvasNodeType.Assets || data.type === CanvasNodeType.ImageModifier) && isAssetsDropTarget;
     const locked = Boolean(data.metadata?.locked);
     const isPlacedOnBoard = (data.type === CanvasNodeType.Image || data.type === CanvasNodeType.SmartCanvas) && Boolean(data.metadata?.boardId);
     const [enteredImage, setEnteredImage] = useState(false);
@@ -404,10 +404,10 @@ export const CanvasNode = React.memo(function CanvasNode({
                 className={`relative h-full w-full overflow-visible rounded-3xl ${isBoard ? "border-0" : "border-2"} ${frostedCard ? `canvas-glass-card ${frostedSurfaceClass}` : ""} ${enteredImage ? "canvas-node-enter" : ""}`}
                 style={{
                     background: hasImageContent || hasVideoContent || transparentBg ? "transparent" : theme.toolbar.panel,
-                    borderColor: hasImageContent ? imageBorderColor : isAssetsFolderDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : "transparent",
+                    borderColor: hasImageContent ? imageBorderColor : isNodeDropTarget ? selectionBlue : isActive ? selectionBlue : isRelated ? theme.node.muted : "transparent",
                     borderStyle: "solid",
-                    outline: isBoard ? (isBoardDropTarget ? `2px solid ${selectionBlue}66` : isActive ? `2px solid ${selectionBlue}` : isPlacedOnBoard ? `2px dashed ${selectionBlue}88` : undefined) : isAssetsFolderDropTarget ? `2px solid ${selectionBlue}66` : isPlacedOnBoard ? `2px dashed ${selectionBlue}88` : undefined,
-                    outlineOffset: (isBoard && isBoardDropTarget) || isAssetsFolderDropTarget || isPlacedOnBoard ? 2 : undefined,
+                    outline: isBoard ? (isBoardDropTarget ? `2px solid ${selectionBlue}66` : isActive ? `2px solid ${selectionBlue}` : isPlacedOnBoard ? `2px dashed ${selectionBlue}88` : undefined) : isNodeDropTarget ? `2px solid ${selectionBlue}66` : isPlacedOnBoard ? `2px dashed ${selectionBlue}88` : undefined,
+                    outlineOffset: (isBoard && isBoardDropTarget) || isNodeDropTarget || isPlacedOnBoard ? 2 : undefined,
                     boxShadow: isActive ? `0 0 0 1px ${selectionBlue}55` : isRelated ? `0 0 0 1px ${theme.node.muted}55` : undefined,
                 }}
                 onMouseDown={(event) => {
@@ -520,7 +520,7 @@ export const CanvasNode = React.memo(function CanvasNode({
 });
 
 function NodeContent(props: NodeContentRendererProps) {
-    if ((props.node.type === CanvasNodeType.Config || props.node.type === CanvasNodeType.ImageGeneration || props.node.type === CanvasNodeType.SpeechGeneration || props.node.type === CanvasNodeType.MusicGeneration || props.node.type === CanvasNodeType.Prompt || props.node.type === CanvasNodeType.MusicPrompt || props.node.type === CanvasNodeType.SpeechPrompt || props.node.type === CanvasNodeType.Assets || props.node.type === CanvasNodeType.Recording) && props.renderNodeContent) return props.renderNodeContent(props.node);
+    if ((props.node.type === CanvasNodeType.Config || props.node.type === CanvasNodeType.ImageGeneration || props.node.type === CanvasNodeType.SpeechGeneration || props.node.type === CanvasNodeType.MusicGeneration || props.node.type === CanvasNodeType.Prompt || props.node.type === CanvasNodeType.MusicPrompt || props.node.type === CanvasNodeType.SpeechPrompt || props.node.type === CanvasNodeType.Assets || props.node.type === CanvasNodeType.Recording || props.node.type === CanvasNodeType.ImageModifier) && props.renderNodeContent) return props.renderNodeContent(props.node);
     if (props.isBatchRoot && props.node.type === CanvasNodeType.Image) return <ImageNodeContent {...props} />;
     if (props.node.type === CanvasNodeType.Text && props.node.metadata?.texts?.length && (props.node.metadata.status !== "error" || props.node.metadata.texts.some((text) => text.content))) return <TextContent {...props} />;
     if (props.node.metadata?.status === "loading") return <LoadingContent theme={props.theme} />;

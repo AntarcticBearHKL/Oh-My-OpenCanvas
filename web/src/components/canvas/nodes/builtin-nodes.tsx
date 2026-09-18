@@ -1,4 +1,4 @@
-import { AlignLeft, AudioLines, FileText, FolderInput, Image as ImageIcon, LayoutDashboard, MessageSquareText, Mic, Music2, Settings2, Sparkles, Video } from "lucide-react";
+import { AlignLeft, AudioLines, FileText, FolderInput, Image as ImageIcon, LayoutDashboard, MessageSquareText, Mic, Music2, Settings2, SlidersHorizontal, Sparkles, Video } from "lucide-react";
 
 import i18n from "@/i18n";
 
@@ -35,6 +35,7 @@ const BUILTIN_DEFINITIONS: CanvasNodeDefinition[] = [
     { type: CanvasNodeType.SmartCanvas, title: i18n.t("canvas.nodeTypes.smartCanvas"), icon: <LayoutDashboard className={iconClass} />, minimapColor: "#14b8a6", keepAspectRatio: () => true },
     { type: CanvasNodeType.Assets, title: i18n.t("canvas.nodeTypes.assets"), icon: <FolderInput className={iconClass} />, minimapColor: "#64748b", hasSourceHandle: false, hidePanel: true },
     { type: CanvasNodeType.Recording, title: i18n.t("canvas.nodeTypes.recording"), icon: <Mic className={iconClass} />, minimapColor: "#ef4444", hasSourceHandle: false, hidePanel: true },
+    { type: CanvasNodeType.ImageModifier, title: i18n.t("canvas.nodeTypes.imageModifier"), icon: <SlidersHorizontal className={iconClass} />, minimapColor: "#8b5cf6", hasSourceHandle: false, hidePanel: true },
 ].map((def) => {
     const spec = NODE_SPECS[def.type];
     return { ...def, title: spec.title, defaultSize: { width: spec.width, height: spec.height }, defaultMetadata: spec.metadata };

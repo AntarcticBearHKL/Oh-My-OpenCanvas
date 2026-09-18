@@ -28,6 +28,7 @@ import { ActiveConnectionPath, ConnectionPath } from "@/components/canvas/canvas
 import { CanvasConfigComposer } from "@/components/canvas/canvas-config-composer";
 import { CanvasConfigNodePanel } from "@/components/canvas/canvas-config-node-panel";
 import { AssetsNodeContent } from "@/components/canvas/nodes/assets-node-content";
+import { ImageModifierNodeContent } from "@/components/canvas/nodes/image-modifier-node-content";
 import { RecordingNodeContent } from "@/components/canvas/nodes/recording-node-content";
 import { CanvasImageAnalysisDialog } from "@/components/canvas/canvas-image-analysis-dialog";
 import { CanvasNodeAngleDialog } from "@/components/canvas/canvas-node-angle-dialog";
@@ -67,9 +68,10 @@ import { NODE_STATUS_SUCCESS, VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH } from
 import { buildNodeMentionReferences, isCanvasReferenceNode, type CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { applyNodeConfigPatch, audioMetadata, createCanvasNode } from "@/lib/canvas/canvas-node-factory";
 import { insertDerivedAsset } from "@/lib/canvas/canvas-derived-asset";
+import { renderImageModifierBlob } from "@/lib/canvas/image-modifier";
 import { extractImageText, ocrPrompt } from "@/lib/canvas/canvas-ocr";
 import { arrangeBoardImages, BOARD_LAYOUT_TEMPLATES, boardLayerImageIds, composeSmartCanvas, moveBoardLayer, orderBoardImages, SMART_CANVAS_DEFAULT_FONT_SIZE, smartCanvasBackground, smartCanvasBackgroundOpacity, smartCanvasSizeForRatio, smartCanvasTexts, type BoardLayoutTemplate } from "@/lib/canvas/smart-canvas";
-import { CANVAS_GRID_SIZE, bulkRenameTitles, findAssetsDropTarget, findBoardDropTarget, getConnectionTargetAnchor, isNodeHidden, isNodeLocked, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides } from "@/lib/canvas/canvas-node-geometry";
+import { CANVAS_GRID_SIZE, bulkRenameTitles, findAssetsDropTarget, findBoardDropTarget, findImageModifierDropTarget, getConnectionTargetAnchor, isNodeHidden, isNodeLocked, nodeBounds, nodeCenterInside, normalizeConnection, snapDragToGuides } from "@/lib/canvas/canvas-node-geometry";
 import {
     audioExtension,
     buildGenerationConfig,
@@ -163,6 +165,7 @@ function InfiniteCanvasPage() {
     const dragMoveRef = useRef<{ clientX: number; clientY: number } | null>(null);
     const dragPreviewRef = useRef<Map<string, Position> | null>(null);
     const dropTargetAssetsRef = useRef<string | null>(null);
+    const dropTargetModifierRef = useRef<string | null>(null);
     const nodeDraggingRef = useRef(false);
     const dragRef = useRef<{
         isDraggingNode: boolean;
@@ -236,6 +239,7 @@ function InfiniteCanvasPage() {
     const [isNodeResizing, setIsNodeResizing] = useState(false);
     const [dropTargetBoardId, setDropTargetBoardId] = useState<string | null>(null);
     const [dropTargetAssetsNodeId, setDropTargetAssetsNodeId] = useState<string | null>(null);
+    const [dropTargetModifierNodeId, setDropTargetModifierNodeId] = useState<string | null>(null);
     const [snapGuides, setSnapGuides] = useState<{ x: number[]; y: number[] }>(EMPTY_SNAP_GUIDES);
     const [dragPreview, setDragPreview] = useState<Map<string, Position> | null>(null);
     const [returningNodes, setReturningNodes] = useState<Map<string, Position>>(new Map());
@@ -890,6 +894,41 @@ function InfiniteCanvasPage() {
         })();
     }, []);
 
+    const applyNodeMetadata = useCallback((nodeId: string, patch: Partial<CanvasNodeData["metadata"]>) => {
+        setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...patch } } : node)));
+    }, []);
+
+    const bakeImageModifierNode = useCallback(
+        async (anchor: CanvasNodeData, source: { content?: string; storageKey?: string }, params?: CanvasNodeMetadata["modifierParams"]) => {
+            const sourceUrl = await resolveImageUrl(source.storageKey, source.content || "");
+            if (!sourceUrl) {
+                applyNodeMetadata(anchor.id, { modifierError: t("canvas.imageModifier.noSource") });
+                message.error(t("canvas.imageModifier.noSource"));
+                return;
+            }
+            try {
+                const blob = await renderImageModifierBlob(sourceUrl, params);
+                const image = await uploadImage(blob);
+                insertDerivedAsset(
+                    {
+                        source: anchor,
+                        children: [{ image, title: t("canvas.imageModifier.resultTitle"), metadata: { prompt: anchor.metadata?.prompt } }],
+                        select: "children",
+                        clearSelectedConnection: true,
+                        openDialog: null,
+                    },
+                    { setNodes, setSelectedNodeIds, setSelectedConnectionId, setDialogNodeId },
+                );
+                applyNodeMetadata(anchor.id, { modifierError: undefined });
+                message.success(t("canvas.imageModifier.baked"));
+            } catch {
+                applyNodeMetadata(anchor.id, { modifierError: t("canvas.imageModifier.bakeFailed") });
+                message.error(t("canvas.imageModifier.bakeFailed"));
+            }
+        },
+        [applyNodeMetadata, message, t],
+    );
+
     const finishNodeDrag = useCallback((clientX?: number, clientY?: number) => {
         if (rafRef.current) {
             cancelAnimationFrame(rafRef.current);
@@ -904,6 +943,7 @@ function InfiniteCanvasPage() {
         const dy = clientY == null ? 0 : (clientY - dragRef.current.startY) / currentViewport.k;
         const initialPositions = dragRef.current.initialSelectedNodes;
         const assetsTargetId = dragRef.current.hasMoved ? dropTargetAssetsRef.current : null;
+        const modifierTargetId = dragRef.current.hasMoved ? dropTargetModifierRef.current : null;
         const previewPositions = dragPreviewRef.current;
 
         historyPausedRef.current = false;
@@ -911,7 +951,9 @@ function InfiniteCanvasPage() {
         setIsNodeDragging(false);
         setDropTargetBoardId(null);
         setDropTargetAssetsNodeId(null);
+        setDropTargetModifierNodeId(null);
         dropTargetAssetsRef.current = null;
+        dropTargetModifierRef.current = null;
         setSnapGuides(EMPTY_SNAP_GUIDES);
         setDragPreview(null);
         dragPreviewRef.current = null;
@@ -931,6 +973,46 @@ function InfiniteCanvasPage() {
                     returned.set(node.id, dropped);
                     collectImageIntoAssets(node, permission);
                 });
+            }
+            if (returned.size) {
+                setReturningNodes(returned);
+                window.setTimeout(() => setReturningNodes(new Map()), NODE_RETURN_MS);
+            }
+        } else if (modifierTargetId) {
+            const target = nodesRef.current.find((node) => node.id === modifierTargetId);
+            const returned = new Map<string, Position>();
+            if (target) {
+                const emit = Boolean(target.metadata?.modifierEmit);
+                const params = target.metadata?.modifierParams;
+                const droppedNode = nodesRef.current.find((node) => {
+                    if (node.type !== CanvasNodeType.Image || (!node.metadata?.content && !node.metadata?.storageKey)) return false;
+                    const initial = initialPositions.find((item) => item.id === node.id);
+                    if (!initial) return false;
+                    const dropped = previewPositions?.get(node.id) || { x: initial.x + dx, y: initial.y + dy };
+                    return nodeCenterInside({ ...node, position: dropped }, target);
+                });
+                if (droppedNode) {
+                    const initial = initialPositions.find((item) => item.id === droppedNode.id)!;
+                    const dropped = previewPositions?.get(droppedNode.id) || { x: initial.x + dx, y: initial.y + dy };
+                    returned.set(droppedNode.id, dropped);
+                    if (emit) {
+                        void bakeImageModifierNode(target, { content: droppedNode.metadata?.content, storageKey: droppedNode.metadata?.storageKey }, params);
+                    } else {
+                        applyNodeMetadata(target.id, {
+                            modifierSource: {
+                                content: droppedNode.metadata?.content || "",
+                                storageKey: droppedNode.metadata?.storageKey,
+                                thumbnail: droppedNode.metadata?.thumbnail,
+                                thumbnailKey: droppedNode.metadata?.thumbnailKey,
+                                naturalWidth: droppedNode.metadata?.naturalWidth,
+                                naturalHeight: droppedNode.metadata?.naturalHeight,
+                                bytes: droppedNode.metadata?.bytes,
+                                mimeType: droppedNode.metadata?.mimeType,
+                            },
+                            modifierError: undefined,
+                        });
+                    }
+                }
             }
             if (returned.size) {
                 setReturningNodes(returned);
@@ -970,7 +1052,7 @@ function InfiniteCanvasPage() {
                 setDialogNodeId(clickedNodeId);
             }
         }
-    }, [collectImageIntoAssets]);
+    }, [applyNodeMetadata, bakeImageModifierNode, collectImageIntoAssets]);
 
     const moveNodeLayer = useCallback((nodeId: string, direction: "up" | "down") => {
         const current = nodesRef.current;
@@ -1030,9 +1112,12 @@ function InfiniteCanvasPage() {
                     });
                     const dropCandidates = previewNodes.filter((node) => !isNodeHidden(node));
                     const assetsTarget = findAssetsDropTarget(movedIds, dropCandidates);
+                    const modifierTarget = findImageModifierDropTarget(movedIds, dropCandidates);
                     dropTargetAssetsRef.current = assetsTarget?.id || null;
+                    dropTargetModifierRef.current = modifierTarget?.id || null;
                     setDropTargetAssetsNodeId(assetsTarget?.id || null);
-                    setDropTargetBoardId(assetsTarget ? null : findBoardDropTarget(movedIds, dropCandidates)?.id || null);
+                    setDropTargetModifierNodeId(modifierTarget?.id || null);
+                    setDropTargetBoardId(assetsTarget || modifierTarget ? null : findBoardDropTarget(movedIds, dropCandidates)?.id || null);
                     const preview = new Map(initialPositions.map((item) => [item.id, { x: item.x + finalDx, y: item.y + finalDy }]));
                     dragPreviewRef.current = preview;
                     setDragPreview(preview);
@@ -1993,6 +2078,16 @@ function InfiniteCanvasPage() {
             if (contentNode.type === CanvasNodeType.Assets)
                 return <AssetsNodeContent node={contentNode} onInsert={(file) => void insertFolderFile(file)} onOutputFolderBind={() => handleOutputFolderBind(contentNode.id)} onOutputFolderUnbind={() => handleOutputFolderUnbind(contentNode.id)} />;
             if (contentNode.type === CanvasNodeType.Recording) return <RecordingNodeContent onRecorded={(blob) => handleRecordingSaved(contentNode, blob)} />;
+            if (contentNode.type === CanvasNodeType.ImageModifier)
+                return (
+                    <ImageModifierNodeContent
+                        node={contentNode}
+                        onParamsChange={(params) => applyNodeMetadata(contentNode.id, { modifierParams: params, modifierError: undefined })}
+                        onEmitChange={(emit) => applyNodeMetadata(contentNode.id, { modifierEmit: emit })}
+                        onGenerate={() => bakeImageModifierNode(contentNode, contentNode.metadata?.modifierSource || {}, contentNode.metadata?.modifierParams)}
+                        onClearSource={() => applyNodeMetadata(contentNode.id, { modifierSource: undefined, modifierError: undefined })}
+                    />
+                );
             return (
             <CanvasConfigNodePanel
                 node={contentNode}
@@ -2010,7 +2105,7 @@ function InfiniteCanvasPage() {
             />
             );
         },
-        [configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleOutputFolderBind, handleOutputFolderUnbind, handleRecordingSaved, insertFolderFile, mentionReferencesByNodeId, runningNodeId, startNodeReferenceSelection, t],
+        [applyNodeMetadata, bakeImageModifierNode, configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleOutputFolderBind, handleOutputFolderUnbind, handleRecordingSaved, insertFolderFile, mentionReferencesByNodeId, runningNodeId, startNodeReferenceSelection, t],
     );
 
     if (!projectLoaded && !loadedOnceRef.current) return <CanvasRefreshShell />;
@@ -2093,7 +2188,7 @@ function InfiniteCanvasPage() {
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node) ? "disabled" : "available"}
                             showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.SpeechGeneration && node.type !== CanvasNodeType.MusicGeneration && node.type !== CanvasNodeType.Prompt && node.type !== CanvasNodeType.MusicPrompt && node.type !== CanvasNodeType.SpeechPrompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             isBoardDropTarget={dropTargetBoardId === node.id}
-                            isAssetsDropTarget={dropTargetAssetsNodeId === node.id}
+                            isAssetsDropTarget={dropTargetAssetsNodeId === node.id || dropTargetModifierNodeId === node.id}
                             returnFrom={returningNodes.get(node.id)}
                             boardLayers={boardRenderLayersById.get(node.id)}
                             boardLayersById={boardRenderLayersById}

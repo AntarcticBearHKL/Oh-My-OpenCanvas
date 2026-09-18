@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
-import { AlignLeft, ArrowLeftRight, AudioLines, Compass, Download, Focus, FolderInput, Hand, HelpCircle, LayoutDashboard, ListTree, Loader2, MessageSquareText, Mic, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
+import { AlignLeft, ArrowLeftRight, AudioLines, Compass, Download, Focus, FolderInput, Hand, HelpCircle, LayoutDashboard, ListTree, Loader2, MessageSquareText, Mic, MousePointer2, Music2, Puzzle, Redo2, SlidersHorizontal, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -63,7 +63,7 @@ export function CanvasToolbar({
     const [zoomOpen, setZoomOpen] = useState(false);
     const [zoomPanelX, setZoomPanelX] = useState(0);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
-    const [createMenu, setCreateMenu] = useState<"prompt" | "generator" | "input" | null>(null);
+    const [createMenu, setCreateMenu] = useState<"prompt" | "generator" | "input" | "modifiers" | null>(null);
     const [createMenuX, setCreateMenuX] = useState(0);
     const [exporting, setExporting] = useState(false);
     // Keep extension plugin nodes synchronized with registry changes.
@@ -73,7 +73,7 @@ export function CanvasToolbar({
     const hoverStyle = { background: theme.toolbar.itemHover, color: theme.toolbar.activeText };
     const activeStyle = { background: theme.toolbar.activeBg, color: theme.toolbar.activeText };
     const tip = hovered ? toolLabel(hovered, t) : "";
-    const createMenuItems: Record<"prompt" | "generator" | "input", { type: CanvasNodeType; label: string; icon: ReactNode }[]> = {
+    const createMenuItems: Record<"prompt" | "generator" | "input" | "modifiers", { type: CanvasNodeType; label: string; icon: ReactNode }[]> = {
         prompt: [
             { type: CanvasNodeType.Prompt, label: t("canvas.nodeTypes.prompt"), icon: <MessageSquareText className="size-4" /> },
             { type: CanvasNodeType.MusicPrompt, label: t("canvas.nodeTypes.musicPrompt"), icon: <Music2 className="size-4" /> },
@@ -88,6 +88,7 @@ export function CanvasToolbar({
             { type: CanvasNodeType.Assets, label: t("canvas.nodeTypes.assets"), icon: <FolderInput className="size-4" /> },
             { type: CanvasNodeType.Recording, label: t("canvas.nodeTypes.recording"), icon: <Mic className="size-4" /> },
         ],
+        modifiers: [{ type: CanvasNodeType.ImageModifier, label: t("canvas.nodeTypes.imageModifier"), icon: <SlidersHorizontal className="size-4" /> }],
     };
 
     // Close toolbar popovers when clicking outside the toolbar and its panels, or when pressing Escape.
@@ -204,6 +205,25 @@ export function CanvasToolbar({
                 >
                     <Sparkles className="size-4.5" />
                 </ToolbarButton>
+                <ToolbarButton
+                    id="tool-modifiers-group"
+                    label={t("canvas.toolbar.modifiersGroup")}
+                    active={createMenu === "modifiers"}
+                    hovered={hovered}
+                    activeStyle={activeStyle}
+                    hoverStyle={hoverStyle}
+                    wrapRef={wrapRef}
+                    onTipX={setTipX}
+                    onHover={setHovered}
+                    onClick={(event) => {
+                        setCreateMenuX(getTipX(wrapRef.current, event.currentTarget));
+                        setExtensionsOpen(false);
+                        setZoomOpen(false);
+                        setCreateMenu((value) => (value === "modifiers" ? null : "modifiers"));
+                    }}
+                >
+                    <SlidersHorizontal className="size-4.5" />
+                </ToolbarButton>
                 <ToolbarButton id="tool-smart-canvas" label={t("canvas.nodeTypes.smartCanvas")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={() => onAddNode(CanvasNodeType.SmartCanvas)}>
                     <LayoutDashboard className="size-4.5" />
                 </ToolbarButton>
@@ -282,7 +302,7 @@ export function CanvasToolbar({
                     className={`pointer-events-auto absolute bottom-[72px] z-30 w-[220px] -translate-x-1/2 rounded-2xl border p-2 ${frostedSurfaceClass}`}
                     style={{ left: createMenuX || "50%", background: theme.toolbar.panel, borderColor: theme.toolbar.border, color: theme.toolbar.item }}
                 >
-                    <div className="px-1.5 pb-1.5 text-[11px] font-medium opacity-50">{t(createMenu === "prompt" ? "canvas.toolbar.promptGroup" : createMenu === "generator" ? "canvas.toolbar.generatorGroup" : "canvas.toolbar.inputOutputGroup")}</div>
+                    <div className="px-1.5 pb-1.5 text-[11px] font-medium opacity-50">{t(createMenu === "prompt" ? "canvas.toolbar.promptGroup" : createMenu === "generator" ? "canvas.toolbar.generatorGroup" : createMenu === "modifiers" ? "canvas.toolbar.modifiersGroup" : "canvas.toolbar.inputOutputGroup")}</div>
                     <div className="grid gap-0.5">
                         {createMenuItems[createMenu].map((item) => (
                             <button
@@ -491,6 +511,7 @@ function toolLabel(id: string, t: (key: string) => string) {
     if (id === "tool-redo") return t("canvas.redo");
     if (id === "tool-prompt-group") return t("canvas.toolbar.promptGroup");
     if (id === "tool-generator-group") return t("canvas.toolbar.generatorGroup");
+    if (id === "tool-modifiers-group") return t("canvas.toolbar.modifiersGroup");
     if (id === "tool-video") return t("canvas.toolbar.video");
     if (id === "tool-smart-canvas") return t("canvas.nodeTypes.smartCanvas");
     if (id === "tool-input-group") return t("canvas.toolbar.inputOutputGroup");

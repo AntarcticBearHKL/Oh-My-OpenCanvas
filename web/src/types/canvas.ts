@@ -24,6 +24,7 @@ export enum CanvasNodeType {
     SmartCanvas = "smart-canvas",
     Assets = "assets",
     Recording = "recording",
+    ImageModifier = "image-modifier",
 }
 
 // Node types are open strings: built-ins use CanvasNodeType and plugins use "<pluginId>:<name>".
@@ -52,6 +53,31 @@ export type CanvasNodeText = {
     status: CanvasNodeStatus;
     errorDetails?: string;
     content: string;
+};
+
+export type CanvasImageModifierParams = {
+    brightness: number;
+    contrast: number;
+    saturate: number;
+    hueRotate: number;
+    blur: number;
+    grayscale: number;
+    sepia: number;
+    invert: number;
+    opacity: number;
+};
+
+export type CanvasImageModifierParamKey = keyof CanvasImageModifierParams;
+
+export type CanvasImageModifierSource = {
+    content: string;
+    storageKey?: string;
+    thumbnail?: string;
+    thumbnailKey?: string;
+    naturalWidth?: number;
+    naturalHeight?: number;
+    bytes?: number;
+    mimeType?: string;
 };
 
 export type CanvasNodeMetadata = {
@@ -115,6 +141,10 @@ export type CanvasNodeMetadata = {
     hidden?: boolean;
     assetFolderName?: string;
     outputFolderName?: string;
+    modifierSource?: CanvasImageModifierSource;
+    modifierParams?: CanvasImageModifierParams;
+    modifierEmit?: boolean;
+    modifierError?: string;
 };
 
 export type CanvasNodeData = {
