@@ -141,6 +141,19 @@ export default {
         deleteAll: "删除全部",
         import: "导入画布",
         create: "新建画布",
+        exportCanvas: "导出画布",
+        exported: "已导出画布",
+        exportFailed: "导出失败，请重试",
+        importDialog: {
+            title: "导入画布",
+            drop: "拖入画布压缩包，或点击选择文件",
+            importing: "正在导入画布…",
+            invalidType: "请选择 .zip 压缩包",
+            corrupt: "无法读取该压缩包，文件可能已损坏",
+            missingManifest: "压缩包缺少清单文件 projects.json",
+            unsupportedVersion: "不支持该压缩包的版本",
+            missingAsset: "压缩包缺少资源文件：{{name}}",
+        },
         group: {
             create: "新建库",
             defaultName: "库 {{count}}",
@@ -185,7 +198,7 @@ export default {
         },
         promptNode: { pick: "从预设库选择", pickerTitle: "从预设库选择提示词", search: "搜索提示词", placeholder: "输入或从预设库选择提示词", musicTags: ["[Intro]", "[Verse]", "[Pre-Chorus]", "[Chorus]", "[Bridge]", "[Outro]", "[Instrumental]"], speechTags: ["[happy]", "[sad]", "[whispering]", "[angry]", "[calm]", "[excited]", "[serious]", "[gentle]"], tagHint: "点击标签插入到光标处", empty: "暂无提示词", panelHint: "在下方提示词面板中选择或编辑", dragHint: "拖到提示词中插入引用" },
         videoFrames: { first: "截取首帧", last: "截取尾帧", current: "截取当前帧", firstTitle: "{{name}} 首帧", lastTitle: "{{name}} 尾帧", currentTitle: "{{name}} 当前帧", captured: "已生成图片节点", failed: "无法截取该画面，请重试" },
-        switcher: { placeholder: "切换画布", nodes: "{{count}} 个节点", search: "搜索画布", new: "新建画布", empty: "此分组下没有画布", group: "分组：{{name}}" }, align: { left: "左对齐", centerX: "水平居中", right: "右对齐", top: "顶对齐", centerY: "垂直居中", bottom: "底对齐", distributeX: "水平等距", distributeY: "垂直等距" }, sidePanel: {
+        switcher: { placeholder: "切换画布", nodes: "{{count}} 个节点", search: "搜索画布", new: "新建画布", load: "载入", empty: "此分组下没有画布", group: "分组：{{name}}" }, align: { left: "左对齐", centerX: "水平居中", right: "右对齐", top: "顶对齐", centerY: "垂直居中", bottom: "底对齐", distributeX: "水平等距", distributeY: "垂直等距" }, sidePanel: {
             assets: "资产", canvases: "画布", resize: "调整左侧面板宽度", exportFailed: "导出失败，请重试",
             addingAssets: "正在添加资产…", addedAssets: "已添加 {{count}} 个资产", mediaOnly: "仅支持图片或视频文件", addFailed: "添加失败，请重试", searchAssets: "搜索资产", add: "添加", noAssets: "暂无资产", inserted: "插入画布", removeAssetTitle: "移除该资产？", remove: "移除", removeAsset: "移除资产", assetRemoved: "资产已移除",
             group: {

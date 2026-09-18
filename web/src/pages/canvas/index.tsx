@@ -4,24 +4,21 @@ import { App, Button, Empty, Input, Spin, Table } from "antd";
 import { Check, Download, FileUp, FolderPlus, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import { readZip } from "@/lib/zip";
 import { cn } from "@/lib/utils";
-import { setMediaBlob } from "@/services/file-storage";
-import { setImageBlob } from "@/services/image-storage";
 import { CanvasDeleteProjectsDialog } from "@/components/canvas/canvas-delete-projects-dialog";
+import { CanvasImportDialog } from "@/components/canvas/canvas-import-dialog";
 import { CanvasProjectRow } from "@/components/canvas/canvas-project-row";
-import type { CanvasExportFile } from "@/types/canvas-export";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useCanvasStore, type CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { useCanvasUiStore } from "@/stores/canvas/use-canvas-ui-store";
 import { exportCanvasProjects } from "@/lib/canvas/canvas-export";
 
 export default function CanvasPage() {
-    const { message, modal } = App.useApp();
+    const { modal } = App.useApp();
     const { t } = useTranslation();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const inputRef = useRef<HTMLInputElement>(null);
+    const [importOpen, setImportOpen] = useState(false);
     const autoOpenRef = useRef(false);
     const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
     const [editingGroupName, setEditingGroupName] = useState("");
@@ -33,7 +30,6 @@ export default function CanvasPage() {
     const groups = useCanvasStore((state) => state.groups);
     const createProject = useCanvasStore((state) => state.createProject);
     const reorderProjects = useCanvasStore((state) => state.reorderProjects);
-    const importProject = useCanvasStore((state) => state.importProject);
     const createGroup = useCanvasStore((state) => state.createGroup);
     const renameGroup = useCanvasStore((state) => state.renameGroup);
     const deleteGroup = useCanvasStore((state) => state.deleteGroup);
@@ -68,32 +64,6 @@ export default function CanvasPage() {
         }
         setDragId(null);
         setDropIndex(null);
-    };
-    const importCanvas = async (file?: File) => {
-        if (!file) return;
-        try {
-            const zip = await readZip(file);
-            const projectFile = zip.get("projects.json");
-            if (!projectFile) throw new Error("missing projects.json");
-            const data = JSON.parse(await projectFile.text()) as CanvasExportFile;
-            await Promise.all(
-                data.projects.flatMap((project) =>
-                    project.files.map(async (item) => {
-                        const blob = zip.get(item.path);
-                        if (!blob) return;
-                        const typedBlob = blob.type ? blob : blob.slice(0, blob.size, item.mimeType);
-                        await (item.storageKey.startsWith("image:") ? setImageBlob(item.storageKey, typedBlob) : setMediaBlob(item.storageKey, typedBlob));
-                    }),
-                ),
-            );
-            const groupId = selectedGroup?.id ?? groups[0]?.id ?? createGroup();
-            data.projects.forEach((item) => importProject({ ...item.project, groupId }));
-            message.success(t("canvas.imported", { count: data.projects.length }));
-        } catch {
-            message.error(t("canvas.importFailed"));
-        } finally {
-            if (inputRef.current) inputRef.current.value = "";
-        }
     };
     const addGroup = () => {
         setSelectedGroupId(createGroup());
@@ -212,7 +182,7 @@ export default function CanvasPage() {
                                     {t("canvas.deleteAll")}
                                 </Button>
                             ) : null}
-                            <Button disabled={!hydrated} icon={<FileUp className="size-4" />} onClick={() => inputRef.current?.click()}>
+                            <Button disabled={!hydrated} icon={<FileUp className="size-4" />} onClick={() => setImportOpen(true)}>
                                 {t("canvas.import")}
                             </Button>
                             <Button disabled={!hydrated || !selectedGroup} type="primary" icon={<Plus className="size-4" />} onClick={createAndEnter}>
@@ -301,7 +271,7 @@ export default function CanvasPage() {
                 </div>
             </section>
 
-            <input ref={inputRef} type="file" accept="application/zip,.zip" className="hidden" onChange={(event) => void importCanvas(event.target.files?.[0])} />
+            <CanvasImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
             <CanvasDeleteProjectsDialog />
         </main>
     );

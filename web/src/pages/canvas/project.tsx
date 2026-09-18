@@ -19,6 +19,7 @@ import { canvasThemes, frostedSurfaceClass } from "@/lib/canvas-theme";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { cropDataUrl, splitDataUrl, upscaleDataUrl, type ImageUpscaleParams } from "@/lib/canvas/canvas-image-data";
+import { exportCanvasProjects } from "@/lib/canvas/canvas-export";
 import { fitNodeSize } from "@/lib/canvas/canvas-node-size";
 import { captureVideoFrame, type VideoFramePosition } from "@/lib/canvas/canvas-video-frame";
 import { App, Button, Dropdown, Modal } from "antd";
@@ -188,6 +189,7 @@ function InfiniteCanvasPage() {
     const updateProject = useCanvasStore((state) => state.updateProject);
     const renameProject = useCanvasStore((state) => state.renameProject);
     const currentProject = useCanvasStore((state) => state.projects.find((project) => project.id === projectId));
+    const groups = useCanvasStore((state) => state.groups);
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const outputFolderName = useAssetFolderStore((state) => state.outputFolderName);
     const panelOpen = useCanvasSidePanelStore((state) => state.panelOpen);
@@ -383,6 +385,17 @@ function InfiniteCanvasPage() {
     useLayoutEffect(() => {
         selectionBoxRef.current = selectionBox;
     }, [selectionBox]);
+
+    const exportCurrentCanvas = useCallback(async () => {
+        if (!currentProject) return;
+        try {
+            const groupName = groups.find((group) => group.id === currentProject.groupId)?.name;
+            await exportCanvasProjects([{ ...currentProject, nodes, connections, chatSessions, activeChatId, viewport }], currentProject.title || t("canvas.untitledCanvas"), () => groupName);
+            message.success(t("canvas.exported"));
+        } catch {
+            message.error(t("canvas.exportFailed"));
+        }
+    }, [activeChatId, chatSessions, connections, currentProject, groups, message, nodes, t, viewport]);
 
     useEffect(() => {
         const el = containerRef.current;
@@ -2196,6 +2209,7 @@ function InfiniteCanvasPage() {
                     canRedo={historyState.canRedo}
                     onAddNode={(type) => createNode(type)}
                     onAddExtensionNode={(type) => createNode(type)}
+                    onExport={exportCurrentCanvas}
                     onUndo={undoCanvas}
                     onRedo={redoCanvas}
                     onDelete={() => deleteNodes(new Set(selectedNodeIds))}

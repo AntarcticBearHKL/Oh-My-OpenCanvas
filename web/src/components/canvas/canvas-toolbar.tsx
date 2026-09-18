@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
-import { AlignLeft, ArrowLeftRight, AudioLines, Compass, Focus, FolderInput, Hand, HelpCircle, LayoutDashboard, ListTree, MessageSquareText, Mic, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
+import { AlignLeft, ArrowLeftRight, AudioLines, Compass, Download, Focus, FolderInput, Hand, HelpCircle, LayoutDashboard, ListTree, Loader2, MessageSquareText, Mic, MousePointer2, Music2, Puzzle, Redo2, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -21,6 +21,7 @@ export function CanvasToolbar({
     isMiniMapOpen,
     onAddNode,
     onAddExtensionNode,
+    onExport,
     onUndo,
     onRedo,
     onDelete,
@@ -39,6 +40,7 @@ export function CanvasToolbar({
     isMiniMapOpen: boolean;
     onAddNode: (type: CanvasNodeTypeId) => void;
     onAddExtensionNode: (type: string) => void;
+    onExport: () => Promise<void>;
     onUndo: () => void;
     onRedo: () => void;
     onDelete: () => void;
@@ -63,6 +65,7 @@ export function CanvasToolbar({
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
     const [createMenu, setCreateMenu] = useState<"prompt" | "generator" | "input" | null>(null);
     const [createMenuX, setCreateMenuX] = useState(0);
+    const [exporting, setExporting] = useState(false);
     // Keep extension plugin nodes synchronized with registry changes.
     useNodeRegistryVersion();
     const extensionDefs = listNodeDefinitions().filter((def) => def.showInCreateMenu !== false && getNodePluginId(def.type) !== "builtin");
@@ -113,6 +116,27 @@ export function CanvasToolbar({
         <div ref={rootRef} className="pointer-events-none absolute bottom-5 left-0 right-0 z-50 flex justify-center px-3">
             {tip ? <DockTip label={tip} x={tipX} theme={theme} /> : null}
             <div ref={wrapRef} className={`thin-scrollbar pointer-events-auto flex h-14 max-w-full items-center gap-1 overflow-x-auto rounded-2xl border px-2 [&>*]:shrink-0 ${frostedSurfaceClass}`} style={dockStyle}>
+                <ToolbarButton
+                    id="tool-export"
+                    label={t("canvas.exportCanvas")}
+                    disabled={exporting}
+                    hovered={hovered}
+                    hoverStyle={hoverStyle}
+                    wrapRef={wrapRef}
+                    onTipX={setTipX}
+                    onHover={setHovered}
+                    onClick={async () => {
+                        setExporting(true);
+                        try {
+                            await onExport();
+                        } finally {
+                            setExporting(false);
+                        }
+                    }}
+                >
+                    {exporting ? <Loader2 className="size-4.5 animate-spin" /> : <Download className="size-4.5" />}
+                </ToolbarButton>
+                <Divider theme={theme} />
                 <ToolbarButton id={`tool-${canvasTool}`} label={t(`canvas.toolbar.${canvasTool}`)} active hovered={hovered} activeStyle={activeStyle} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={() => onCanvasToolChange(canvasTool === "select" ? "pan" : "select")}>
                     {canvasTool === "select" ? <MousePointer2 className="size-4.5" /> : <Hand className="size-4.5" />}
                 </ToolbarButton>
@@ -460,6 +484,7 @@ function Shortcut({ label, value }: { label: ReactNode; value: string }) {
 }
 
 function toolLabel(id: string, t: (key: string) => string) {
+    if (id === "tool-export") return t("canvas.exportCanvas");
     if (id === "tool-select") return t("canvas.toolbar.select");
     if (id === "tool-pan") return t("canvas.toolbar.pan");
     if (id === "tool-undo") return t("canvas.undo");

@@ -7,8 +7,9 @@ export type CanvasExportFile = {
     projects: CanvasProjectExportItem[];
 };
 
-type CanvasProjectExportItem = {
+export type CanvasProjectExportItem = {
     project: CanvasProject;
+    groupName?: string;
     files: CanvasExportAsset[];
 };
 

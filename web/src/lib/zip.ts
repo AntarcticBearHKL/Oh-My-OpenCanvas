@@ -1,4 +1,4 @@
-import { unzipSync, zipSync } from "fflate";
+import { unzip, zip, type Unzipped } from "fflate";
 
 type ZipFile = {
     name: string;
@@ -12,10 +12,12 @@ export async function createZip(files: ZipFile[]) {
             return [file.name, data] as const;
         }),
     );
-    return new Blob([zipSync(Object.fromEntries(entries), { level: 0 })], { type: "application/zip" });
+    const result = await new Promise<Uint8Array<ArrayBuffer>>((resolve, reject) => zip(Object.fromEntries(entries), { level: 0 }, (error, data) => (error ? reject(error) : resolve(data))));
+    return new Blob([result], { type: "application/zip" });
 }
 
 export async function readZip(file: Blob) {
-    const entries = unzipSync(new Uint8Array(await file.arrayBuffer()));
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const entries = await new Promise<Unzipped>((resolve, reject) => unzip(bytes, (error, data) => (error ? reject(error) : resolve(data))));
     return new Map(Object.entries(entries).map(([name, data]) => [name, new Blob([data])]));
 }
