@@ -8,6 +8,7 @@ import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveC
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { frostedSurfaceClass } from "@/lib/canvas-theme";
 import { openRouterMusicModels, openRouterSpeechModels } from "@/lib/audio-generation";
+import { normalizeVideoMode, openRouterVideoModels } from "@/lib/video-generation";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasPromptLibrary } from "./canvas-prompt-library";
 import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
@@ -46,8 +47,8 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
     const hasTextContent = node.type === CanvasNodeType.Text && Boolean(node.metadata?.content?.trim());
     const hasImageContent = node.type === CanvasNodeType.Image && Boolean(node.metadata?.content);
     const isEditingExistingContent = hasTextContent || hasImageContent;
-    const acceptsPromptConnection = node.type === CanvasNodeType.SpeechGeneration || node.type === CanvasNodeType.MusicGeneration;
-    const requiredPromptType = node.type === CanvasNodeType.MusicGeneration ? CanvasNodeType.MusicPrompt : CanvasNodeType.SpeechPrompt;
+    const acceptsPromptConnection = node.type === CanvasNodeType.SpeechGeneration || node.type === CanvasNodeType.MusicGeneration || node.type === CanvasNodeType.VideoGeneration;
+    const requiredPromptType = node.type === CanvasNodeType.MusicGeneration ? CanvasNodeType.MusicPrompt : node.type === CanvasNodeType.VideoGeneration ? CanvasNodeType.VideoPrompt : CanvasNodeType.SpeechPrompt;
     const hasConnectedPrompt = acceptsPromptConnection && connectedNodes.some((item) => item.type === requiredPromptType);
     const promptPlaceholderKey = node.type === CanvasNodeType.MusicGeneration ? "music" : node.type === CanvasNodeType.SpeechGeneration ? "speech" : mode === "image" && hasImageContent ? "editImage" : mode === "text" && hasTextContent ? "editText" : mode;
     const [prompt, setPrompt] = useState(node.metadata?.composerContent ?? node.metadata?.prompt ?? "");
@@ -120,7 +121,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         </>
                     ) : mode === "video" ? (
                         <>
-                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="video" onMissingConfig={() => openConfigDialog()} className="max-w-[190px]" />
+                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="video" models={node.type === CanvasNodeType.VideoGeneration ? openRouterVideoModels : undefined} onMissingConfig={() => openConfigDialog()} className="max-w-[190px]" />
                             <CanvasVideoSettingsPopover config={config} buttonClassName="!h-10 !max-w-[220px] !justify-start !rounded-full !px-3" onConfigChange={(key, value) => onConfigChange(node.id, videoConfigPatch(key, value))} />
                         </>
                     ) : mode === "audio" ? (
@@ -176,13 +177,13 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
 }
 
 function defaultMode(type: CanvasNodeData["type"]): CanvasNodeGenerationMode {
-    return type === CanvasNodeType.Text ? "text" : type === CanvasNodeType.Video ? "video" : type === CanvasNodeType.Audio ? "audio" : "image";
+    return type === CanvasNodeType.Text ? "text" : type === CanvasNodeType.Video || type === CanvasNodeType.VideoPrompt ? "video" : type === CanvasNodeType.Audio ? "audio" : "image";
 }
 
 function buildNodeConfig(globalConfig: AiConfig, node: CanvasNodeData, mode: CanvasNodeGenerationMode): AiConfig {
     return {
         ...globalConfig,
-        model: node.type === CanvasNodeType.SpeechGeneration ? node.metadata?.model || openRouterSpeechModels[0].value : node.type === CanvasNodeType.MusicGeneration ? node.metadata?.model || openRouterMusicModels[0].value : resolveModelForCapability(globalConfig, node.metadata?.model, mode),
+        model: node.type === CanvasNodeType.SpeechGeneration ? node.metadata?.model || openRouterSpeechModels[0].value : node.type === CanvasNodeType.MusicGeneration ? node.metadata?.model || openRouterMusicModels[0].value : node.type === CanvasNodeType.VideoGeneration ? node.metadata?.model || openRouterVideoModels[0].value : resolveModelForCapability(globalConfig, node.metadata?.model, mode),
         reasoningEffort: node.metadata?.reasoningEffort || globalConfig.reasoningEffort || defaultConfig.reasoningEffort,
         quality: node.metadata?.quality || globalConfig.quality || defaultConfig.quality,
         size: node.metadata?.size || globalConfig.size || defaultConfig.size,
@@ -204,7 +205,7 @@ function videoConfigPatch(key: keyof AiConfig, value: string) {
     if (key === "videoSeconds") return { seconds: value };
     if (key === "videoGenerateAudio") return { generateAudio: value };
     if (key === "videoWatermark") return { watermark: value };
-    if (key === "videoMode") return { videoMode: value };
+    if (key === "videoMode") return { videoMode: normalizeVideoMode(value) };
     return { [key]: value };
 }
 

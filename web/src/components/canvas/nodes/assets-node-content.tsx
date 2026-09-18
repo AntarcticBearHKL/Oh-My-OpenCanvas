@@ -1,41 +1,45 @@
 import { useEffect } from "react";
-import { FileText, FolderInput, Music2, RefreshCw, Video, X } from "lucide-react";
+import { FolderInput, PlugZap, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import { BROWSER_CACHE_DRAG_MIME, getBrowserCacheFile } from "@/services/api/browser-cache";
 import { ASSET_FOLDER_DRAG_MIME, ASSET_FOLDER_FILE_LIMIT } from "@/lib/canvas/asset-folder";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
 import { useAssetFolderStore } from "@/stores/use-asset-folder-store";
-import type { CanvasNodeData } from "@/types/canvas";
+import { useBrowserCacheStore } from "@/stores/use-browser-cache-store";
+import type { CanvasAssetSource, CanvasNodeData } from "@/types/canvas";
 
-export function AssetsNodeContent({ node, onInsert, onOutputFolderBind, onOutputFolderUnbind }: { node: CanvasNodeData; onInsert: (file: File) => void; onOutputFolderBind: () => void; onOutputFolderUnbind: () => void }) {
+export function AssetsNodeContent({ node, onInsert, onSourceChange }: { node: CanvasNodeData; onInsert: (file: File) => void; onSourceChange: (source: CanvasAssetSource) => void }) {
     const { t } = useTranslation();
     const theme = useCanvasTheme();
-    const folderName = useAssetFolderStore((state) => state.folderName);
-    const files = useAssetFolderStore((state) => state.files);
-    const capped = useAssetFolderStore((state) => state.capped);
-    const failed = useAssetFolderStore((state) => state.failed);
-    const supported = useAssetFolderStore((state) => state.supported);
-    const collectStatus = useAssetFolderStore((state) => state.collectStatus);
+    const binding = useAssetFolderStore((state) => state.folders[node.id]);
     const bindFolder = useAssetFolderStore((state) => state.bindFolder);
     const refresh = useAssetFolderStore((state) => state.refresh);
-    const outputFolderName = useAssetFolderStore((state) => state.outputFolderName);
-    const outputStatus = useAssetFolderStore((state) => state.outputStatus);
-    const bound = Boolean(folderName);
-    const displayName = node.metadata?.assetFolderName || folderName;
-    const collectLabel = collectStatus === "saving" ? t("canvas.assets.collectSaving") : collectStatus === "saved" ? t("canvas.assets.collectSaved") : collectStatus === "failed" ? t("canvas.assets.collectFailed") : "";
-    const outputStatusLabel = outputStatus === "writing" ? t("canvas.assets.outputWriting") : outputStatus === "error" ? t("canvas.assets.outputFailed") : "";
-    const outputLabel = outputFolderName || t("canvas.assets.outputUnbound");
+    const cacheStatus = useBrowserCacheStore((state) => state.status);
+    const cacheItems = useBrowserCacheStore((state) => state.items);
+    const initCache = useBrowserCacheStore((state) => state.init);
+    const source: CanvasAssetSource = node.metadata?.assetSource === "cache" ? "cache" : "folder";
+    const files = binding?.files || [];
+    const bound = Boolean(binding?.folderName);
+    const collectLabel = binding?.collectStatus === "saving" ? t("canvas.assets.collectSaving") : binding?.collectStatus === "saved" ? t("canvas.assets.collectSaved") : binding?.collectStatus === "failed" ? t("canvas.assets.collectFailed") : "";
+    const statusLabel = collectLabel || (binding?.failed ? t("canvas.assets.scanFailed") : binding?.capped ? t("canvas.assets.capped", { count: ASSET_FOLDER_FILE_LIMIT }) : files.length ? t("canvas.assets.dropHint") : "");
+    const cachedItems = cacheItems.slice(0, ASSET_FOLDER_FILE_LIMIT);
+    const cacheStatusLabel = cacheItems.length > ASSET_FOLDER_FILE_LIMIT ? t("canvas.assets.capped", { count: ASSET_FOLDER_FILE_LIMIT }) : "";
 
     useEffect(() => {
-        void useAssetFolderStore.getState().restore();
-        void useAssetFolderStore.getState().restoreOutputFolder();
-    }, []);
+        void useAssetFolderStore.getState().restore(node.id);
+    }, [node.id]);
 
     useEffect(() => {
-        if (collectStatus !== "saved") return;
-        const timer = window.setTimeout(() => useAssetFolderStore.setState({ collectStatus: "idle" }), 2000);
+        if (binding?.collectStatus !== "saved") return;
+        const timer = window.setTimeout(() => useAssetFolderStore.getState().setCollectStatus(node.id, "idle"), 2000);
         return () => window.clearTimeout(timer);
-    }, [collectStatus]);
+    }, [binding?.collectStatus, node.id]);
+
+    const insertCached = async (itemId: string) => {
+        const file = await getBrowserCacheFile(itemId);
+        if (file) onInsert(file);
+    };
 
     return (
         <div className="flex h-full w-full flex-col gap-2 p-3 text-left">
@@ -43,77 +47,117 @@ export function AssetsNodeContent({ node, onInsert, onOutputFolderBind, onOutput
                 <span className="min-w-0 flex-1 truncate text-xs font-semibold" style={{ color: theme.node.text }}>
                     {t("canvas.nodeTypes.assets")}
                 </span>
-                <button type="button" className="flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-[11px] font-medium transition hover:bg-black/5 dark:hover:bg-white/10" style={{ color: theme.node.text }} onClick={() => void bindFolder()} onMouseDown={(event) => event.stopPropagation()}>
-                    <FolderInput className="size-3.5" />
-                    {bound ? t("canvas.assets.rebind") : t("canvas.assets.bind")}
-                </button>
+                {source === "folder" && (
+                    <button type="button" className="flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-[11px] font-medium transition hover:bg-black/5 dark:hover:bg-white/10" style={{ color: theme.node.text }} onClick={() => void bindFolder(node.id)} onMouseDown={(event) => event.stopPropagation()}>
+                        <FolderInput className="size-3.5" />
+                        {bound ? t("canvas.assets.rebind") : t("canvas.assets.bind")}
+                    </button>
+                )}
                 <button
                     type="button"
                     className="grid size-7 shrink-0 place-items-center rounded-md transition hover:bg-black/5 dark:hover:bg-white/10"
                     style={{ color: theme.node.text }}
                     aria-label={t("canvas.assets.refresh")}
                     title={t("canvas.assets.refresh")}
-                    onClick={() => void refresh()}
+                    onClick={() => void (source === "cache" ? initCache() : refresh(node.id))}
                     onMouseDown={(event) => event.stopPropagation()}
                 >
                     <RefreshCw className="size-3.5" />
                 </button>
             </div>
 
-            {bound ? (
-                <div className="truncate text-[10px]" style={{ color: theme.node.muted }}>
-                    {displayName}
-                </div>
-            ) : null}
+            <div className="flex shrink-0 items-center gap-0.5" onMouseDown={(event) => event.stopPropagation()}>
+                {(["folder", "cache"] as const).map((item) => (
+                    <button
+                        key={item}
+                        type="button"
+                        className="h-6 shrink-0 rounded-md px-2 text-[11px] font-medium transition hover:bg-black/5 dark:hover:bg-white/10"
+                        style={{ color: source === item ? theme.node.text : theme.node.muted }}
+                        onMouseDown={(event) => event.stopPropagation()}
+                        onClick={() => {
+                            if (source === item) return;
+                            onSourceChange(item);
+                            if (item === "cache") initCache();
+                        }}
+                    >
+                        {t(item === "folder" ? "canvas.assets.sourceFolder" : "canvas.assets.sourceCache")}
+                    </button>
+                ))}
+            </div>
 
-            {collectLabel ? (
-                <div className="truncate text-[10px]" style={{ color: collectStatus === "failed" ? theme.node.text : theme.node.muted }}>
-                    {collectLabel}
-                </div>
-            ) : null}
-
-            {bound ? (
-                <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto" onWheel={(event) => event.stopPropagation()}>
-                    {files.length ? (
-                        <div className="grid grid-cols-3 gap-2">
-                            {files.map((item) => (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    draggable
-                                    onDragStart={(event) => {
-                                        event.dataTransfer.effectAllowed = "copy";
-                                        event.dataTransfer.setData(ASSET_FOLDER_DRAG_MIME, item.id);
-                                        event.dataTransfer.setData("text/plain", item.name);
-                                    }}
-                                    onClick={() => onInsert(item.file)}
-                                    onMouseDown={(event) => event.stopPropagation()}
-                                    className="group flex cursor-grab flex-col gap-1 overflow-hidden rounded-lg text-left active:cursor-grabbing"
-                                    title={item.name}
-                                >
-                                    <div className="grid aspect-square w-full place-items-center overflow-hidden rounded-lg">
-                                        {item.kind === "image" ? (
-                                            <img src={item.url} alt="" draggable={false} className="size-full object-cover" />
-                                        ) : item.kind === "video" ? (
-                                            <Video className="size-5 opacity-45" />
-                                        ) : item.kind === "audio" ? (
-                                            <Music2 className="size-5 opacity-45" />
-                                        ) : (
-                                            <FileText className="size-5 opacity-45" />
-                                        )}
-                                    </div>
-                                    <span className="truncate text-[10px] leading-4" style={{ color: theme.node.muted }}>
+            {source === "cache" ? (
+                cacheStatus === "ready" ? (
+                    <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto" onWheel={(event) => event.stopPropagation()}>
+                        {cachedItems.length ? (
+                            <div className="flex flex-col gap-0.5">
+                                {cachedItems.map((item) => (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        draggable
+                                        onDragStart={(event) => {
+                                            event.dataTransfer.effectAllowed = "copy";
+                                            event.dataTransfer.setData(BROWSER_CACHE_DRAG_MIME, JSON.stringify({ nodeId: node.id, itemId: item.id }));
+                                            event.dataTransfer.setData("text/plain", item.name);
+                                        }}
+                                        onClick={() => void insertCached(item.id)}
+                                        onMouseDown={(event) => event.stopPropagation()}
+                                        className="w-full cursor-grab truncate rounded px-1.5 py-1 text-left text-[11px] transition hover:bg-black/5 active:cursor-grabbing dark:hover:bg-white/10"
+                                        style={{ color: theme.node.text }}
+                                        title={item.name}
+                                    >
                                         {item.name}
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="grid h-full place-items-center px-4 text-center text-[11px]" style={{ color: theme.node.placeholder }}>
-                            {t("canvas.assets.empty")}
-                        </div>
-                    )}
-                </div>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="grid h-full place-items-center px-4 text-center text-[11px]" style={{ color: theme.node.placeholder }}>
+                                {t("canvas.assets.cacheEmpty")}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center" style={{ color: theme.node.placeholder }}>
+                        <PlugZap className="size-6 opacity-35" />
+                        <span className="px-4 text-[11px] leading-5">{cacheStatus === "connecting" ? t("canvas.assets.cacheConnecting") : t("canvas.assets.cacheUnavailable")}</span>
+                        {cacheStatus === "unavailable" && <span className="px-4 text-[10px] leading-4">{t("canvas.assets.cacheInstallHint")}</span>}
+                    </div>
+                )
+            ) : bound ? (
+                <>
+                    <div className="truncate text-[10px]" style={{ color: theme.node.muted }}>
+                        {binding?.folderName}
+                    </div>
+                    <div className="thin-scrollbar min-h-0 flex-1 overflow-y-auto" onWheel={(event) => event.stopPropagation()}>
+                        {files.length ? (
+                            <div className="flex flex-col gap-0.5">
+                                {files.map((item) => (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        draggable
+                                        onDragStart={(event) => {
+                                            event.dataTransfer.effectAllowed = "copy";
+                                            event.dataTransfer.setData(ASSET_FOLDER_DRAG_MIME, JSON.stringify({ nodeId: node.id, fileId: item.id }));
+                                            event.dataTransfer.setData("text/plain", item.name);
+                                        }}
+                                        onClick={() => onInsert(item.file)}
+                                        onMouseDown={(event) => event.stopPropagation()}
+                                        className="w-full cursor-grab truncate rounded px-1.5 py-1 text-left text-[11px] transition hover:bg-black/5 active:cursor-grabbing dark:hover:bg-white/10"
+                                        style={{ color: theme.node.text }}
+                                        title={item.name}
+                                    >
+                                        {item.name}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="grid h-full place-items-center px-4 text-center text-[11px]" style={{ color: theme.node.placeholder }}>
+                                {t("canvas.assets.empty")}
+                            </div>
+                        )}
+                    </div>
+                </>
             ) : (
                 <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center" style={{ color: theme.node.placeholder }}>
                     <FolderInput className="size-6 opacity-35" />
@@ -122,43 +166,8 @@ export function AssetsNodeContent({ node, onInsert, onOutputFolderBind, onOutput
             )}
 
             <div className="flex shrink-0 items-center justify-between gap-2 text-[10px]" style={{ color: theme.node.muted }}>
-                <span>{t("canvas.assets.count", { count: files.length })}</span>
-                <span className="truncate">
-                    {failed ? t("canvas.assets.scanFailed") : capped ? t("canvas.assets.capped", { count: ASSET_FOLDER_FILE_LIMIT }) : files.length ? t("canvas.assets.dropHint") : ""}
-                </span>
-            </div>
-
-            <div className="flex shrink-0 items-center gap-1.5 border-t pt-2 text-[10px]" style={{ borderColor: theme.node.stroke, color: theme.node.muted }}>
-                <FolderInput className="size-3.5 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">{outputStatusLabel ? `${outputLabel} · ${outputStatusLabel}` : outputLabel}</span>
-                {supported ? (
-                    <>
-                        <button
-                            type="button"
-                            className="flex h-6 shrink-0 items-center rounded-md px-1.5 text-[10px] font-medium transition hover:bg-black/5 dark:hover:bg-white/10"
-                            style={{ color: theme.node.text }}
-                            onClick={onOutputFolderBind}
-                            onMouseDown={(event) => event.stopPropagation()}
-                        >
-                            {outputFolderName ? t("canvas.assets.outputRebind") : t("canvas.assets.outputBind")}
-                        </button>
-                        {outputFolderName ? (
-                            <button
-                                type="button"
-                                className="grid size-6 shrink-0 place-items-center rounded-md transition hover:bg-black/5 dark:hover:bg-white/10"
-                                style={{ color: theme.node.text }}
-                                aria-label={t("canvas.assets.outputUnbind")}
-                                title={t("canvas.assets.outputUnbind")}
-                                onClick={onOutputFolderUnbind}
-                                onMouseDown={(event) => event.stopPropagation()}
-                            >
-                                <X className="size-3.5" />
-                            </button>
-                        ) : null}
-                    </>
-                ) : (
-                    <span className="shrink-0 text-[10px]">{t("canvas.assets.outputUnsupported")}</span>
-                )}
+                <span>{source === "cache" ? t("canvas.assets.cacheCount", { count: cacheItems.length }) : t("canvas.assets.count", { count: files.length })}</span>
+                <span className="truncate">{source === "cache" ? cacheStatusLabel : statusLabel}</span>
             </div>
         </div>
     );

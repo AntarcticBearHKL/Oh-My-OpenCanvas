@@ -30,6 +30,7 @@ import { CanvasConfigNodePanel } from "@/components/canvas/canvas-config-node-pa
 import { AssetsNodeContent } from "@/components/canvas/nodes/assets-node-content";
 import { ImageModifierNodeContent } from "@/components/canvas/nodes/image-modifier-node-content";
 import { RecordingNodeContent } from "@/components/canvas/nodes/recording-node-content";
+import { MAX_VIDEO_REFERENCE_SLOTS, VideoPromptNodeContent } from "@/components/canvas/nodes/video-prompt-node-content";
 import { CanvasImageAnalysisDialog } from "@/components/canvas/canvas-image-analysis-dialog";
 import { CanvasNodeAngleDialog } from "@/components/canvas/canvas-node-angle-dialog";
 import { CanvasNodeCropDialog, type CanvasImageCropRect } from "@/components/canvas/canvas-node-crop-dialog";
@@ -84,9 +85,9 @@ import {
     resetInterruptedGeneration,
 } from "@/lib/canvas/canvas-generation-helpers";
 import { getNodeDefinition, useNodeRegistryVersion } from "@/lib/canvas/node-registry";
-import { resolveLatestUpstream } from "@/lib/canvas/output-resolution";
-import { outputFileName, outputSourceFingerprint, resolveOutputBlob } from "@/lib/workspace/output-file";
+import { outputFileName, resolveOutputBlob } from "@/lib/workspace/output-file";
 import { useAssetFolderStore } from "@/stores/use-asset-folder-store";
+import { useBrowserCacheStore } from "@/stores/use-browser-cache-store";
 import { useCanvasSidePanelStore } from "@/stores/use-canvas-side-panel-store";
 import { registerBuiltinNodes } from "@/components/canvas/nodes/builtin-nodes";
 import { CanvasPluginManagerModal } from "@/components/canvas/canvas-plugin-manager-modal";
@@ -103,6 +104,8 @@ import {
     type Position,
     type SelectionBox,
     type ViewportTransform,
+    type CanvasVideoSlot,
+    type CanvasVideoSlots,
 } from "@/types/canvas";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
 
@@ -131,6 +134,34 @@ type ConnectionDropTarget = {
     nodeId: string | null;
     isNearNode: boolean;
 };
+
+type VideoSlotDropTarget = { nodeId: string; slot: CanvasVideoSlot };
+
+function isCanvasVideoSlot(value: string | undefined): value is CanvasVideoSlot {
+    return value === "firstFrame" || value === "lastFrame" || value === "reference";
+}
+
+function findVideoSlotDropTarget(x: number, y: number, draggedIds: Set<string>, nodes: CanvasNodeData[]): VideoSlotDropTarget | null {
+    if (!nodes.some((node) => draggedIds.has(node.id) && node.type === CanvasNodeType.Image)) return null;
+    for (const element of document.querySelectorAll<HTMLElement>("[data-video-slot][data-video-slot-node]")) {
+        const rect = element.getBoundingClientRect();
+        if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) continue;
+        const nodeId = element.dataset.videoSlotNode;
+        const slot = element.dataset.videoSlot;
+        if (!nodeId || !isCanvasVideoSlot(slot)) continue;
+        if (nodes.some((node) => node.id === nodeId && node.type === CanvasNodeType.VideoPrompt)) return { nodeId, slot };
+    }
+    return null;
+}
+
+function resolveVideoSlotBinding(slot: CanvasVideoSlot, slots: CanvasVideoSlots | undefined, imageId: string): CanvasVideoSlots | null {
+    const current = slots || {};
+    if (slot === "firstFrame") return { ...current, firstFrame: imageId };
+    if (slot === "lastFrame") return { ...current, lastFrame: imageId };
+    const references = current.references || [];
+    if (references.includes(imageId) || references.length >= MAX_VIDEO_REFERENCE_SLOTS) return null;
+    return { ...current, references: [...references, imageId] };
+}
 
 
 
@@ -166,6 +197,7 @@ function InfiniteCanvasPage() {
     const dragPreviewRef = useRef<Map<string, Position> | null>(null);
     const dropTargetAssetsRef = useRef<string | null>(null);
     const dropTargetModifierRef = useRef<string | null>(null);
+    const dropTargetSlotRef = useRef<VideoSlotDropTarget | null>(null);
     const nodeDraggingRef = useRef(false);
     const dragRef = useRef<{
         isDraggingNode: boolean;
@@ -194,9 +226,7 @@ function InfiniteCanvasPage() {
     const currentProject = useCanvasStore((state) => state.projects.find((project) => project.id === projectId));
     const groups = useCanvasStore((state) => state.groups);
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
-    const outputFolderName = useAssetFolderStore((state) => state.outputFolderName);
     const panelOpen = useCanvasSidePanelStore((state) => state.panelOpen);
-    const outputWriteFingerprints = useRef(new Map<string, string>());
     const [nodes, setNodes] = useState<CanvasNodeData[]>([]);
     const [connections, setConnections] = useState<CanvasConnection[]>([]);
     const [chatSessions, setChatSessions] = useState<CanvasAssistantSession[]>([]);
@@ -240,13 +270,13 @@ function InfiniteCanvasPage() {
     const [dropTargetBoardId, setDropTargetBoardId] = useState<string | null>(null);
     const [dropTargetAssetsNodeId, setDropTargetAssetsNodeId] = useState<string | null>(null);
     const [dropTargetModifierNodeId, setDropTargetModifierNodeId] = useState<string | null>(null);
+    const [dropSlotState, setDropSlotState] = useState<VideoSlotDropTarget | null>(null);
     const [snapGuides, setSnapGuides] = useState<{ x: number[]; y: number[] }>(EMPTY_SNAP_GUIDES);
     const [dragPreview, setDragPreview] = useState<Map<string, Position> | null>(null);
     const [returningNodes, setReturningNodes] = useState<Map<string, Position>>(new Map());
     const [referencePickerNodeId, setReferencePickerNodeId] = useState<string | null>(null);
     const [boardPreview, setBoardPreview] = useState<{ dataUrl: string; width: number; height: number; title: string; boardId: string } | null>(null);
     const [isNodeListOpen, setIsNodeListOpen] = useState(false);
-    const [nodeUpdatedAt, setNodeUpdatedAt] = useState<Record<string, number>>({});
 
     const nodesRef = useRef(nodes);
     const connectionsRef = useRef(connections);
@@ -258,24 +288,6 @@ function InfiniteCanvasPage() {
     const selectionBoxRef = useRef(selectionBox);
     const cutStrokeRef = useRef<Position[] | null>(null);
     const pendingConnectionCreateRef = useRef(pendingConnectionCreate);
-    const nodeSnapshotsRef = useRef<Map<string, string> | null>(null);
-
-    useEffect(() => {
-        const now = Date.now();
-        const snapshots = new Map(nodes.map((node) => [node.id, JSON.stringify(node)]));
-        const previous = nodeSnapshotsRef.current;
-        nodeSnapshotsRef.current = snapshots;
-        if (!previous) {
-            setNodeUpdatedAt(Object.fromEntries(nodes.map((node) => [node.id, now])));
-            return;
-        }
-        const changed: Record<string, number> = {};
-        snapshots.forEach((snapshot, id) => {
-            if (previous.get(id) === snapshot) return;
-            changed[id] = now;
-        });
-        if (Object.keys(changed).length) setNodeUpdatedAt((current) => ({ ...current, ...changed }));
-    }, [nodes]);
 
     const { historyState, undoCanvas, redoCanvas, resetHistory, historyRef, lastHistoryRef, historyPausedRef } = useCanvasHistory({
         nodes,
@@ -353,6 +365,10 @@ function InfiniteCanvasPage() {
         // Resume once after the current canvas is restored, not on later config identity changes.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [projectLoaded]);
+
+    useEffect(() => {
+        useBrowserCacheStore.getState().init();
+    }, []);
 
 
     useEffect(() => {
@@ -476,7 +492,7 @@ function InfiniteCanvasPage() {
     );
 
     const createConnectedNode = useCallback(
-        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Video | CanvasNodeType.Audio | CanvasNodeType.SpeechGeneration | CanvasNodeType.MusicGeneration, pending: PendingConnectionCreate) => {
+        (type: CanvasNodeType.Image | CanvasNodeType.Text | CanvasNodeType.Config | CanvasNodeType.Audio | CanvasNodeType.SpeechGeneration | CanvasNodeType.MusicGeneration, pending: PendingConnectionCreate) => {
             const metadata = type === CanvasNodeType.Config ? { model: effectiveConfig.imageModel || effectiveConfig.model, size: effectiveConfig.size, count: getGenerationCount(effectiveConfig.canvasImageCount || effectiveConfig.count) } : undefined;
             const newNode = createCanvasNode(type, pending.position, metadata);
             const connection = normalizeConnection(pending.connection.nodeId, newNode.id, [...nodesRef.current, newNode], pending.connection.handleType);
@@ -630,7 +646,7 @@ function InfiniteCanvasPage() {
     const configInputsById = useMemo(() => {
         const map = new Map<string, NodeGenerationInput[]>();
         nodes.forEach((node) => {
-            if (node.type !== CanvasNodeType.Config && node.type !== CanvasNodeType.ImageGeneration) return;
+            if (node.type !== CanvasNodeType.Config && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.VideoGeneration) return;
             map.set(node.id, buildNodeGenerationInputs(node.id, nodes, connections));
         });
         return map;
@@ -664,14 +680,6 @@ function InfiniteCanvasPage() {
         });
         return map;
     }, [connections, nodeById]);
-    const outputSourceById = useMemo(() => {
-        const map = new Map<string, CanvasNodeData | null>();
-        nodes.forEach((node) => {
-            if (node.type !== CanvasNodeType.Assets) return;
-            map.set(node.id, resolveLatestUpstream(node.id, nodes, connections, nodeUpdatedAt));
-        });
-        return map;
-    }, [connections, nodeUpdatedAt, nodes]);
     const referenceConnectedNodeIds = useMemo(() => new Set([referencePickerNodeId, ...(referencePickerNodeId ? connectedNodesByNodeId.get(referencePickerNodeId)?.map((node) => node.id) || [] : [])].filter((id): id is string => Boolean(id))), [connectedNodesByNodeId, referencePickerNodeId]);
     const connectionPaths = useMemo(
         () =>
@@ -904,21 +912,22 @@ function InfiniteCanvasPage() {
         if (containerRef.current) containerRef.current.dataset.canvasDragging = "true";
     }, []);
 
-    const collectImageIntoAssets = useCallback((node: CanvasNodeData, permission: Promise<boolean>) => {
+    const collectImageIntoAssets = useCallback((nodeId: string, node: CanvasNodeData, permission: Promise<boolean>) => {
         void (async () => {
+            const store = useAssetFolderStore.getState();
             try {
                 if (!(await permission)) {
-                    useAssetFolderStore.setState({ collectStatus: "failed" });
+                    store.setCollectStatus(nodeId, "failed");
                     return;
                 }
                 const blob = await resolveOutputBlob(node);
                 if (!blob) {
-                    useAssetFolderStore.setState({ collectStatus: "failed" });
+                    store.setCollectStatus(nodeId, "failed");
                     return;
                 }
-                await useAssetFolderStore.getState().writeAsset(outputFileName(node.title, node.id, node.metadata?.mimeType, node.metadata?.storageKey), blob);
+                await store.writeAsset(nodeId, outputFileName(node.title, node.id, node.metadata?.mimeType, node.metadata?.storageKey), blob);
             } catch {
-                useAssetFolderStore.setState({ collectStatus: "failed" });
+                store.setCollectStatus(nodeId, "failed");
             }
         })();
     }, []);
@@ -973,6 +982,7 @@ function InfiniteCanvasPage() {
         const initialPositions = dragRef.current.initialSelectedNodes;
         const assetsTargetId = dragRef.current.hasMoved ? dropTargetAssetsRef.current : null;
         const modifierTargetId = dragRef.current.hasMoved ? dropTargetModifierRef.current : null;
+        const slotTarget = dragRef.current.hasMoved ? dropTargetSlotRef.current : null;
         const previewPositions = dragPreviewRef.current;
 
         historyPausedRef.current = false;
@@ -982,18 +992,30 @@ function InfiniteCanvasPage() {
         setDropTargetBoardId(null);
         setDropTargetAssetsNodeId(null);
         setDropTargetModifierNodeId(null);
+        setDropSlotState(null);
         dropTargetAssetsRef.current = null;
         dropTargetModifierRef.current = null;
+        dropTargetSlotRef.current = null;
         setSnapGuides(EMPTY_SNAP_GUIDES);
         setDragPreview(null);
         dragPreviewRef.current = null;
         dragMoveRef.current = null;
 
-        if (assetsTargetId) {
+        const slotTargetNode = slotTarget ? nodesRef.current.find((node) => node.id === slotTarget.nodeId && node.type === CanvasNodeType.VideoPrompt) : undefined;
+        const slotImage = nodesRef.current.find((node) => node.type === CanvasNodeType.Image && Boolean(node.metadata?.content) && initialPositions.some((item) => item.id === node.id));
+        const nextSlots = slotTargetNode && slotImage ? resolveVideoSlotBinding(slotTarget.slot, slotTargetNode.metadata?.videoSlots, slotImage.id) : null;
+
+        if (slotTargetNode && slotImage && nextSlots) {
+            applyNodeMetadata(slotTargetNode.id, { videoSlots: nextSlots });
+            const initial = initialPositions.find((item) => item.id === slotImage.id)!;
+            const dropped = previewPositions?.get(slotImage.id) || { x: initial.x + dx, y: initial.y + dy };
+            setReturningNodes(new Map([[slotImage.id, dropped]]));
+            window.setTimeout(() => setReturningNodes(new Map()), NODE_RETURN_MS);
+        } else if (assetsTargetId) {
             const target = nodesRef.current.find((node) => node.id === assetsTargetId);
             const returned = new Map<string, Position>();
             if (target) {
-                const permission = useAssetFolderStore.getState().requestWriteAccess();
+                const permission = useAssetFolderStore.getState().requestWriteAccess(target.id);
                 nodesRef.current.forEach((node) => {
                     if (node.type !== CanvasNodeType.Image) return;
                     const initial = initialPositions.find((item) => item.id === node.id);
@@ -1001,7 +1023,7 @@ function InfiniteCanvasPage() {
                     const dropped = previewPositions?.get(node.id) || { x: initial.x + dx, y: initial.y + dy };
                     if (!nodeCenterInside({ ...node, position: dropped }, target)) return;
                     returned.set(node.id, dropped);
-                    collectImageIntoAssets(node, permission);
+                    collectImageIntoAssets(target.id, node, permission);
                 });
             }
             if (returned.size) {
@@ -1142,13 +1164,16 @@ function InfiniteCanvasPage() {
                         return initial ? { ...node, position: { x: initial.x + finalDx, y: initial.y + finalDy } } : node;
                     });
                     const dropCandidates = previewNodes.filter((node) => !isNodeHidden(node));
-                    const assetsTarget = findAssetsDropTarget(movedIds, dropCandidates);
-                    const modifierTarget = findImageModifierDropTarget(movedIds, dropCandidates);
+                    const slotTarget = findVideoSlotDropTarget(point.clientX, point.clientY, movedIds, nodesRef.current);
+                    const assetsTarget = slotTarget ? null : findAssetsDropTarget(movedIds, dropCandidates);
+                    const modifierTarget = slotTarget ? null : findImageModifierDropTarget(movedIds, dropCandidates);
                     dropTargetAssetsRef.current = assetsTarget?.id || null;
                     dropTargetModifierRef.current = modifierTarget?.id || null;
+                    dropTargetSlotRef.current = slotTarget;
                     setDropTargetAssetsNodeId(assetsTarget?.id || null);
                     setDropTargetModifierNodeId(modifierTarget?.id || null);
-                    setDropTargetBoardId(assetsTarget || modifierTarget ? null : findBoardDropTarget(movedIds, dropCandidates)?.id || null);
+                    setDropSlotState((current) => (current?.nodeId === slotTarget?.nodeId && current?.slot === slotTarget?.slot ? current : slotTarget));
+                    setDropTargetBoardId(assetsTarget || modifierTarget || slotTarget ? null : findBoardDropTarget(movedIds, dropCandidates)?.id || null);
                     const preview = new Map(initialPositions.map((item) => [item.id, { x: item.x + finalDx, y: item.y + finalDy }]));
                     dragPreviewRef.current = preview;
                     setDragPreview(preview);
@@ -1373,7 +1398,7 @@ function InfiniteCanvasPage() {
         setNodes((prev) =>
             prev.map((node) => {
                 if (node.id !== nodeId) return node;
-                if (node.type === CanvasNodeType.Prompt || node.type === CanvasNodeType.MusicPrompt || node.type === CanvasNodeType.SpeechPrompt) return { ...node, metadata: { ...node.metadata, prompt: content } };
+                if (node.type === CanvasNodeType.Prompt || node.type === CanvasNodeType.MusicPrompt || node.type === CanvasNodeType.SpeechPrompt || node.type === CanvasNodeType.VideoPrompt) return { ...node, metadata: { ...node.metadata, prompt: content } };
                 return { ...node, metadata: { ...node.metadata, content, texts: node.metadata?.texts?.map((text) => (text.id === node.metadata?.primaryTextId ? { ...text, content } : text)) } };
             }),
         );
@@ -1469,36 +1494,6 @@ function InfiniteCanvasPage() {
     const handleConfigNodeChange = useCallback((nodeId: string, patch: Partial<CanvasNodeData["metadata"]>) => {
         setNodes((prev) => prev.map((node) => (node.id === nodeId ? applyNodeConfigPatch(node, patch) : node)));
     }, []);
-
-    const handleOutputFolderBind = useCallback(async (nodeId: string) => {
-        if (!(await useAssetFolderStore.getState().bindOutputFolder())) return;
-        handleConfigNodeChange(nodeId, { outputFolderName: useAssetFolderStore.getState().outputFolderName });
-    }, [handleConfigNodeChange]);
-
-    const handleOutputFolderUnbind = useCallback((nodeId: string) => {
-        handleConfigNodeChange(nodeId, { outputFolderName: undefined });
-        void useAssetFolderStore.getState().clearOutputFolder();
-    }, [handleConfigNodeChange]);
-
-    useEffect(() => {
-        if (!outputFolderName) return;
-        outputSourceById.forEach((source, outputId) => {
-            if (!source || source.type === CanvasNodeType.Text) return;
-            if (!nodeById.get(outputId)?.metadata?.outputFolderName) return;
-            const fingerprint = outputSourceFingerprint(source.id, source.metadata?.storageKey, source.metadata?.content);
-            if (outputWriteFingerprints.current.get(outputId) === fingerprint) return;
-            outputWriteFingerprints.current.set(outputId, fingerprint);
-            void (async () => {
-                try {
-                    const blob = await resolveOutputBlob(source);
-                    if (!blob) return;
-                    await useAssetFolderStore.getState().writeOutput(outputFileName(source.title, source.id, source.metadata?.mimeType, source.metadata?.storageKey), blob);
-                } catch {
-                    useAssetFolderStore.setState({ outputStatus: "error" });
-                }
-            })();
-        });
-    }, [nodeById, outputFolderName, outputSourceById]);
 
     const handleSmartCanvasChange = useCallback((nodeId: string, patch: Partial<CanvasNodeMetadata>) => {
         setNodes((prev) =>
@@ -2104,14 +2099,25 @@ function InfiniteCanvasPage() {
     );
 
     const renderNodeContentPanel = useCallback(
-        (contentNode: CanvasNodeData) => {
+        (contentNode: CanvasNodeData, dropSlot?: CanvasVideoSlot | null) => {
             const musicTags = t("canvas.promptNode.musicTags", { returnObjects: true }) as unknown as string[];
             const speechTags = t("canvas.promptNode.speechTags", { returnObjects: true }) as unknown as string[];
             if (contentNode.type === CanvasNodeType.Prompt) return <PromptNodePanel node={contentNode} references={mentionReferencesByNodeId.get(contentNode.id) || EMPTY_REFERENCES} onContentChange={handleNodeContentChange} />;
             if (contentNode.type === CanvasNodeType.MusicPrompt) return <PromptNodePanel node={contentNode} tags={musicTags} showLibrary={false} references={mentionReferencesByNodeId.get(contentNode.id) || EMPTY_REFERENCES} onContentChange={handleNodeContentChange} />;
             if (contentNode.type === CanvasNodeType.SpeechPrompt) return <PromptNodePanel node={contentNode} tags={speechTags} showLibrary={false} references={mentionReferencesByNodeId.get(contentNode.id) || EMPTY_REFERENCES} connectedNodes={connectedNodesByNodeId.get(contentNode.id) || []} onDisconnectReference={disconnectNodeReference} onStartReferenceSelection={startNodeReferenceSelection} onContentChange={handleNodeContentChange} />;
-            if (contentNode.type === CanvasNodeType.Assets)
-                return <AssetsNodeContent node={contentNode} onInsert={(file) => void insertFolderFile(file)} onOutputFolderBind={() => handleOutputFolderBind(contentNode.id)} onOutputFolderUnbind={() => handleOutputFolderUnbind(contentNode.id)} />;
+            if (contentNode.type === CanvasNodeType.VideoPrompt)
+                return (
+                    <VideoPromptNodeContent
+                        node={contentNode}
+                        nodes={nodes}
+                        references={mentionReferencesByNodeId.get(contentNode.id) || EMPTY_REFERENCES}
+                        dropSlot={dropSlot}
+                        onContentChange={handleNodeContentChange}
+                        onVideoModeChange={(nodeId, videoMode) => applyNodeMetadata(nodeId, { videoMode })}
+                        onVideoSlotsChange={(nodeId, videoSlots) => applyNodeMetadata(nodeId, { videoSlots })}
+                    />
+                );
+            if (contentNode.type === CanvasNodeType.Assets) return <AssetsNodeContent node={contentNode} onInsert={(file) => void insertFolderFile(file)} onSourceChange={(assetSource) => applyNodeMetadata(contentNode.id, { assetSource })} />;
             if (contentNode.type === CanvasNodeType.Recording) return <RecordingNodeContent onRecorded={(blob) => handleRecordingSaved(contentNode, blob)} />;
             if (contentNode.type === CanvasNodeType.ImageModifier)
                 return (
@@ -2128,20 +2134,20 @@ function InfiniteCanvasPage() {
             <CanvasConfigNodePanel
                 node={contentNode}
                 isRunning={runningNodeId === contentNode.id}
-                hasPromptConnection={(connectedNodesByNodeId.get(contentNode.id) || []).some((node) => node.type === (contentNode.type === CanvasNodeType.MusicGeneration ? CanvasNodeType.MusicPrompt : contentNode.type === CanvasNodeType.SpeechGeneration ? CanvasNodeType.SpeechPrompt : CanvasNodeType.Prompt))}
+                hasPromptConnection={(connectedNodesByNodeId.get(contentNode.id) || []).some((node) => node.type === (contentNode.type === CanvasNodeType.MusicGeneration ? CanvasNodeType.MusicPrompt : contentNode.type === CanvasNodeType.SpeechGeneration ? CanvasNodeType.SpeechPrompt : contentNode.type === CanvasNodeType.VideoGeneration ? CanvasNodeType.VideoPrompt : CanvasNodeType.Prompt))}
                 inputSummary={getInputSummary(configInputsById.get(contentNode.id) || [])}
                 onConfigChange={handleConfigNodeChange}
                 onComposerToggle={() => setDialogNodeId((current) => (current === contentNode.id ? null : contentNode.id))}
                 onStop={confirmStopGeneration}
                 onGenerate={(nodeId) => {
                     const target = nodesRef.current.find((item) => item.id === nodeId);
-                    const targetMode = target?.type === CanvasNodeType.SpeechGeneration || target?.type === CanvasNodeType.MusicGeneration ? "audio" : target?.metadata?.generationMode || "image";
+                    const targetMode = target?.type === CanvasNodeType.SpeechGeneration || target?.type === CanvasNodeType.MusicGeneration ? "audio" : target?.type === CanvasNodeType.VideoGeneration ? "video" : target?.metadata?.generationMode || "image";
                     void handleGenerateNode(nodeId, targetMode, target?.metadata?.composerContent ?? target?.metadata?.prompt ?? "");
                 }}
             />
             );
         },
-        [applyNodeMetadata, bakeImageModifierNode, configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleOutputFolderBind, handleOutputFolderUnbind, handleRecordingSaved, insertFolderFile, mentionReferencesByNodeId, runningNodeId, startNodeReferenceSelection, t],
+        [applyNodeMetadata, bakeImageModifierNode, configInputsById, confirmStopGeneration, connectedNodesByNodeId, disconnectNodeReference, handleConfigNodeChange, handleGenerateNode, handleNodeContentChange, handleRecordingSaved, insertFolderFile, mentionReferencesByNodeId, nodes, runningNodeId, startNodeReferenceSelection, t],
     );
 
     if (!projectLoaded && !loadedOnceRef.current) return <CanvasRefreshShell />;
@@ -2197,9 +2203,10 @@ function InfiniteCanvasPage() {
                             isConnectionTarget={connectionTargetNodeId === node.id}
                             isConnecting={Boolean(connectingParams)}
                             referenceSelectionState={!referencePickerNodeId ? undefined : node.id === referencePickerNodeId ? "target" : referenceConnectedNodeIds.has(node.id) || !isCanvasReferenceNode(node) ? "disabled" : "available"}
-                            showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.SpeechGeneration && node.type !== CanvasNodeType.MusicGeneration && node.type !== CanvasNodeType.Prompt && node.type !== CanvasNodeType.MusicPrompt && node.type !== CanvasNodeType.SpeechPrompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
+                            showPanel={!isNodeResizing && node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.ImageGeneration && node.type !== CanvasNodeType.SpeechGeneration && node.type !== CanvasNodeType.MusicGeneration && node.type !== CanvasNodeType.VideoGeneration && node.type !== CanvasNodeType.Prompt && node.type !== CanvasNodeType.MusicPrompt && node.type !== CanvasNodeType.SpeechPrompt && node.type !== CanvasNodeType.VideoPrompt && dialogNodeId === node.id && !selectionBox && !getNodeDefinition(node.type)?.hidePanel}
                             isBoardDropTarget={dropTargetBoardId === node.id}
                             isAssetsDropTarget={dropTargetAssetsNodeId === node.id || dropTargetModifierNodeId === node.id}
+                            videoSlotDropTarget={dropSlotState?.nodeId === node.id ? dropSlotState : null}
                             returnFrom={returningNodes.get(node.id)}
                             boardLayers={boardRenderLayersById.get(node.id)}
                             boardLayersById={boardRenderLayersById}

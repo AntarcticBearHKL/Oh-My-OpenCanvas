@@ -11,6 +11,7 @@ import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { createCanvasNode, audioMetadata, imageMetadata, videoMetadata } from "@/lib/canvas/canvas-node-factory";
 import { isAudioFile } from "@/lib/canvas/canvas-generation-helpers";
 import { ASSET_FOLDER_DRAG_MIME, classifyAssetFolderFile } from "@/lib/canvas/asset-folder";
+import { BROWSER_CACHE_DRAG_MIME, getBrowserCacheFile } from "@/services/api/browser-cache";
 import { NODE_STATUS_SUCCESS, VIDEO_NODE_MAX_HEIGHT, VIDEO_NODE_MAX_WIDTH } from "@/lib/canvas/canvas-node-constants";
 import { useAssetFolderStore } from "@/stores/use-asset-folder-store";
 import type { InsertAssetPayload } from "@/components/canvas/asset-picker-modal";
@@ -368,6 +369,14 @@ export function useCanvasInsertion(params: CanvasInsertionParams) {
         [createAudioFileNode, getCanvasCenter, handleAssetInsert, insertAssistantText],
     );
 
+    const insertBrowserCacheFile = useCallback(
+        async (itemId: string, position: Position) => {
+            const file = await getBrowserCacheFile(itemId);
+            if (file) await insertFolderFile(file, position);
+        },
+        [insertFolderFile],
+    );
+
     const handleDrop = useCallback(
         (event: ReactDragEvent<HTMLDivElement>) => {
             event.preventDefault();
@@ -383,10 +392,27 @@ export function useCanvasInsertion(params: CanvasInsertionParams) {
                 return;
             }
 
+            if (event.dataTransfer.types.includes(BROWSER_CACHE_DRAG_MIME)) {
+                const raw = event.dataTransfer.getData(BROWSER_CACHE_DRAG_MIME);
+                const position = screenToCanvas(event.clientX, event.clientY);
+                try {
+                    const payload = JSON.parse(raw) as { itemId?: string };
+                    if (payload.itemId) void insertBrowserCacheFile(payload.itemId, position);
+                } catch {
+                    // Ignore malformed drag payloads.
+                }
+                return;
+            }
+
             if (event.dataTransfer.types.includes(ASSET_FOLDER_DRAG_MIME)) {
-                const id = event.dataTransfer.getData(ASSET_FOLDER_DRAG_MIME);
-                const entry = useAssetFolderStore.getState().files.find((item) => item.id === id);
-                if (entry) void insertFolderFile(entry.file, screenToCanvas(event.clientX, event.clientY));
+                const raw = event.dataTransfer.getData(ASSET_FOLDER_DRAG_MIME);
+                try {
+                    const payload = JSON.parse(raw) as { nodeId?: string; fileId?: string };
+                    const entry = payload.nodeId && payload.fileId ? useAssetFolderStore.getState().folders[payload.nodeId]?.files.find((item) => item.id === payload.fileId) : undefined;
+                    if (entry) void insertFolderFile(entry.file, screenToCanvas(event.clientX, event.clientY));
+                } catch {
+                    // Ignore malformed drag payloads.
+                }
                 return;
             }
 
@@ -409,7 +435,7 @@ export function useCanvasInsertion(params: CanvasInsertionParams) {
                 }
             }
         },
-        [createAudioFileNode, createImageFileNode, createVideoFileNode, handleAssetInsert, insertFolderFile, screenToCanvas],
+        [createAudioFileNode, createImageFileNode, createVideoFileNode, handleAssetInsert, insertBrowserCacheFile, insertFolderFile, screenToCanvas],
     );
 
     return { handleUploadRequest, handleImageInputChange, handleAssetInsert, insertFolderFile, handleDrop, pasteSystemClipboard };

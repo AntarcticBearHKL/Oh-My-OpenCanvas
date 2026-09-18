@@ -1,7 +1,7 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
-import { AlignLeft, ArrowLeftRight, AudioLines, Compass, Download, Focus, FolderInput, Hand, HelpCircle, LayoutDashboard, ListTree, Loader2, MessageSquareText, Mic, MousePointer2, Music2, Puzzle, Redo2, SlidersHorizontal, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
+import { AlignLeft, ArrowLeftRight, AudioLines, Clapperboard, Compass, Download, Focus, FolderInput, Hand, HelpCircle, LayoutDashboard, ListTree, Loader2, MessageSquareText, Mic, MousePointer2, Music2, Puzzle, Redo2, SlidersHorizontal, Sparkles, Trash2, Undo2, Video, ZoomIn } from "lucide-react";
 
 import { canvasThemes, frostedSurfaceClass, type CanvasTheme } from "@/lib/canvas-theme";
 import { useCanvasTheme } from "@/hooks/use-canvas-theme";
@@ -9,8 +9,6 @@ import { getNodePluginId, listNodeDefinitions, useNodeRegistryVersion } from "@/
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useTranslation } from "react-i18next";
 import { CanvasNodeType, type CanvasNodeTypeId } from "@/types/canvas";
-
-const SHOW_MEDIA_TOOLS = false;
 
 export function CanvasToolbar({
     selectedCount,
@@ -78,11 +76,13 @@ export function CanvasToolbar({
             { type: CanvasNodeType.Prompt, label: t("canvas.nodeTypes.prompt"), icon: <MessageSquareText className="size-4" /> },
             { type: CanvasNodeType.MusicPrompt, label: t("canvas.nodeTypes.musicPrompt"), icon: <Music2 className="size-4" /> },
             { type: CanvasNodeType.SpeechPrompt, label: t("canvas.nodeTypes.speechPrompt"), icon: <AlignLeft className="size-4" /> },
+            { type: CanvasNodeType.VideoPrompt, label: t("canvas.nodeTypes.videoPrompt"), icon: <Clapperboard className="size-4" /> },
         ],
         generator: [
             { type: CanvasNodeType.ImageGeneration, label: t("canvas.nodeTypes.imageGeneration"), icon: <Sparkles className="size-4" /> },
             { type: CanvasNodeType.MusicGeneration, label: t("canvas.nodeTypes.musicGeneration"), icon: <AudioLines className="size-4" /> },
             { type: CanvasNodeType.SpeechGeneration, label: t("canvas.nodeTypes.speechGeneration"), icon: <Mic className="size-4" /> },
+            { type: CanvasNodeType.VideoGeneration, label: t("canvas.nodeTypes.videoGeneration"), icon: <Video className="size-4" /> },
         ],
         input: [
             { type: CanvasNodeType.Assets, label: t("canvas.nodeTypes.assets"), icon: <FolderInput className="size-4" /> },
@@ -227,13 +227,6 @@ export function CanvasToolbar({
                 <ToolbarButton id="tool-smart-canvas" label={t("canvas.nodeTypes.smartCanvas")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={() => onAddNode(CanvasNodeType.SmartCanvas)}>
                     <LayoutDashboard className="size-4.5" />
                 </ToolbarButton>
-                {SHOW_MEDIA_TOOLS ? (
-                    <>
-                        <ToolbarButton id="tool-video" label={t("canvas.toolbar.video")} hovered={hovered} hoverStyle={hoverStyle} wrapRef={wrapRef} onTipX={setTipX} onHover={setHovered} onClick={() => onAddNode(CanvasNodeType.Video)}>
-                            <Video className="size-4.5" />
-                        </ToolbarButton>
-                    </>
-                ) : null}
                 {extensionDefs.length ? (
                     <ToolbarButton
                         id="tool-extensions"
@@ -512,7 +505,6 @@ function toolLabel(id: string, t: (key: string) => string) {
     if (id === "tool-prompt-group") return t("canvas.toolbar.promptGroup");
     if (id === "tool-generator-group") return t("canvas.toolbar.generatorGroup");
     if (id === "tool-modifiers-group") return t("canvas.toolbar.modifiersGroup");
-    if (id === "tool-video") return t("canvas.toolbar.video");
     if (id === "tool-smart-canvas") return t("canvas.nodeTypes.smartCanvas");
     if (id === "tool-input-group") return t("canvas.toolbar.inputOutputGroup");
     if (id === "tool-extensions") return t("canvas.toolbar.extensions");

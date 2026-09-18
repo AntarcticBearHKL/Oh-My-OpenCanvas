@@ -1,9 +1,10 @@
 import type { AiTextMessage } from "@/services/api/image";
 import i18n from "@/i18n";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
+import { normalizeVideoMode } from "@/lib/video-generation";
 import type { ReferenceImage } from "@/types/image";
 import type { ReferenceAudio, ReferenceVideo } from "@/types/media";
-import { CanvasNodeType, type CanvasConnection, type CanvasNodeData } from "@/types/canvas";
+import { CanvasNodeType, type CanvasConnection, type CanvasNodeData, type CanvasVideoMode } from "@/types/canvas";
 import { getGenerationResourceNodes } from "@/lib/canvas/canvas-resource-references";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 
@@ -16,6 +17,7 @@ type NodeGenerationContext = {
     imageCount: number;
     videoCount: number;
     audioCount: number;
+    videoMode?: CanvasVideoMode;
 };
 
 type NodeGenerationResourceInput = {
@@ -32,13 +34,17 @@ export type NodeGenerationInput = NodeGenerationResourceInput;
 
 export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[], prompt: string): NodeGenerationContext {
     const sourceNode = nodes.find((node) => node.id === nodeId);
-    if (sourceNode?.type === CanvasNodeType.ImageGeneration) {
-        const promptNode = connectedPromptNode(sourceNode.id, nodes, connections);
+    if (sourceNode?.type === CanvasNodeType.ImageGeneration || sourceNode?.type === CanvasNodeType.VideoGeneration) {
+        const isVideoGeneration = sourceNode.type === CanvasNodeType.VideoGeneration;
+        const promptNode = connectedPromptNode(sourceNode.id, nodes, connections, isVideoGeneration ? [CanvasNodeType.VideoPrompt] : [CanvasNodeType.Prompt]);
         const promptText = promptNode?.metadata?.prompt?.trim() || "";
         const resourceInputs = promptNode ? flattenGenerationInputs(buildNodeGenerationInputs(promptNode.id, nodes, connections)) : [];
         let textIndex = 0;
         const upstreamText = resourceInputs.flatMap((input) => (input.text ? [textBlock(generationLabel("text", textIndex++), input.text)] : [])).join("\n\n");
-        const referenceImages = resourceInputs.map((input) => input.image).filter((image): image is ReferenceImage => Boolean(image));
+        const resourceImages = resourceInputs.map((input) => input.image).filter((image): image is ReferenceImage => Boolean(image));
+        const slotImages = isVideoGeneration ? readVideoSlotReferenceImages(promptNode, nodes) : [];
+        const slotImageIds = new Set(slotImages.map((image) => image.id));
+        const referenceImages = [...slotImages, ...resourceImages.filter((image) => !slotImageIds.has(image.id))];
         const referenceVideos = resourceInputs.map((input) => input.video).filter((video): video is ReferenceVideo => Boolean(video));
         const referenceAudios = resourceInputs.map((input) => input.audio).filter((audio): audio is ReferenceAudio => Boolean(audio));
         return {
@@ -50,6 +56,7 @@ export function buildNodeGenerationContext(nodeId: string, nodes: CanvasNodeData
             imageCount: referenceImages.length,
             videoCount: referenceVideos.length,
             audioCount: referenceAudios.length,
+            ...(isVideoGeneration ? { videoMode: normalizeVideoMode(promptNode?.metadata?.videoMode) } : {}),
         };
     }
     if (sourceNode?.type === CanvasNodeType.SpeechGeneration || sourceNode?.type === CanvasNodeType.MusicGeneration) {
@@ -157,8 +164,8 @@ function buildComposerGenerationContext(inputs: NodeGenerationInput[], prompt: s
 
 export function buildNodeGenerationInputs(nodeId: string, nodes: CanvasNodeData[], connections: CanvasConnection[]): NodeGenerationInput[] {
     const sourceNode = nodes.find((node) => node.id === nodeId);
-    if (sourceNode?.type === CanvasNodeType.ImageGeneration) {
-        const promptNode = connectedPromptNode(sourceNode.id, nodes, connections);
+    if (sourceNode?.type === CanvasNodeType.ImageGeneration || sourceNode?.type === CanvasNodeType.VideoGeneration) {
+        const promptNode = connectedPromptNode(sourceNode.id, nodes, connections, sourceNode.type === CanvasNodeType.VideoGeneration ? [CanvasNodeType.VideoPrompt] : [CanvasNodeType.Prompt]);
         return promptNode ? readNodeGenerationResource(promptNode) : [];
     }
     return getGenerationResourceNodes(nodeId, nodes, connections).flatMap(readNodeGenerationResource);
@@ -238,6 +245,18 @@ function generationLabel(type: NodeGenerationResourceInput["type"], index: numbe
     if (type === "video") return i18n.t("canvas.configNode.videoReferences") + ` ${index + 1}`;
     if (type === "audio") return i18n.t("canvas.configNode.audioReferences") + ` ${index + 1}`;
     return i18n.t("canvas.composer.resources.text", { index: index + 1 });
+}
+
+function readVideoSlotReferenceImages(promptNode: CanvasNodeData | undefined, nodes: CanvasNodeData[]): ReferenceImage[] {
+    const slots = promptNode?.metadata?.videoSlots;
+    if (!promptNode || !slots) return [];
+    const nodesById = new Map(nodes.map((node) => [node.id, node]));
+    const readSlot = (id: string | undefined) => {
+        const node = id ? nodesById.get(id) : undefined;
+        return node ? readReferenceImage(node) : null;
+    };
+    const images = normalizeVideoMode(promptNode.metadata?.videoMode) === "reference" ? (slots.references || []).map(readSlot) : [readSlot(slots.firstFrame), readSlot(slots.lastFrame)];
+    return images.filter((image): image is ReferenceImage => Boolean(image));
 }
 
 function readReferenceImage(node: CanvasNodeData): ReferenceImage | null {

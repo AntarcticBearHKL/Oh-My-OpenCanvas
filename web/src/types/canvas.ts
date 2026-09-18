@@ -15,10 +15,12 @@ export enum CanvasNodeType {
     Prompt = "prompt",
     MusicPrompt = "music-prompt",
     SpeechPrompt = "speech-prompt",
+    VideoPrompt = "video-prompt",
     Config = "config",
     ImageGeneration = "image-generation",
     SpeechGeneration = "speech-generation",
     MusicGeneration = "music-generation",
+    VideoGeneration = "video-generation",
     Video = "video",
     Audio = "audio",
     SmartCanvas = "smart-canvas",
@@ -77,6 +79,17 @@ export type CanvasImageModifierParamKey = keyof CanvasImageModifierParams;
 
 export type CanvasImageModifierCurvePoint = { x: number; y: number };
 
+export type CanvasVideoMode = "frames" | "reference";
+
+export type CanvasVideoSlot = "firstFrame" | "lastFrame" | "reference";
+
+/** Bound IMAGE node ids for the video prompt drop slots; never copied payloads. */
+export type CanvasVideoSlots = {
+    firstFrame?: string;
+    lastFrame?: string;
+    references?: string[];
+};
+
 export type CanvasImageModifierSource = {
     content: string;
     storageKey?: string;
@@ -87,6 +100,8 @@ export type CanvasImageModifierSource = {
     bytes?: number;
     mimeType?: string;
 };
+
+export type CanvasAssetSource = "folder" | "cache";
 
 export type CanvasNodeMetadata = {
     content?: string;
@@ -116,7 +131,8 @@ export type CanvasNodeMetadata = {
     vquality?: string;
     generateAudio?: string;
     watermark?: string;
-    videoMode?: string;
+    videoMode?: CanvasVideoMode; // Video prompt mode; defaults to "frames".
+    videoSlots?: CanvasVideoSlots; // Video prompt image slots; bound IMAGE node ids.
     audioVoice?: string;
     audioFormat?: string;
     audioSpeed?: string;
@@ -134,7 +150,7 @@ export type CanvasNodeMetadata = {
     bytes?: number;
     durationMs?: number;
     videoTaskId?: string;
-    videoTaskProvider?: "openai" | "plugin";
+    videoTaskProvider?: "openai" | "plugin" | "openrouter";
     boardRatio?: string; // Smart Canvas board aspect ratio, e.g. "16:9"; defaults to "16:9".
     boardResolution?: "1k" | "2k" | "4k"; // Smart Canvas composite resolution tier; defaults to "2k".
     boardId?: string; // Set on an IMAGE node to mark it as placed on that Smart Canvas board.
@@ -147,13 +163,12 @@ export type CanvasNodeMetadata = {
     interactive?: boolean; // Plugin node interaction/move state; see CanvasNodeDefinition.interactionToggle.
     locked?: boolean;
     hidden?: boolean;
-    assetFolderName?: string;
-    outputFolderName?: string;
     modifierSource?: CanvasImageModifierSource;
     modifierParams?: CanvasImageModifierParams;
     modifierCurve?: CanvasImageModifierCurvePoint[];
     modifierEmit?: boolean;
     modifierError?: string;
+    assetSource?: CanvasAssetSource; // Assets node source mode; defaults to "folder".
 };
 
 export type CanvasNodeData = {

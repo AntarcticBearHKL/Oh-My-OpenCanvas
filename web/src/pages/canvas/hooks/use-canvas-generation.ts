@@ -8,6 +8,7 @@ import { createVideoGenerationTask, isVideoTaskFailed, storeGeneratedVideo, wait
 import { uploadImage } from "@/services/image-storage";
 import { nanoid } from "nanoid";
 import { imageReferenceLabel } from "@/lib/image-reference-prompt";
+import { normalizeVideoMode } from "@/lib/video-generation";
 import { fitNodeSize, nodeSizeFromRatio } from "@/lib/canvas/canvas-node-size";
 import { NODE_DEFAULT_SIZE } from "@/constant/canvas";
 import { buildNodeGenerationContext, buildNodeResponseMessages, hydrateNodeGenerationContext } from "@/components/canvas/canvas-node-generation";
@@ -107,8 +108,9 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
             if (task.provider !== "plugin") {
                 setNodes((prev) => prev.map((item) => (item.id === nodeId ? { ...item, metadata: { ...item.metadata, videoTaskId: task.id, videoTaskProvider: task.provider, model: config.model } } : item)));
             }
-            const video = await storeGeneratedVideo(await waitForVideoGenerationTask(config, task, { signal }));
-            recordGenerationCost({ nodeId, model: config.model, unit: "video-second", quantity: Number(config.videoSeconds) || 0 });
+            const generated = await waitForVideoGenerationTask(config, task, { signal });
+            const video = await storeGeneratedVideo(generated);
+            recordGenerationCost({ nodeId, model: config.model, unit: "video-second", quantity: Number(config.videoSeconds) || 0, cost: generated.cost !== undefined ? { usd: generated.cost, priced: true, source: "api" } : undefined });
             setNodes((prev) => prev.map((item) => (item.id === nodeId ? applyGeneratedVideo(item, video, { prompt, model: config.model, ...extra }) : item)));
         },
         [],
@@ -133,8 +135,9 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                 setRunningNodeId(node.id);
                 setNodes((prev) => prev.map((item) => (item.id === node.id ? { ...item, metadata: { ...item.metadata, status: NODE_STATUS_LOADING, errorDetails: undefined } } : item)));
                 controller = startGenerationRequest(node.id, node.id, node.id);
-                const video = await storeGeneratedVideo(await waitForVideoGenerationTask(generationConfig, { id: taskId, provider: node.metadata?.videoTaskProvider ?? "openai", model: generationConfig.model }, { signal: controller.signal }));
-                recordGenerationCost({ nodeId: node.id, model: generationConfig.model, unit: "video-second", quantity: Number(generationConfig.videoSeconds) || 0 });
+                const generated = await waitForVideoGenerationTask(generationConfig, { id: taskId, provider: node.metadata?.videoTaskProvider ?? "openai", model: generationConfig.model }, { signal: controller.signal });
+                const video = await storeGeneratedVideo(generated);
+                recordGenerationCost({ nodeId: node.id, model: generationConfig.model, unit: "video-second", quantity: Number(generationConfig.videoSeconds) || 0, cost: generated.cost !== undefined ? { usd: generated.cost, priced: true, source: "api" } : undefined });
                 setNodes((prev) =>
                     prev.map((item) =>
                         item.id === node.id
@@ -146,7 +149,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                                   vquality: generationConfig.vquality,
                                   generateAudio: generationConfig.videoGenerateAudio,
                                   watermark: generationConfig.videoWatermark,
-                                  videoMode: generationConfig.videoMode,
+                                  videoMode: normalizeVideoMode(generationConfig.videoMode),
                               })
                             : item,
                     ),
@@ -558,7 +561,8 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                 }
 
                 if (mode === "video") {
-                    const spec = nodeSizeFromRatio(generationConfig.size, NODE_DEFAULT_SIZE[CanvasNodeType.Video].width, NODE_DEFAULT_SIZE[CanvasNodeType.Video].height) || NODE_DEFAULT_SIZE[CanvasNodeType.Video];
+                    const videoConfig = { ...generationConfig, videoMode: generationContext.videoMode ?? normalizeVideoMode(generationConfig.videoMode) };
+                    const spec = nodeSizeFromRatio(videoConfig.size, NODE_DEFAULT_SIZE[CanvasNodeType.Video].width, NODE_DEFAULT_SIZE[CanvasNodeType.Video].height) || NODE_DEFAULT_SIZE[CanvasNodeType.Video];
                     const isEmptyVideoNode = sourceNode?.type === CanvasNodeType.Video && !sourceNode.metadata?.content;
                     const videoId = isEmptyVideoNode ? nodeId : nanoid();
                     const parent = sourceNode?.position || { x: 0, y: 0 };
@@ -572,13 +576,13 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                         metadata: {
                             prompt: effectivePrompt,
                             status: NODE_STATUS_LOADING,
-                            model: generationConfig.model,
-                            size: generationConfig.size,
-                            seconds: generationConfig.videoSeconds,
-                            vquality: generationConfig.vquality,
-                            generateAudio: generationConfig.videoGenerateAudio,
-                            watermark: generationConfig.videoWatermark,
-                            videoMode: generationConfig.videoMode,
+                            model: videoConfig.model,
+                            size: videoConfig.size,
+                            seconds: videoConfig.videoSeconds,
+                            vquality: videoConfig.vquality,
+                            generateAudio: videoConfig.videoGenerateAudio,
+                            watermark: videoConfig.videoWatermark,
+                            videoMode: videoConfig.videoMode,
                             references: generationReferenceUrls(generationContext),
                         },
                     };
@@ -590,13 +594,13 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                     );
                     const controller = startGenerationRequest(videoId, nodeId, nodeId, runController);
                     try {
-                        await completeVideoNodeTask(videoId, generationConfig, effectivePrompt, generationContext.referenceImages, controller.signal, {
-                            size: generationConfig.size,
-                            seconds: generationConfig.videoSeconds,
-                            vquality: generationConfig.vquality,
-                            generateAudio: generationConfig.videoGenerateAudio,
-                            watermark: generationConfig.videoWatermark,
-                            videoMode: generationConfig.videoMode,
+                        await completeVideoNodeTask(videoId, videoConfig, effectivePrompt, generationContext.referenceImages, controller.signal, {
+                            size: videoConfig.size,
+                            seconds: videoConfig.videoSeconds,
+                            vquality: videoConfig.vquality,
+                            generateAudio: videoConfig.videoGenerateAudio,
+                            watermark: videoConfig.videoWatermark,
+                            videoMode: videoConfig.videoMode,
                             references: generationReferenceUrls(generationContext),
                         }, generationContext.referenceVideos, generationContext.referenceAudios);
                     } finally {
@@ -799,7 +803,7 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                           background: savedImageMetadata.background ?? effectiveConfig.background,
                           count: "1",
                       }
-                    : { ...buildGenerationConfig(effectiveConfig, sourceNode, node.type === CanvasNodeType.Text ? "text" : node.type === CanvasNodeType.Video ? "video" : node.type === CanvasNodeType.Audio ? "audio" : "image"), count: "1" };
+                    : { ...buildGenerationConfig(effectiveConfig, sourceNode, node.type === CanvasNodeType.Text ? "text" : node.type === CanvasNodeType.Video || node.type === CanvasNodeType.VideoGeneration ? "video" : node.type === CanvasNodeType.Audio ? "audio" : "image"), count: "1" };
             if (!isAiConfigReady(generationConfig, generationConfig.model)) {
                 openConfigDialog();
                 return;
@@ -843,13 +847,14 @@ export function useCanvasGeneration(params: CanvasGenerationParams) {
                     return;
                 }
                 if (node.type === CanvasNodeType.Video) {
-                    await completeVideoNodeTask(node.id, generationConfig, prompt, retryImages, controller.signal, {
-                        size: generationConfig.size,
-                        seconds: generationConfig.videoSeconds,
-                        vquality: generationConfig.vquality,
-                        generateAudio: generationConfig.videoGenerateAudio,
-                        watermark: generationConfig.videoWatermark,
-                        videoMode: generationConfig.videoMode,
+                    const videoConfig = { ...generationConfig, videoMode: context?.videoMode ?? normalizeVideoMode(generationConfig.videoMode) };
+                    await completeVideoNodeTask(node.id, videoConfig, prompt, retryImages, controller.signal, {
+                        size: videoConfig.size,
+                        seconds: videoConfig.videoSeconds,
+                        vquality: videoConfig.vquality,
+                        generateAudio: videoConfig.videoGenerateAudio,
+                        watermark: videoConfig.videoWatermark,
+                        videoMode: videoConfig.videoMode,
                     }, context?.referenceVideos || [], context?.referenceAudios || []);
                     return;
                 }

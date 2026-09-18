@@ -17,7 +17,7 @@ import { CanvasResourceMentionTextarea } from "./canvas-resource-mention-textare
 import { SmartCanvasNodeContent } from "./smart-canvas-node";
 import { AudioNodeContent } from "./nodes/audio-node-content";
 import { PromptContent } from "./nodes/prompt-node-content";
-import { CanvasNodeType, type CanvasNodeData, type CanvasNodeImage, type CanvasNodeMetadata, type CanvasNodeText, type Position } from "@/types/canvas";
+import { CanvasNodeType, type CanvasNodeData, type CanvasNodeImage, type CanvasNodeMetadata, type CanvasNodeText, type CanvasVideoSlot, type Position } from "@/types/canvas";
 import type { CanvasNodeContext, CanvasPluginHost } from "@/types/canvas-plugin";
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { useTranslation } from "react-i18next";
@@ -44,9 +44,10 @@ type CanvasNodeProps = {
     pluginHost?: CanvasPluginHost;
     registryVersion?: number;
     renderPanel?: (node: CanvasNodeData) => ReactNode;
-    renderNodeContent?: (node: CanvasNodeData) => ReactNode;
+    renderNodeContent?: (node: CanvasNodeData, dropSlot?: CanvasVideoSlot | null) => ReactNode;
     isBoardDropTarget?: boolean;
     isAssetsDropTarget?: boolean;
+    videoSlotDropTarget?: { nodeId: string; slot: CanvasVideoSlot } | null;
     returnFrom?: Position | null;
     boardLayers?: CanvasNodeData[];
     boardLayersById?: Map<string, CanvasNodeData[]>;
@@ -83,7 +84,8 @@ type NodeContentRendererProps = {
     isBatchRoot: boolean;
     batchCount: number;
     batchExpanded: boolean;
-    renderNodeContent?: (node: CanvasNodeData) => ReactNode;
+    renderNodeContent?: (node: CanvasNodeData, dropSlot?: CanvasVideoSlot | null) => ReactNode;
+    videoSlotDropTarget?: { nodeId: string; slot: CanvasVideoSlot } | null;
     pluginContext?: CanvasNodeContext | null;
     onContentChange: (nodeId: string, content: string) => void;
     onStopEditing: () => void;
@@ -118,6 +120,7 @@ export const CanvasNode = React.memo(function CanvasNode({
     renderNodeContent,
     isBoardDropTarget = false,
     isAssetsDropTarget = false,
+    videoSlotDropTarget = null,
     returnFrom,
     boardLayers,
     boardLayersById,
@@ -157,7 +160,8 @@ export const CanvasNode = React.memo(function CanvasNode({
     const hasVideoContent = data.type === CanvasNodeType.Video && Boolean(data.metadata?.content);
     const hasAudioContent = data.type === CanvasNodeType.Audio && Boolean(data.metadata?.content);
     const isBoard = data.type === CanvasNodeType.SmartCanvas;
-    const isNodeDropTarget = (data.type === CanvasNodeType.Assets || data.type === CanvasNodeType.ImageModifier) && isAssetsDropTarget;
+    const isVideoSlotDropTarget = data.type === CanvasNodeType.VideoPrompt && videoSlotDropTarget?.nodeId === data.id;
+    const isNodeDropTarget = ((data.type === CanvasNodeType.Assets || data.type === CanvasNodeType.ImageModifier) && isAssetsDropTarget) || isVideoSlotDropTarget;
     const locked = Boolean(data.metadata?.locked);
     const isPlacedOnBoard = (data.type === CanvasNodeType.Image || data.type === CanvasNodeType.SmartCanvas) && Boolean(data.metadata?.boardId);
     const [enteredImage, setEnteredImage] = useState(false);
@@ -468,6 +472,7 @@ export const CanvasNode = React.memo(function CanvasNode({
                         batchCount={batchCount}
                         batchExpanded={batchExpanded}
                         renderNodeContent={renderNodeContent}
+                        videoSlotDropTarget={videoSlotDropTarget}
                         pluginContext={pluginContext}
                         mentionReferences={mentionReferences}
                         onContentChange={onContentChange}
@@ -520,7 +525,8 @@ export const CanvasNode = React.memo(function CanvasNode({
 });
 
 function NodeContent(props: NodeContentRendererProps) {
-    if ((props.node.type === CanvasNodeType.Config || props.node.type === CanvasNodeType.ImageGeneration || props.node.type === CanvasNodeType.SpeechGeneration || props.node.type === CanvasNodeType.MusicGeneration || props.node.type === CanvasNodeType.Prompt || props.node.type === CanvasNodeType.MusicPrompt || props.node.type === CanvasNodeType.SpeechPrompt || props.node.type === CanvasNodeType.Assets || props.node.type === CanvasNodeType.Recording || props.node.type === CanvasNodeType.ImageModifier) && props.renderNodeContent) return props.renderNodeContent(props.node);
+    const dropSlot = props.videoSlotDropTarget && props.videoSlotDropTarget.nodeId === props.node.id ? props.videoSlotDropTarget.slot : null;
+    if ((props.node.type === CanvasNodeType.Config || props.node.type === CanvasNodeType.ImageGeneration || props.node.type === CanvasNodeType.SpeechGeneration || props.node.type === CanvasNodeType.MusicGeneration || props.node.type === CanvasNodeType.VideoGeneration || props.node.type === CanvasNodeType.Prompt || props.node.type === CanvasNodeType.MusicPrompt || props.node.type === CanvasNodeType.SpeechPrompt || props.node.type === CanvasNodeType.VideoPrompt || props.node.type === CanvasNodeType.Assets || props.node.type === CanvasNodeType.Recording || props.node.type === CanvasNodeType.ImageModifier) && props.renderNodeContent) return props.renderNodeContent(props.node, dropSlot);
     if (props.isBatchRoot && props.node.type === CanvasNodeType.Image) return <ImageNodeContent {...props} />;
     if (props.node.type === CanvasNodeType.Text && props.node.metadata?.texts?.length && (props.node.metadata.status !== "error" || props.node.metadata.texts.some((text) => text.content))) return <TextContent {...props} />;
     if (props.node.metadata?.status === "loading") return <LoadingContent theme={props.theme} />;

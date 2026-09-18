@@ -165,6 +165,32 @@ const LIB_ASSERTIONS = `(async () => {
     const generation = await import("/src/lib/canvas/canvas-generation-helpers.ts");
     ok("generation limits", generation.GENERATION_CONCURRENCY === 2 && generation.GENERATION_MAX_ATTEMPTS === 3 && generation.GENERATION_RETRY_DELAY_MS === 2000);
 
+    const videoModels = await import("/src/lib/video-generation.ts");
+    ok("openrouter video models list hailuo-3-max", videoModels.openRouterVideoModels.map((model) => model.value).join(",") === "minimax/hailuo-3-max" && videoModels.isOpenRouterVideoModel("minimax/hailuo-3-max") === true, JSON.stringify(videoModels.openRouterVideoModels.map((model) => model.value)));
+    const hailuo = videoModels.videoModelCapability("minimax/hailuo-3-max");
+    ok(
+        "hailuo capability matches the model contract",
+        hailuo.resolutions.join(",") === "480p,768p" &&
+            hailuo.durationMin === 5 &&
+            hailuo.durationMax === 15 &&
+            hailuo.aspectRatios.join(",") === "21:9,16:9,4:3,1:1,3:4,9:16" &&
+            !hailuo.supportsSize &&
+            !hailuo.supportsAudio &&
+            !hailuo.supportsWatermark &&
+            !hailuo.supportsSeed &&
+            hailuo.frameImages.join(",") === "first_frame,last_frame" &&
+            hailuo.inputReferences === true,
+        JSON.stringify(hailuo),
+    );
+    const fallback = videoModels.videoModelCapability("some/plugin-model");
+    ok("unknown video models keep the permissive fallback", fallback.supportsSize === true && fallback.supportsAudio === true && fallback.resolutions.length === 0, JSON.stringify(fallback));
+    ok("video resolution maps into the model range", videoModels.supportedVideoResolution("720", hailuo) === "768p" && videoModels.supportedVideoResolution("480p", hailuo) === "480p" && videoModels.supportedVideoResolution("1080", hailuo) === "768p", [videoModels.supportedVideoResolution("720", hailuo), videoModels.supportedVideoResolution("1080", hailuo)].join(","));
+    ok("video duration clamps to the model range", videoModels.videoModelDuration("30", hailuo) === 15 && videoModels.videoModelDuration("3", hailuo) === 5 && videoModels.videoModelDuration("6", hailuo) === 6);
+
+    const mediaSize = await import("/src/lib/media-size.ts");
+    ok("video resolution accepts p-suffixed values", mediaSize.parseVideoResolution("480p") === "480" && mediaSize.parseVideoResolution("768p") === "768" && mediaSize.parseVideoResolution("1080") === "1080");
+    ok("video size computes from a p-suffixed resolution", mediaSize.computeVideoSize("768p", "16:9") === "1366x768" && mediaSize.computeVideoSize("480p", "1:1") === "480x480", mediaSize.computeVideoSize("768p", "16:9"));
+
     const queue = generation.createGenerationQueue();
     await Promise.all(
         ["a", "b", "c", "d", "e"].map((id) =>
@@ -335,16 +361,14 @@ const LIB_ASSERTIONS = `(async () => {
     );
 
     const folderStore = await import("/src/stores/use-asset-folder-store.ts");
+    const freshFolders = folderStore.useAssetFolderStore.getState().folders;
+    ok("per-node folder store starts with no bindings", Object.keys(freshFolders).length === 0, JSON.stringify(Object.keys(freshFolders)));
+    const unwritten = await folderStore.useAssetFolderStore.getState().writeAsset("noop-node", "noop.png", new Blob(["x"], { type: "image/png" }));
+    const foldersAfterWrite = folderStore.useAssetFolderStore.getState().folders;
     ok(
-        "merged folder store keeps one asset handle key and one output handle key",
-        folderStore.ASSET_FOLDER_HANDLE_KEY === "asset-folder" && folderStore.OUTPUT_FOLDER_HANDLE_KEY === "output-folder",
-        folderStore.ASSET_FOLDER_HANDLE_KEY + "," + folderStore.OUTPUT_FOLDER_HANDLE_KEY,
-    );
-    const unwritten = await folderStore.useAssetFolderStore.getState().writeOutput("noop.png", new Blob(["x"], { type: "image/png" }));
-    ok(
-        "merged store output write without a bound folder never throws and reports unbound",
-        unwritten === false && folderStore.useAssetFolderStore.getState().outputStatus === "unbound",
-        unwritten + "," + folderStore.useAssetFolderStore.getState().outputStatus,
+        "per-node folder write without a bound folder never throws and only marks that node",
+        unwritten === false && foldersAfterWrite["noop-node"]?.folderName === "" && foldersAfterWrite["noop-node"]?.collectStatus === "failed" && foldersAfterWrite["other-node"] === undefined,
+        unwritten + "," + JSON.stringify(foldersAfterWrite),
     );
 
     const canvasStore = await import("/src/stores/canvas/use-canvas-store.ts");

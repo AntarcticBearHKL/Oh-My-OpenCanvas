@@ -10,6 +10,7 @@ const SOURCE_RELATIONS: Record<string, string> = {
     [CanvasNodeType.Prompt]: "prompt",
     [CanvasNodeType.MusicPrompt]: "prompt",
     [CanvasNodeType.SpeechPrompt]: "prompt",
+    [CanvasNodeType.VideoPrompt]: "prompt",
     [CanvasNodeType.Video]: "video-reference",
     [CanvasNodeType.Audio]: "audio-reference",
     [CanvasNodeType.Image]: "reference",

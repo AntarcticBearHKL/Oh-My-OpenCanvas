@@ -128,12 +128,14 @@ const PROMPT_TARGETS: Partial<Record<CanvasNodeTypeId, CanvasNodeTypeId>> = {
     [CanvasNodeType.Prompt]: CanvasNodeType.ImageGeneration,
     [CanvasNodeType.MusicPrompt]: CanvasNodeType.MusicGeneration,
     [CanvasNodeType.SpeechPrompt]: CanvasNodeType.SpeechGeneration,
+    [CanvasNodeType.VideoPrompt]: CanvasNodeType.VideoGeneration,
 };
 
 const GENERATOR_PROMPTS: Partial<Record<CanvasNodeTypeId, CanvasNodeTypeId>> = {
     [CanvasNodeType.ImageGeneration]: CanvasNodeType.Prompt,
     [CanvasNodeType.MusicGeneration]: CanvasNodeType.MusicPrompt,
     [CanvasNodeType.SpeechGeneration]: CanvasNodeType.SpeechPrompt,
+    [CanvasNodeType.VideoGeneration]: CanvasNodeType.VideoPrompt,
 };
 
 function isPromptConnectionAllowed(fromType: CanvasNodeTypeId, toType: CanvasNodeTypeId) {
@@ -149,7 +151,7 @@ export function normalizeConnection(firstNodeId: string, secondNodeId: string, n
     const second = nodes.find((node) => node.id === secondNodeId);
     if (!first || !second || first.id === second.id) return null;
     if (first.type === CanvasNodeType.Recording || second.type === CanvasNodeType.Recording) return null;
-    const isGenerationSink = (type: CanvasNodeTypeId) => type === CanvasNodeType.Config || type === CanvasNodeType.ImageGeneration || type === CanvasNodeType.SpeechGeneration || type === CanvasNodeType.MusicGeneration;
+    const isGenerationSink = (type: CanvasNodeTypeId) => type === CanvasNodeType.Config || type === CanvasNodeType.ImageGeneration || type === CanvasNodeType.SpeechGeneration || type === CanvasNodeType.MusicGeneration || type === CanvasNodeType.VideoGeneration;
     if (isGenerationSink(first.type) && isGenerationSink(second.type)) return null;
     const toSecond = isGenerationSink(second.type) || !isGenerationSink(first.type) || firstHandleType === "source";
     const fromNode = toSecond ? first : second;
