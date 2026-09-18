@@ -1,13 +1,17 @@
-import { Fragment, useMemo, useRef, useState } from "react";
-import { FileUp, Folder, Plus } from "lucide-react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { FileUp, Folder, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import { cn } from "@/lib/utils";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
+import { useCanvasUiStore } from "@/stores/canvas/use-canvas-ui-store";
 
+import { CanvasDeleteProjectsDialog } from "./canvas-delete-projects-dialog";
 import { CanvasImportDialog } from "./canvas-import-dialog";
+
+const headerButtonClass = "flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 text-[11px] opacity-55 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10";
 
 export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
     const { t } = useTranslation();
@@ -17,15 +21,33 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
     const groups = useCanvasStore((state) => state.groups);
     const reorderProjects = useCanvasStore((state) => state.reorderProjects);
     const createProject = useCanvasStore((state) => state.createProject);
+    const setDeleteIds = useCanvasUiStore((state) => state.setDeleteProjectIds);
     const [importOpen, setImportOpen] = useState(false);
     const [dragId, setDragId] = useState<string | null>(null);
     const [dropIndex, setDropIndex] = useState<number | null>(null);
     const draggingRef = useRef(false);
+    const afterDeletePathRef = useRef<string | null>(null);
 
     const current = projects.find((project) => project.id === currentId) || null;
     const groupId = current?.groupId || null;
     const groupName = groups.find((group) => group.id === groupId)?.name || "";
     const items = useMemo(() => (groupId ? projects.filter((project) => project.groupId === groupId) : projects), [groupId, projects]);
+
+    useEffect(() => {
+        if (!currentId || current) return;
+        const path = afterDeletePathRef.current;
+        if (!path) return;
+        afterDeletePathRef.current = null;
+        navigate(path);
+    }, [current, currentId, navigate]);
+
+    const removeProject = (id: string) => {
+        if (id === currentId) {
+            const next = items.find((project) => project.id !== id);
+            afterDeletePathRef.current = next ? `/canvas/${next.id}` : "/canvas";
+        }
+        setDeleteIds([id]);
+    };
 
     const handleDrop = () => {
         if (dragId && dropIndex !== null) {
@@ -56,17 +78,18 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
                 </div>
                 <button
                     type="button"
-                    className="grid size-6 shrink-0 place-items-center rounded-md opacity-55 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
+                    className={headerButtonClass}
                     style={{ color: theme.node.text }}
                     title={t("canvas.switcher.new")}
                     aria-label={t("canvas.switcher.new")}
                     onClick={() => navigate(`/canvas/${createProject(undefined, groupId)}`)}
                 >
                     <Plus className="size-3.5" />
+                    <span>{t("canvas.switcher.new")}</span>
                 </button>
                 <button
                     type="button"
-                    className="flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 text-[11px] opacity-55 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
+                    className={headerButtonClass}
                     style={{ color: theme.node.text }}
                     title={t("canvas.switcher.load")}
                     aria-label={t("canvas.switcher.load")}
@@ -95,45 +118,59 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
                         return (
                             <Fragment key={project.id}>
                                 {dropIndex === index ? <div className="h-0.5 rounded-full" style={{ background: theme.node.activeStroke }} /> : null}
-                                <button
-                                    type="button"
-                                    draggable
+                                <div
                                     className={cn(
-                                        "flex w-full min-w-0 cursor-grab items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition",
+                                        "group flex w-full min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 transition",
                                         !isCurrent && "hover:bg-black/5 dark:hover:bg-white/10",
                                         dragId === project.id && "opacity-40",
                                     )}
                                     style={{ background: isCurrent ? theme.toolbar.activeBg : "transparent", color: theme.node.text }}
-                                    onDragStart={(event) => {
-                                        draggingRef.current = true;
-                                        setDragId(project.id);
-                                        event.dataTransfer.effectAllowed = "move";
-                                        event.dataTransfer.setData("text/plain", project.id);
-                                    }}
-                                    onDragOver={(event) => {
-                                        if (!dragId) return;
-                                        event.preventDefault();
-                                        event.dataTransfer.dropEffect = "move";
-                                        const rect = event.currentTarget.getBoundingClientRect();
-                                        setDropIndex(index + (event.clientY > rect.top + rect.height / 2 ? 1 : 0));
-                                    }}
-                                    onDragEnd={() => {
-                                        setDragId(null);
-                                        setDropIndex(null);
-                                        setTimeout(() => {
-                                            draggingRef.current = false;
-                                        }, 0);
-                                    }}
-                                    onClick={() => {
-                                        if (draggingRef.current) return;
-                                        if (!isCurrent) navigate(`/canvas/${project.id}`);
-                                    }}
                                 >
-                                    <span className="min-w-0 flex-1 truncate">{project.title || t("canvas.untitledCanvas")}</span>
-                                    <span className="shrink-0 text-[10px]" style={{ color: theme.node.muted }}>
-                                        {t("canvas.switcher.nodes", { count: project.nodes.length })}
-                                    </span>
-                                </button>
+                                    <button
+                                        type="button"
+                                        draggable
+                                        className="flex min-w-0 flex-1 cursor-grab items-center gap-2 text-left text-xs"
+                                        onDragStart={(event) => {
+                                            draggingRef.current = true;
+                                            setDragId(project.id);
+                                            event.dataTransfer.effectAllowed = "move";
+                                            event.dataTransfer.setData("text/plain", project.id);
+                                        }}
+                                        onDragOver={(event) => {
+                                            if (!dragId) return;
+                                            event.preventDefault();
+                                            event.dataTransfer.dropEffect = "move";
+                                            const rect = event.currentTarget.getBoundingClientRect();
+                                            setDropIndex(index + (event.clientY > rect.top + rect.height / 2 ? 1 : 0));
+                                        }}
+                                        onDragEnd={() => {
+                                            setDragId(null);
+                                            setDropIndex(null);
+                                            setTimeout(() => {
+                                                draggingRef.current = false;
+                                            }, 0);
+                                        }}
+                                        onClick={() => {
+                                            if (draggingRef.current) return;
+                                            if (!isCurrent) navigate(`/canvas/${project.id}`);
+                                        }}
+                                    >
+                                        <span className="min-w-0 flex-1 truncate">{project.title || t("canvas.untitledCanvas")}</span>
+                                        <span className="shrink-0 text-[10px]" style={{ color: theme.node.muted }}>
+                                            {t("canvas.switcher.nodes", { count: project.nodes.length })}
+                                        </span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="grid size-5 shrink-0 place-items-center rounded-md opacity-0 transition group-hover:opacity-100 focus-visible:opacity-100 hover:bg-black/5 dark:hover:bg-white/10"
+                                        style={{ color: theme.node.text }}
+                                        title={t("canvas.project.delete")}
+                                        aria-label={t("canvas.project.delete")}
+                                        onClick={() => removeProject(project.id)}
+                                    >
+                                        <Trash2 className="size-3.5" />
+                                    </button>
+                                </div>
                             </Fragment>
                         );
                     })
@@ -143,6 +180,7 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
                 {dropIndex === items.length ? <div className="h-0.5 rounded-full" style={{ background: theme.node.activeStroke }} /> : null}
             </div>
             <CanvasImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
+            <CanvasDeleteProjectsDialog />
         </div>
     );
 }
