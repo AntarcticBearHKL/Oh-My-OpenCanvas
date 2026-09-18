@@ -3,12 +3,11 @@ import { FileUp, Folder, Plus, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { useCanvasProjectDelete } from "@/hooks/use-canvas-project-delete";
 import type { CanvasTheme } from "@/lib/canvas-theme";
 import { cn } from "@/lib/utils";
 import { useCanvasStore } from "@/stores/canvas/use-canvas-store";
-import { useCanvasUiStore } from "@/stores/canvas/use-canvas-ui-store";
 
-import { CanvasDeleteProjectsDialog } from "./canvas-delete-projects-dialog";
 import { CanvasImportDialog } from "./canvas-import-dialog";
 
 const headerButtonClass = "flex h-6 shrink-0 items-center gap-1 rounded-md px-1.5 text-[11px] opacity-55 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10";
@@ -21,7 +20,11 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
     const groups = useCanvasStore((state) => state.groups);
     const reorderProjects = useCanvasStore((state) => state.reorderProjects);
     const createProject = useCanvasStore((state) => state.createProject);
-    const setDeleteIds = useCanvasUiStore((state) => state.setDeleteProjectIds);
+    const { armedId, confirmDelete, cancel } = useCanvasProjectDelete((ids) => {
+        if (!currentId || !ids.includes(currentId)) return;
+        const next = items.find((project) => !ids.includes(project.id));
+        afterDeletePathRef.current = next ? `/canvas/${next.id}` : "/canvas";
+    });
     const [importOpen, setImportOpen] = useState(false);
     const [dragId, setDragId] = useState<string | null>(null);
     const [dropIndex, setDropIndex] = useState<number | null>(null);
@@ -40,14 +43,6 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
         afterDeletePathRef.current = null;
         navigate(path);
     }, [current, currentId, navigate]);
-
-    const removeProject = (id: string) => {
-        if (id === currentId) {
-            const next = items.find((project) => project.id !== id);
-            afterDeletePathRef.current = next ? `/canvas/${next.id}` : "/canvas";
-        }
-        setDeleteIds([id]);
-    };
 
     const handleDrop = () => {
         if (dragId && dropIndex !== null) {
@@ -115,6 +110,7 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
                 {items.length ? (
                     items.map((project, index) => {
                         const isCurrent = project.id === currentId;
+                        const armed = armedId === project.id;
                         return (
                             <Fragment key={project.id}>
                                 {dropIndex === index ? <div className="h-0.5 rounded-full" style={{ background: theme.node.activeStroke }} /> : null}
@@ -162,13 +158,14 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
                                     </button>
                                     <button
                                         type="button"
-                                        className="grid size-5 shrink-0 place-items-center rounded-md opacity-0 transition group-hover:opacity-100 focus-visible:opacity-100 hover:bg-black/5 dark:hover:bg-white/10"
-                                        style={{ color: theme.node.text }}
-                                        title={t("canvas.project.delete")}
-                                        aria-label={t("canvas.project.delete")}
-                                        onClick={() => removeProject(project.id)}
+                                        className={cn("flex h-5 shrink-0 items-center rounded-md transition hover:bg-black/5 dark:hover:bg-white/10", armed ? "gap-1 px-1 text-[10px]" : "w-5 justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100")}
+                                        style={{ color: armed ? theme.node.blocked : theme.node.text }}
+                                        title={t(armed ? "canvas.project.confirmDelete" : "canvas.project.delete")}
+                                        aria-label={t(armed ? "canvas.project.confirmDelete" : "canvas.project.delete")}
+                                        onClick={(event) => confirmDelete(project.id, [project.id], event.currentTarget)}
+                                        onPointerLeave={cancel}
                                     >
-                                        <Trash2 className="size-3.5" />
+                                        {armed ? <span className="whitespace-nowrap">{t("canvas.project.confirmDelete")}</span> : <Trash2 className="size-3.5" />}
                                     </button>
                                 </div>
                             </Fragment>
@@ -180,7 +177,6 @@ export function CanvasSwitcherTab({ theme }: { theme: CanvasTheme }) {
                 {dropIndex === items.length ? <div className="h-0.5 rounded-full" style={{ background: theme.node.activeStroke }} /> : null}
             </div>
             <CanvasImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
-            <CanvasDeleteProjectsDialog />
         </div>
     );
 }

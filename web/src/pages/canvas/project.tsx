@@ -2294,6 +2294,7 @@ function InfiniteCanvasPage() {
                         viewport={viewport}
                         showToolbar={!isNodeDragging && !isNodeResizing}
                         onAlign={alignSelection}
+                        onDelete={() => deleteNodes(new Set(selectedNodeIds))}
                     />
                 ) : null}
 

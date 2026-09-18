@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Dropdown, Input } from "antd";
 import { useTranslation } from "react-i18next";
 
+import { useCanvasProjectDelete } from "@/hooks/use-canvas-project-delete";
 import { useCanvasStore, type CanvasProject } from "@/stores/canvas/use-canvas-store";
 import { useCanvasUiStore } from "@/stores/canvas/use-canvas-ui-store";
 import { exportCanvasProjects } from "@/lib/canvas/canvas-export";
@@ -21,9 +22,10 @@ export function CanvasProjectRow({ project }: { project: CanvasProject }) {
     const setEditingTitle = useCanvasUiStore((state) => state.setEditingProjectTitle);
     const stopEditing = useCanvasUiStore((state) => state.stopEditingProject);
     const toggleSelected = useCanvasUiStore((state) => state.toggleSelectedProjectId);
-    const setDeleteIds = useCanvasUiStore((state) => state.setDeleteProjectIds);
+    const { armedId, confirmDelete, cancel } = useCanvasProjectDelete();
     const editing = editingId === project.id;
     const selected = selectedIds.includes(project.id);
+    const armed = armedId === project.id;
     const open = () => {
         navigate(`/canvas/${project.id}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`);
     };
@@ -94,7 +96,20 @@ export function CanvasProjectRow({ project }: { project: CanvasProject }) {
                             title={t("canvas.project.export")}
                         />
                         <Button type="text" size="small" shape="circle" icon={<Pencil className="size-4" />} onClick={() => startEditing(project.id, project.title)} aria-label={t("canvas.project.rename")} title={t("canvas.project.rename")} />
-                        <Button type="text" size="small" shape="circle" icon={<Trash2 className="size-4" />} onClick={() => setDeleteIds([project.id])} aria-label={t("canvas.project.delete")} title={t("canvas.project.delete")} />
+                        <Button
+                            type="text"
+                            size="small"
+                            shape={armed ? "default" : "circle"}
+                            danger={armed}
+                            className={armed ? "!px-2 !text-xs" : undefined}
+                            icon={armed ? undefined : <Trash2 className="size-4" />}
+                            onClick={(event) => confirmDelete(project.id, [project.id], event.currentTarget)}
+                            onPointerLeave={cancel}
+                            aria-label={t(armed ? "canvas.project.confirmDelete" : "canvas.project.delete")}
+                            title={t(armed ? "canvas.project.confirmDelete" : "canvas.project.delete")}
+                        >
+                            {armed ? t("canvas.project.confirmDelete") : null}
+                        </Button>
                     </>
                 )}
             </div>

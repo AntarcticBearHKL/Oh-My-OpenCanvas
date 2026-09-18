@@ -5,7 +5,7 @@ import { Check, Download, FileUp, FolderPlus, Pencil, Plus, Trash2, X } from "lu
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/utils";
-import { CanvasDeleteProjectsDialog } from "@/components/canvas/canvas-delete-projects-dialog";
+import { useCanvasProjectDelete } from "@/hooks/use-canvas-project-delete";
 import { CanvasImportDialog } from "@/components/canvas/canvas-import-dialog";
 import { CanvasProjectRow } from "@/components/canvas/canvas-project-row";
 import { useAssetStore } from "@/stores/use-asset-store";
@@ -35,7 +35,7 @@ export default function CanvasPage() {
     const deleteGroup = useCanvasStore((state) => state.deleteGroup);
     const cleanupImages = useAssetStore((state) => state.cleanupImages);
     const selectedIds = useCanvasUiStore((state) => state.selectedProjectIds);
-    const setDeleteIds = useCanvasUiStore((state) => state.setDeleteProjectIds);
+    const { armedId, confirmDelete, cancel } = useCanvasProjectDelete();
     const selectedGroupId = useCanvasUiStore((state) => state.selectedGroupId);
     const setSelectedGroupId = useCanvasUiStore((state) => state.setSelectedGroupId);
 
@@ -173,13 +173,13 @@ export default function CanvasPage() {
                                     <Button disabled={!hydrated} icon={<Download className="size-4" />} onClick={() => void exportCanvasProjects(projects.filter((project) => selectedIds.includes(project.id)), `${t("canvas.title")}-${selectedIds.length}`)}>
                                         {t("canvas.exportSelected")}
                                     </Button>
-                                    <Button disabled={!hydrated} onClick={() => setDeleteIds(selectedIds)}>
-                                        {t("canvas.deleteSelected")}
+                                    <Button disabled={!hydrated} danger={armedId === "selected"} onClick={(event) => confirmDelete("selected", selectedIds, event.currentTarget)} onPointerLeave={cancel}>
+                                        {armedId === "selected" ? t("canvas.project.confirmDelete") : t("canvas.deleteSelected")}
                                     </Button>
                                 </>
                             ) : projects.length ? (
-                                <Button disabled={!hydrated} onClick={() => setDeleteIds(projects.map((project) => project.id))}>
-                                    {t("canvas.deleteAll")}
+                                <Button disabled={!hydrated} danger={armedId === "all"} onClick={(event) => confirmDelete("all", projects.map((project) => project.id), event.currentTarget)} onPointerLeave={cancel}>
+                                    {armedId === "all" ? t("canvas.project.confirmDelete") : t("canvas.deleteAll")}
                                 </Button>
                             ) : null}
                             <Button disabled={!hydrated} icon={<FileUp className="size-4" />} onClick={() => setImportOpen(true)}>
@@ -272,7 +272,6 @@ export default function CanvasPage() {
             </section>
 
             <CanvasImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
-            <CanvasDeleteProjectsDialog />
         </main>
     );
 }

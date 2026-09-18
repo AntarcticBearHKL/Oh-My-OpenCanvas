@@ -186,7 +186,7 @@ export default {
         project: {
             untitled: "Untitled canvas", imported: "Imported canvas",
             select: "Select {{name}}", stats: "{{nodes}} nodes · {{connections}} connections", updated: "Updated {{date}}", saveName: "Save name", cancelRename: "Cancel rename", export: "Export", rename: "Rename", delete: "Delete",
-            deleteTitle: "Delete canvases?", deleteDescription: "This will delete {{count}} canvases along with their nodes and connections.",
+            deleteTitle: "Delete canvases?", deleteDescription: "This will delete {{count}} canvases along with their nodes and connections.", confirmDelete: "Confirm?",
         },
         export: { defaultProjectName: "OpenCanvas" },
         createMenu: {
@@ -198,7 +198,7 @@ export default {
         },
         promptNode: { pick: "Pick from library", pickerTitle: "Pick a prompt", search: "Search prompts", placeholder: "Type a prompt or pick one from the library", musicTags: ["[Intro]", "[Verse]", "[Pre-Chorus]", "[Chorus]", "[Bridge]", "[Outro]", "[Instrumental]"], speechTags: ["[happy]", "[sad]", "[whispering]", "[angry]", "[calm]", "[excited]", "[serious]", "[gentle]"], tagHint: "Click a tag to insert it at the cursor", empty: "No prompts", panelHint: "Pick or edit the prompt in the panel below", dragHint: "Drag into the prompt to insert a reference" },
         videoFrames: { first: "Capture first frame", last: "Capture last frame", current: "Capture current frame", firstTitle: "{{name}} first frame", lastTitle: "{{name}} last frame", currentTitle: "{{name}} current frame", captured: "Image node created", failed: "Could not capture this frame. Try again." },
-        switcher: { placeholder: "Switch canvas", nodes: "{{count}} nodes", nodes_one: "{{count}} node", search: "Search canvases", new: "New canvas", load: "Load", empty: "No canvases in this group", group: "Group: {{name}}" }, align: { left: "Align left", centerX: "Align horizontal centres", right: "Align right", top: "Align top", centerY: "Align vertical centres", bottom: "Align bottom", distributeX: "Distribute horizontally", distributeY: "Distribute vertically" }, sidePanel: {
+        switcher: { placeholder: "Switch canvas", nodes: "{{count}} nodes", nodes_one: "{{count}} node", search: "Search canvases", new: "New", load: "Load", empty: "No canvases in this group", group: "Group: {{name}}" }, align: { title: "Align", left: "Align left", centerX: "Align horizontal centres", right: "Align right", top: "Align top", centerY: "Align vertical centres", bottom: "Align bottom", distributeX: "Distribute horizontally", distributeY: "Distribute vertically" }, layout: { title: "Layout" }, sidePanel: {
             assets: "Assets", canvases: "Canvases", resize: "Resize left panel", exportFailed: "Export failed. Try again.",
             addingAssets: "Adding assets…", addedAssets: "Added {{count}} assets", mediaOnly: "Only image and video files are supported", addFailed: "Failed to add assets. Try again.", searchAssets: "Search assets", add: "Add", noAssets: "No assets", inserted: "Insert into canvas", removeAssetTitle: "Remove this asset?", remove: "Remove", removeAsset: "Remove asset", assetRemoved: "Asset removed",
             group: {
