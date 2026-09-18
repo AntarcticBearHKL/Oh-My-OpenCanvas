@@ -25,7 +25,7 @@ export const NODE_DEFAULT_SIZE = {
     [CanvasNodeType.SmartCanvas]: { width: 640, height: 360, get title() { return i18n.t("canvas.nodeTypes.smartCanvas"); } },
     [CanvasNodeType.Assets]: { width: 360, height: 320, get title() { return i18n.t("canvas.nodeTypes.assets"); } },
     [CanvasNodeType.Recording]: { width: 300, height: 220, get title() { return i18n.t("canvas.nodeTypes.recording"); } },
-    [CanvasNodeType.ImageModifier]: { width: 300, height: 420, get title() { return i18n.t("canvas.nodeTypes.imageModifier"); } },
+    [CanvasNodeType.ImageModifier]: { width: 464, height: 648, get title() { return i18n.t("canvas.nodeTypes.imageModifier"); } },
 } satisfies Record<CanvasNodeType, { width: number; height: number; title: string }>;
 
 export const NODE_SPECS = {
@@ -86,7 +86,7 @@ export const NODE_SPECS = {
         metadata: {},
     },
     [CanvasNodeType.ImageModifier]: {
-        width: 300, height: 420, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.ImageModifier].title; },
+        width: 464, height: 648, get title() { return NODE_DEFAULT_SIZE[CanvasNodeType.ImageModifier].title; },
         metadata: { modifierEmit: false },
     },
 } satisfies Record<CanvasNodeType, CanvasNodeSpec>;

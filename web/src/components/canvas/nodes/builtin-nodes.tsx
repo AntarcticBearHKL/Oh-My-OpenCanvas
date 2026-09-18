@@ -35,7 +35,7 @@ const BUILTIN_DEFINITIONS: CanvasNodeDefinition[] = [
     { type: CanvasNodeType.SmartCanvas, title: i18n.t("canvas.nodeTypes.smartCanvas"), icon: <LayoutDashboard className={iconClass} />, minimapColor: "#14b8a6", keepAspectRatio: () => true },
     { type: CanvasNodeType.Assets, title: i18n.t("canvas.nodeTypes.assets"), icon: <FolderInput className={iconClass} />, minimapColor: "#64748b", hasSourceHandle: false, hidePanel: true },
     { type: CanvasNodeType.Recording, title: i18n.t("canvas.nodeTypes.recording"), icon: <Mic className={iconClass} />, minimapColor: "#ef4444", hasSourceHandle: false, hidePanel: true },
-    { type: CanvasNodeType.ImageModifier, title: i18n.t("canvas.nodeTypes.imageModifier"), icon: <SlidersHorizontal className={iconClass} />, minimapColor: "#8b5cf6", hasSourceHandle: false, hidePanel: true },
+    { type: CanvasNodeType.ImageModifier, title: i18n.t("canvas.nodeTypes.imageModifier"), icon: <SlidersHorizontal className={iconClass} />, minimapColor: "#8b5cf6", hasSourceHandle: false, keepAspectRatio: () => true, hidePanel: true },
 ].map((def) => {
     const spec = NODE_SPECS[def.type];
     return { ...def, title: spec.title, defaultSize: { width: spec.width, height: spec.height }, defaultMetadata: spec.metadata };
