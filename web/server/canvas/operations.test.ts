@@ -66,6 +66,31 @@ test("smart canvas ops and node types are accepted by tool schemas", () => {
     assert.equal(toolInputSchemas.canvas_create_node.parse({ nodeType: "image-generation" }).nodeType, "image-generation");
 });
 
+test("every built-in node type is accepted by create and apply schemas", () => {
+    const types = [
+        "image",
+        "text",
+        "prompt",
+        "music-prompt",
+        "speech-prompt",
+        "config",
+        "image-generation",
+        "speech-generation",
+        "music-generation",
+        "video",
+        "audio",
+        "smart-canvas",
+        "assets",
+        "recording",
+        "image-modifier",
+    ];
+    types.forEach((nodeType) => {
+        assert.equal(toolInputSchemas.canvas_create_node.parse({ nodeType }).nodeType, nodeType);
+    });
+    assert.deepEqual(toolInputSchemas.canvas_apply_ops.parse({ ops: [{ type: "delete_node", nodeType: "recording" }] }).ops, [{ type: "delete_node", nodeType: "recording" }]);
+    assert.throws(() => toolInputSchemas.canvas_create_node.parse({ nodeType: "unknown-type" }));
+});
+
 test("node flags become one update per id and require a flag", () => {
     assert.deepEqual(opsOf("canvas_set_node_flags", { ids: ["a", "b"], locked: true, hidden: false }), [
         { type: "update_node", id: "a", metadata: { locked: true, hidden: false } },

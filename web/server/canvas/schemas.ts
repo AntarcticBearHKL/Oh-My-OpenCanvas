@@ -3,7 +3,7 @@ import { z } from "zod";
 const recordSchema = z.record(z.unknown());
 const positionSchema = z.object({ x: z.number(), y: z.number() });
 const viewportSchema = z.object({ x: z.number(), y: z.number(), k: z.number() });
-const nodeTypeSchema = z.enum(["image", "text", "config", "video", "audio", "smart-canvas", "image-generation"]);
+const nodeTypeSchema = z.enum(["image", "text", "prompt", "music-prompt", "speech-prompt", "config", "image-generation", "speech-generation", "music-generation", "video", "audio", "smart-canvas", "assets", "recording", "image-modifier"]);
 const generationModeSchema = z.enum(["text", "image", "video", "audio"]);
 const alignModeSchema = z.enum(["left", "center-x", "right", "top", "center-y", "bottom", "distribute-x", "distribute-y"]);
 
@@ -48,7 +48,7 @@ export type ToolName = (typeof toolNames)[number];
 const canvasOpSchema = z.discriminatedUnion("type", [
     z.object({ type: z.literal("add_node"), nodeType: nodeTypeSchema.optional(), id: z.string().optional(), title: z.string().optional(), x: z.number().optional(), y: z.number().optional(), width: z.number().optional(), height: z.number().optional(), position: positionSchema.optional(), metadata: recordSchema.optional() }).passthrough(),
     z.object({ type: z.literal("update_node"), id: z.string(), patch: recordSchema.optional(), metadata: recordSchema.optional() }).passthrough(),
-    z.object({ type: z.literal("delete_node"), id: z.string().optional(), ids: z.array(z.string()).optional() }).passthrough(),
+    z.object({ type: z.literal("delete_node"), id: z.string().optional(), ids: z.array(z.string()).optional(), nodeType: nodeTypeSchema.optional() }).passthrough(),
     z.object({ type: z.literal("delete_connections"), id: z.string().optional(), ids: z.array(z.string()).optional(), all: z.boolean().optional() }).passthrough(),
     z.object({ type: z.literal("connect_nodes"), id: z.string().optional(), fromNodeId: z.string(), toNodeId: z.string() }).passthrough(),
     z.object({ type: z.literal("set_viewport"), viewport: viewportSchema }).passthrough(),
@@ -134,7 +134,7 @@ export const toolDescriptions: Record<ToolName, string> = {
     canvas_get_selection: "读取当前网页画布选中的节点。",
     canvas_export_snapshot: "导出当前画布快照，用于理解布局。",
     canvas_apply_ops: "批量操作当前网页画布。ops 支持 add_node、update_node、delete_node、delete_connections、connect_nodes、set_viewport、select_nodes、run_generation、arrange_board、place_on_board。",
-    canvas_create_node: "创建任意类型节点：text、image、config、video、audio、smart-canvas、image-generation。适合创建占位图、媒体占位、配置节点或自定义 metadata 节点。",
+    canvas_create_node: "创建任意类型节点。nodeType 可为 text、prompt、music-prompt、speech-prompt、image、video、audio、config、image-generation、speech-generation、music-generation、smart-canvas、assets、recording、image-modifier。适合创建占位图、媒体占位、提示词节点、配置节点或自定义 metadata 节点。",
     canvas_create_text_node: "在当前画布创建单个文本节点。",
     canvas_create_text_nodes: "批量创建文本节点，适合生成标题、段落、脚本、说明等内容块。",
     canvas_create_config_node: "创建生成配置节点，可指定 text/image/video/audio 模式和生成参数，可选择立即触发生成。",

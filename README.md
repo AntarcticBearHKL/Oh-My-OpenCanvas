@@ -5,19 +5,21 @@
 <h1 align="center">OpenCanvas</h1>
 
 <p align="center">
-  <a href="https://linux.do/"><img src="https://img.shields.io/badge/Linux.do-Community-2b6de8?style=flat-square" alt="Linux.do"></a>
-  <a href="https://github.com/AntarcticBearHKL/Oh-My-OpenCanvas"><img src="https://img.shields.io/github/stars/AntarcticBearHKL/Oh-My-OpenCanvas?style=flat-square&logo=github" alt="GitHub stars"></a>
-  <a href="https://github.com/AntarcticBearHKL/Oh-My-OpenCanvas/tags"><img src="https://img.shields.io/github/v/tag/AntarcticBearHKL/Oh-My-OpenCanvas?style=flat-square&label=version" alt="Version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-f97316?style=flat-square" alt="License"></a>
   <a href="https://vite.dev/"><img src="https://img.shields.io/badge/Vite-7-646cff?style=flat-square&logo=vite&logoColor=white" alt="Vite"></a>
   <a href="https://reactrouter.com/"><img src="https://img.shields.io/badge/React_Router-7-ca4245?style=flat-square&logo=reactrouter&logoColor=white" alt="React Router"></a>
 </p>
 
 <p align="center">
-  <a href="docs/content/docs/overview/quick-start.mdx">快速开始</a> · <a href="docs/content/docs/overview/features.mdx">功能介绍</a> · <a href="docs/content/docs/canvas/canvas-node-manual.mdx">画布节点操作手册</a> · <a href="docs/content/docs/canvas/canvas-shortcuts.mdx">画布快捷键</a> · <a href="SECURITY.md">漏洞提交</a> · <a href="docs/content/docs/progress/todo.mdx">待办事项</a> · <a href="docs/content/docs/development/local-canvas-mcp.zh-CN.mdx">本地画布 MCP</a>
+  <a href="docs/content/docs/overview/quick-start.mdx">快速开始</a> ·
+  <a href="docs/content/docs/overview/features.mdx">功能介绍</a> ·
+  <a href="docs/content/docs/canvas/canvas-node-manual.mdx">画布节点操作手册</a> ·
+  <a href="docs/content/docs/canvas/canvas-shortcuts.mdx">画布快捷键</a> ·
+  <a href="docs/content/docs/development/local-canvas-mcp.mdx">本地画布 MCP</a> ·
+  <a href="SECURITY.md">漏洞提交</a>
 </p>
 
-OpenCanvas 是一款面向图片创作的开源工作台。它把画布编排、AI 图片生成、参考图编辑、对话助手、提示词库和素材沉淀放在同一个界面里，适合用来探索视觉方案并连续迭代图片结果。
+OpenCanvas 是一款面向图片创作的开源工作台。它把画布编排、AI 图片 / 视频 / 音频生成、参考图编辑、提示词库和素材沉淀放在同一个界面里，适合用来探索视觉方案并连续迭代结果。
 
 > [!CAUTION]
 > 项目目前处于开发阶段，不保证历史数据兼容。各种本地存储格式都可能直接调整，欢迎关注后续更新。
@@ -26,55 +28,42 @@ OpenCanvas 是一款面向图片创作的开源工作台。它把画布编排、
 
 ## 核心功能
 
-- 画布编辑：多画布项目、节点拖拽缩放、连线、小地图、撤销重做、导入导出。
-- AI 创作：浏览器前台直连你配置的 OpenAI 兼容接口，支持文生图、图生图、参考图编辑、文本问答、音频和视频生成。
-- 本地 MCP：前端服务（`npm run dev` / `npm run start`）在同一端口 `3000` 同时提供浏览器桥接和 HTTP MCP 端点（`/mcp`），网页同源自动连接，任意支持 MCP 的客户端（如 opencode）都能读写当前已打开的画布。
-- 插件系统：支持通过 URL 动态安装 / 启用 / 更新 / 卸载远程节点插件，并提供 TypeScript SDK 自行开发画布节点插件。
-- 自定义接口调用：可自定义生图 / 视频接口的调用方式，灵活适配各类中转站与自建服务。
-- 提示词库：内置 7 个开源提示词来源并支持自定义标准 JSON 来源，由浏览器前端直连并缓存到 IndexedDB。
+- **画布编辑**：多画布与库管理、节点拖拽缩放、连线、小地图、撤销重做、锁定隐藏、对齐分布、坐标标尺与 16px 网格吸附，支持整包导出 / 导入（zip，含全部图片、视频、音频资源）。
+- **AI 生成**：浏览器前台直连 OpenRouter（OpenAI 兼容接口），支持文生图、图生图 / 参考图编辑、文本生成、视频生成以及音频 / 语音 / 音乐生成。
+- **画布节点**：文本、提示词（含音乐提示词、语音提示词）、图片、视频、音频、生成配置、图片生成、语音生成、音乐生成、智能画布、资源、录音、图片修饰。
+- **图片工具**：裁剪、分割（本地 MobileSAM）、蒙版编辑、分辨率调整、背景移除、图片分析（主色 / EXIF / 感知哈希）、识别文字与视频帧截取。
+- **智能画布**：固定比例画板，支持 1K / 2K / 4K 合成、背景与不透明度、图层顺序与混合模式、文本标注、一键排版模板、嵌套画板，以及合成预览 / 存为图片节点。
+- **本地 MCP**：前端服务（`npm run dev` / `npm run start`）在同一端口 `3000` 同时提供浏览器桥接和 HTTP MCP 端点（`/mcp`），网页同源自动连接，任意支持 MCP 的客户端（如 opencode）都能读写当前已打开的画布。
+- **插件系统**：支持通过 URL 动态安装 / 启用 / 更新 / 卸载远程节点插件，并提供 TypeScript SDK 自行开发画布节点插件。
+- **提示词与素材**：内置 7 个开源提示词来源并支持自定义标准 JSON 来源，由浏览器前端直连并缓存到 IndexedDB；「我的素材」提供本地素材库。
 
 完整功能说明见 [功能介绍](docs/content/docs/overview/features.mdx)。
 
 ## 快速开始
 
-AI API Key、Base URL、画布、素材和生成记录默认保存在浏览器本地。
-
-### 本地开发
-
 ```bash
 git clone git@github.com:AntarcticBearHKL/Oh-My-OpenCanvas.git
-cd Oh-My-OpenCanvas
-cd web
+cd Oh-My-OpenCanvas/web
 bun install
 bun run dev
 ```
 
-运行后默认端口3000，可访问 `http://localhost:3000`。
+运行后默认端口 3000，可访问 `http://localhost:3000`。
 
-首次打开后进入右上角配置，填入自己的 OpenAI 兼容 `Base URL` 和 `API Key`。
+## 配置
 
-如果默认的OpenAI接口调用方式与您的API不同，可自定义生图/视频脚本调用。
+- 首次打开后进入右上角设置，填入 OpenRouter 的 API Key。
+- API Key、画布项目、素材和生成记录默认保存在浏览器本地，由前端直接请求 `https://openrouter.ai/api/v1`，不经过项目服务器。
 
-## 效果展示
+## 文档
 
-<table width="100%">
-  <tr>
-    <td width="50%"><img src="https://i.ibb.co/TDFvGWDT/image.png" alt="image" border="0"></td>
-    <td width="50%"><img src="https://i.ibb.co/zVwJq3YS/image.png" alt="image" border="0"></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="https://i.ibb.co/PvY3qhhK/image.png" alt="image" border="0"></td>
-    <td width="50%"><img src="https://i.ibb.co/7D04LwN/image.png" alt="image" border="0"></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="https://i.ibb.co/bj30FtS5/5.png" alt="5" border="0"></td>
-    <td width="50%"><img src="https://i.ibb.co/hxRvjw51/image.png" alt="image" border="0"></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="https://i.ibb.co/jkWsF8q1/image.png" alt="image" border="0"></td>
-    <td width="50%"><img src="https://i.ibb.co/XrnfXHx7/image.png" alt="image" border="0"></td>
-  </tr>
-</table>
+- [快速开始](docs/content/docs/overview/quick-start.mdx)
+- [功能介绍](docs/content/docs/overview/features.mdx)
+- [画布节点操作手册](docs/content/docs/canvas/canvas-node-manual.mdx)
+- [画布快捷键](docs/content/docs/canvas/canvas-shortcuts.mdx)
+- [本地画布 MCP 连接原理](docs/content/docs/development/local-canvas-mcp.mdx)
+- [画布数据结构](docs/content/docs/development/canvas-data-structure.mdx)
+- [待办事项](docs/content/docs/progress/todo.mdx) · [待测试](docs/content/docs/progress/pending-test.mdx)
 
 ## 社区支持
 

@@ -26,7 +26,7 @@ POST /canvas/result?clientId=xxx
 
 Snapshots contain the canvas ID and title, nodes, edges, selected node IDs, and viewport. The server keeps the latest snapshot in memory, so read tools return structured state rather than the DOM.
 
-For a node creation, the MCP client calls a tool, the server converts it to `canvas_apply_ops`, sends an SSE `tool_call`, and the browser applies operations such as `add_node`, `update_node`, `delete_node`, `connect_nodes`, `set_viewport`, and `select_nodes`. The browser posts the result to `/canvas/result`, which completes the MCP call.
+For a node creation, the MCP client calls a tool, the server converts it to `canvas_apply_ops`, sends an SSE `tool_call`, and the browser applies operations such as `add_node`, `update_node`, `delete_node`, `delete_connections`, `connect_nodes`, `set_viewport`, `select_nodes`, `run_generation`, `arrange_board`, and `place_on_board`. The browser posts the result to `/canvas/result`, which completes the MCP call.
 
 ## HTTP MCP
 
@@ -36,7 +36,7 @@ MCP clients connect to the Streamable HTTP endpoint on the same port:
 POST http://127.0.0.1:3000/mcp
 ```
 
-The server creates one `McpServer` per initialized session and routes later requests by the `mcp-session-id` header. It advertises the `opencanvas-mcp` server name and exposes 29 canvas tools: site-level tools are forwarded to the browser, canvas read tools are answered from the latest snapshot, and the remaining canvas tools are translated into `canvas_apply_ops`.
+The server creates one `McpServer` per initialized session and routes later requests by the `mcp-session-id` header. It advertises the `opencanvas-mcp` server name and exposes 33 canvas tools: site-level tools are forwarded to the browser, canvas read tools are answered from the latest snapshot, and the remaining canvas tools are translated into `canvas_apply_ops`. `canvas_create_node` and `canvas_apply_ops` accept every built-in node type (text, prompt, music prompt, speech prompt, image, video, audio, config, image generation, speech generation, music generation, smart canvas, assets, recording, image modifier).
 
 ## Security boundary
 

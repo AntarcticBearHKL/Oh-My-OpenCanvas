@@ -16,11 +16,20 @@
 
 - 读取：`canvas_get_state`、`canvas_get_selection`、`canvas_export_snapshot`
 - 批量操作：`canvas_apply_ops`
-- 节点：`canvas_create_node`、`canvas_update_node`、`canvas_update_node_text`、`canvas_move_nodes`、`canvas_resize_node`、`canvas_delete_nodes`
+- 节点：`canvas_create_node`、`canvas_update_node`、`canvas_update_node_text`、`canvas_move_nodes`、`canvas_resize_node`、`canvas_set_node_flags`、`canvas_bulk_rename`、`canvas_align_nodes`、`canvas_duplicate_node`、`canvas_delete_nodes`
 - 文本：`canvas_create_text_node`、`canvas_create_text_nodes`
 - 连线与视图：`canvas_connect_nodes`、`canvas_select_nodes`、`canvas_set_viewport`
 - 生成：`canvas_create_config_node`、`canvas_create_image_prompt_flow`、`canvas_create_generation_flow`、`canvas_generate_text`、`canvas_generate_image`、`canvas_generate_video`、`canvas_generate_audio`、`canvas_run_generation`、`generation_get_status`
 - 站点：`site_navigate`、`canvas_list_projects`、`prompts_search`、`assets_list`、`assets_add`
+
+## 节点类型
+
+- 内容节点：`text`、`image`、`video`、`audio`，内容存在 `metadata.content`。
+- 提示词节点：`prompt`、`music-prompt`、`speech-prompt`，提示词存在 `metadata.prompt`。
+- 生成节点：`config`（通用生成配置，用 `metadata.generationMode` 指定 `text` / `image` / `video` / `audio`）、`image-generation`、`speech-generation`、`music-generation`（后两者按 `audio` 模式生成）。
+- 画板节点：`smart-canvas`。
+- 工具节点：`assets`（本地文件夹与输出文件夹）、`recording`（录音）、`image-modifier`（图片修饰，参数存 `metadata.modifierParams`、色调曲线存 `metadata.modifierCurve`、来源存 `metadata.modifierSource`）。
+- 通用节点操作：`canvas_create_node` 创建、`canvas_update_node` 修改 metadata、`canvas_delete_nodes` 删除；`canvas_apply_ops` 的 `add_node` / `update_node` / `delete_node` 也接受以上全部 `nodeType`。
 
 ## 智能画布
 
