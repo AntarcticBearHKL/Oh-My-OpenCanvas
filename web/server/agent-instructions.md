@@ -25,18 +25,37 @@
 ## 节点类型
 
 - 内容节点：`text`、`image`、`video`、`audio`，内容存在 `metadata.content`。
-- 提示词节点：`prompt`、`music-prompt`、`speech-prompt`，提示词存在 `metadata.prompt`。
-- 生成节点：`config`（通用生成配置，用 `metadata.generationMode` 指定 `text` / `image` / `video` / `audio`）、`image-generation`、`speech-generation`、`music-generation`（后两者按 `audio` 模式生成）。
+- 提示词节点：`prompt`、`music-prompt`、`speech-prompt`、`video-prompt`，提示词存在 `metadata.prompt`。
+- 生成节点：`config`（通用生成配置，用 `metadata.generationMode` 指定 `text` / `image` / `video` / `audio`）、`image-generation`、`speech-generation`、`music-generation`（后两者按 `audio` 模式生成）、`video-generation`（按 `video` 模式生成）。
 - 画板节点：`smart-canvas`。
-- 工具节点：`assets`（本地文件夹与输出文件夹）、`recording`（录音）、`image-modifier`（图片修饰，参数存 `metadata.modifierParams`、色调曲线存 `metadata.modifierCurve`、来源存 `metadata.modifierSource`）。
+- 工具节点：`assets`（资源浏览器，`metadata.assetSource` 为 `"folder"`（默认）或 `"cache"`：folder 模式下每个节点各自绑定一个本地文件夹，绑定关系按节点 id 存 IndexedDB、不写入节点 metadata，新建节点默认未绑定，把图片节点拖到该节点上会把图片复制进绑定的文件夹；cache 模式列出浏览器插件缓存的图片，需要安装 OpenCanvas 浏览器插件。两种模式都只显示名称列表，拖出文件创建对应类型的节点，点击文件插入节点）、`recording`（录音）、`image-modifier`（图片修饰，参数存 `metadata.modifierParams`、色调曲线存 `metadata.modifierCurve`、来源存 `metadata.modifierSource`）。
 - 通用节点操作：`canvas_create_node` 创建、`canvas_update_node` 修改 metadata、`canvas_delete_nodes` 删除；`canvas_apply_ops` 的 `add_node` / `update_node` / `delete_node` 也接受以上全部 `nodeType`。
+
+## 视频生成
+
+- 视频模型为 `minimax/hailuo-3-max`，走 OpenRouter 异步视频接口：分辨率 `480p` / `768p`，时长 5-15 秒，比例 21:9 / 16:9 / 4:3 / 1:1 / 3:4 / 9:16；不支持音频、seed 和手动尺寸。
+- 视频流程用 `video-prompt -> video-generation` 两个节点：`video-prompt` 存提示词与画面槽位，`video-generation` 存模型、分辨率、比例、时长，用 `canvas_connect_nodes` 连接。
+- `video-prompt` metadata：`videoMode`（`"frames"` 默认 | `"reference"`）、`videoSlots`（`{ firstFrame?: string; lastFrame?: string; references?: string[] }`，值为 IMAGE 节点 id）。
+- `frames` 模式最多取前两张图（首帧、尾帧），`reference` 模式取 `references` 列表；两者不会同时发送（接口以首尾帧为准）。MiniMax 只接受图片，不支持参考视频/音频。
+- `video-generation` metadata：`model`、`vquality`（分辨率）、`size`（比例，如 `"16:9"`）、`seconds`（时长）。
+- 通用 `config` 节点（`generationMode` 为 `video`）也能生成视频，但不读取 `videoSlots`；首尾帧/参考图槽位只对 `video-prompt` + `video-generation` 组合生效。
+- 用 MCP 搭建视频流程：
+  1. 准备图片节点（`canvas_generate_image` 或已有图片）。
+  2. `canvas_create_node` 创建 `video-prompt`，metadata 写入 `prompt`。
+  3. `canvas_create_node` 创建 `video-generation`。
+  4. `canvas_connect_nodes` 连接 `video-prompt -> video-generation`。
+  5. `canvas_update_node` 设置 `video-prompt` 的 `metadata.videoMode` 与 `metadata.videoSlots`。
+  6. `canvas_run_generation`（`nodeId` 为 `video-generation`、`mode` 为 `video`）触发生成。
 
 ## 智能画布
 
 - 智能画布是一个 `smart-canvas` 类型的画板节点，用 `canvas_create_node` 创建。
-- 通过 metadata 配置画板：`boardRatio`（如 `"16:9"`）、`boardResolution`（`"1k"`、`"2k"`、`"4k"`）、`boardBackground`（CSS 颜色或 `"transparent"`）。
+- 通过 metadata 配置画板：`boardRatio`（如 `"16:9"`）、`boardResolution`（`"1k"`、`"2k"`、`"4k"`）、`boardBackground`（CSS 颜色或 `"transparent"`）、`boardBackgroundOpacity`（0-1）。
 - 用 `canvas_apply_ops` 的 `place_on_board` 把图片放到画板上：`nodeId` 为图片节点，`boardId` 为画板节点；省略 `boardId` 表示把图片移出画板。
-- 用 `canvas_apply_ops` 的 `arrange_board`（`id` 为画板节点）把画板上的图片按网格自动排版。
+- 画板可以嵌套：把 `smart-canvas` 节点的 `metadata.boardId` 指向另一个画板即可，合成与节点预览会递归渲染。
+- 各层的顺序与外观由节点 metadata 控制：`boardLayers`（画板内的层级顺序）、`hidden`（隐藏该层）、`blendMode`（normal、multiply、screen、overlay、darken、lighten、color-dodge、color-burn、hard-light、soft-light、difference、exclusion、hue、saturation、color、luminosity 共 16 种）、`opacity`（0-1）。
+- 用 `canvas_apply_ops` 的 `arrange_board`（`id` 为画板节点）把画板上的图片自动排版：默认为 grid 网格；界面还可选择 grid / row / column / feature 模板。
+- 文本标注存 `metadata.boardTexts`（`{ id, text, x, y, fontSize, color }[]`，x/y 为相对画板左上角的坐标）。
 - 合成、预览和导出画板图片是界面操作，MCP 不支持。
 
 ## 风格

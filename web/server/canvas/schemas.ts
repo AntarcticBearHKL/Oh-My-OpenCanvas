@@ -3,7 +3,7 @@ import { z } from "zod";
 const recordSchema = z.record(z.unknown());
 const positionSchema = z.object({ x: z.number(), y: z.number() });
 const viewportSchema = z.object({ x: z.number(), y: z.number(), k: z.number() });
-const nodeTypeSchema = z.enum(["image", "text", "prompt", "music-prompt", "speech-prompt", "config", "image-generation", "speech-generation", "music-generation", "video", "audio", "smart-canvas", "assets", "recording", "image-modifier"]);
+const nodeTypeSchema = z.enum(["image", "text", "prompt", "music-prompt", "speech-prompt", "video-prompt", "config", "image-generation", "speech-generation", "music-generation", "video-generation", "video", "audio", "smart-canvas", "assets", "recording", "image-modifier"]);
 const generationModeSchema = z.enum(["text", "image", "video", "audio"]);
 const alignModeSchema = z.enum(["left", "center-x", "right", "top", "center-y", "bottom", "distribute-x", "distribute-y"]);
 
@@ -134,15 +134,15 @@ export const toolDescriptions: Record<ToolName, string> = {
     canvas_get_selection: "读取当前网页画布选中的节点。",
     canvas_export_snapshot: "导出当前画布快照，用于理解布局。",
     canvas_apply_ops: "批量操作当前网页画布。ops 支持 add_node、update_node、delete_node、delete_connections、connect_nodes、set_viewport、select_nodes、run_generation、arrange_board、place_on_board。",
-    canvas_create_node: "创建任意类型节点。nodeType 可为 text、prompt、music-prompt、speech-prompt、image、video、audio、config、image-generation、speech-generation、music-generation、smart-canvas、assets、recording、image-modifier。适合创建占位图、媒体占位、提示词节点、配置节点或自定义 metadata 节点。",
+    canvas_create_node: "创建任意类型节点。nodeType 可为 text、prompt、music-prompt、speech-prompt、video-prompt、image、video、audio、config、image-generation、speech-generation、music-generation、video-generation、smart-canvas、assets、recording、image-modifier。适合创建占位图、媒体占位、提示词节点、配置节点或自定义 metadata 节点。",
     canvas_create_text_node: "在当前画布创建单个文本节点。",
     canvas_create_text_nodes: "批量创建文本节点，适合生成标题、段落、脚本、说明等内容块。",
-    canvas_create_config_node: "创建生成配置节点，可指定 text/image/video/audio 模式和生成参数，可选择立即触发生成。",
+    canvas_create_config_node: "创建生成配置节点，可指定 text/image/video/audio 模式和生成参数，可选择立即触发生成。视频为 minimax/hailuo-3-max：分辨率 480p/768p、时长 5-15s、frames/reference 两种模式；首尾帧与参考图槽位（videoSlots）只对 video-prompt + video-generation 节点组合生效。",
     canvas_create_image_prompt_flow: "创建提示词文本节点和图片生成配置节点，并自动连线，可选择立即触发生图。",
-    canvas_create_generation_flow: "创建通用生成流程：提示词文本节点、生成配置节点、参考节点连线，可用于文案、生图、视频或音频。",
+    canvas_create_generation_flow: "创建通用生成流程：提示词文本节点、生成配置节点、参考节点连线，可用于文案、生图、视频或音频。视频为 minimax/hailuo-3-max：分辨率 480p/768p、时长 5-15s、frames/reference 模式；需要首尾帧/参考图槽位时用 video-prompt + video-generation 节点组合。",
     canvas_generate_text: "创建通用文本生成流程并立即触发生成。",
     canvas_generate_image: "创建通用图片生成流程并立即触发生成。",
-    canvas_generate_video: "创建通用视频生成流程并立即触发生成。",
+    canvas_generate_video: "创建通用视频生成流程（config 节点）并立即触发生成。视频为 minimax/hailuo-3-max：分辨率 480p/768p、时长 5-15s、frames/reference 模式；需要首尾帧/参考图槽位时用 video-prompt + video-generation 节点组合。",
     canvas_generate_audio: "创建通用音频生成流程并立即触发生成。",
     canvas_update_node: "更新节点基础字段或 metadata。",
     canvas_update_node_text: "更新文本节点内容和标题。",
@@ -156,7 +156,7 @@ export const toolDescriptions: Record<ToolName, string> = {
     canvas_connect_nodes: "批量连接节点。",
     canvas_select_nodes: "设置当前选中节点。",
     canvas_set_viewport: "调整画布视口。",
-    canvas_run_generation: "触发指定节点生成，通常用于配置节点或文本/图片/视频/音频节点。",
+    canvas_run_generation: "触发指定节点生成，通常用于配置节点或文本/图片/视频/音频节点。视频为 minimax/hailuo-3-max：分辨率 480p/768p、时长 5-15s、frames/reference 模式；video-generation 节点按 metadata（model/vquality/size/seconds）与所连 video-prompt 的 videoMode/videoSlots 生成。",
     generation_get_status: "查询当前活动网页画布的生成任务状态。可用 scope 过滤来源，用 nodeIds 查询画布节点。",
     prompts_search: "搜索提示词库（第三方提示词合集），支持 keyword、category、tags 过滤和 page/pageSize 分页，返回标题、提示词、分类、标签、封面等。",
     assets_list: "列出用户「我的素材」，支持 kind（text/image/video）过滤、keyword 搜索和 page/pageSize 分页。为控制体积不返回图片/视频原始 data，仅返回封面与元信息。",
