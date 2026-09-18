@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Segmented } from "antd";
 import { ImageOff, ImagePlus, Loader2, SlidersHorizontal, Sparkles, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -20,11 +21,13 @@ import { resolveImageUrl } from "@/services/image-storage";
 import type { CanvasImageModifierCurvePoint, CanvasImageModifierParams, CanvasNodeData } from "@/types/canvas";
 
 const MODIFIER_DESIGN_WIDTH = 460;
-const MODIFIER_DESIGN_HEIGHT = 940;
+const MODIFIER_DESIGN_HEIGHT = 644;
 const PREVIEW_HEIGHT = 220;
 const CURVE_HEIGHT = 150;
 const CURVE_PADDING = 8;
 const CURVE_POINT_RADIUS = 5;
+
+type ImageModifierTab = "filters" | "tone" | "curve";
 
 export function ImageModifierNodeContent({
     node,
@@ -51,6 +54,7 @@ export function ImageModifierNodeContent({
     const [sourceUrl, setSourceUrl] = useState("");
     const [loadFailed, setLoadFailed] = useState(false);
     const [baking, setBaking] = useState(false);
+    const [tab, setTab] = useState<ImageModifierTab>("filters");
     const [histogram, setHistogram] = useState<Uint32Array | null>(null);
     const previewRef = useRef<HTMLCanvasElement | null>(null);
     const curveRef = useRef<HTMLCanvasElement | null>(null);
@@ -259,8 +263,113 @@ export function ImageModifierNodeContent({
                     </div>
                 )}
 
-                <div className="shrink-0 truncate text-[10px] leading-4" style={{ color: theme.node.muted }} onMouseDown={(event) => event.stopPropagation()}>
-                    {emit ? t("canvas.imageModifier.emitHint") : t("canvas.imageModifier.dropHint")}
+                <div className="shrink-0" onMouseDown={(event) => event.stopPropagation()}>
+                    <Segmented
+                        block
+                        size="small"
+                        value={tab}
+                        onChange={(value) => setTab(value as ImageModifierTab)}
+                        options={[
+                            { label: t("canvas.imageModifier.tabFilters"), value: "filters" },
+                            { label: t("canvas.imageModifier.tabTone"), value: "tone" },
+                            { label: t("canvas.imageModifier.tabCurve"), value: "curve" },
+                        ]}
+                    />
+                </div>
+
+                <div className="h-48 shrink-0" onMouseDown={(event) => event.stopPropagation()}>
+                    {tab === "filters" ? (
+                        <div className="grid h-full grid-cols-2 content-center gap-2">
+                            {IMAGE_MODIFIER_PARAMS.map((spec) => (
+                                <label key={spec.key} className="flex h-8 flex-col justify-between">
+                                    <span className="flex min-w-0 items-center justify-between gap-1 text-[10px] leading-4" style={{ color: theme.node.muted }}>
+                                        <span className="truncate">{t(spec.labelKey)}</span>
+                                        <span className="shrink-0 tabular-nums">{formatImageModifierValue(spec, params[spec.key])}</span>
+                                    </span>
+                                    <input
+                                        type="range"
+                                        min={spec.min}
+                                        max={spec.max}
+                                        step={spec.step}
+                                        value={params[spec.key]}
+                                        className="m-0 h-4 w-full"
+                                        style={{ accentColor: theme.node.activeStroke }}
+                                        aria-label={t(spec.labelKey)}
+                                        onChange={(event) => {
+                                            const next = { ...params };
+                                            next[spec.key] = Number(event.target.value);
+                                            onParamsChange(next);
+                                        }}
+                                    />
+                                </label>
+                            ))}
+                        </div>
+                    ) : tab === "tone" ? (
+                        <div className="grid h-full grid-cols-2 content-center gap-2">
+                            {IMAGE_MODIFIER_TONE_PARAMS.map((spec) => (
+                                <label key={spec.key} className="flex h-8 flex-col justify-between">
+                                    <span className="flex min-w-0 items-center justify-between gap-1 text-[10px] leading-4" style={{ color: theme.node.muted }}>
+                                        <span className="truncate">{t(spec.labelKey)}</span>
+                                        <span className="shrink-0 tabular-nums">{formatImageModifierValue(spec, params[spec.key])}</span>
+                                    </span>
+                                    <input
+                                        type="range"
+                                        min={spec.min}
+                                        max={spec.max}
+                                        step={spec.step}
+                                        value={params[spec.key]}
+                                        className="m-0 h-4 w-full"
+                                        style={{ accentColor: theme.node.activeStroke }}
+                                        aria-label={t(spec.labelKey)}
+                                        onChange={(event) => {
+                                            const next = { ...params };
+                                            next[spec.key] = Number(event.target.value);
+                                            onParamsChange(next);
+                                        }}
+                                    />
+                                </label>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex h-full flex-col justify-center gap-2">
+                            <div className="flex h-4 shrink-0 items-center justify-between text-[10px] leading-4" style={{ color: theme.node.muted }}>
+                                <span className="truncate">{t("canvas.imageModifier.curve")}</span>
+                                <button
+                                    type="button"
+                                    className="flex h-4 shrink-0 items-center rounded px-1.5 font-medium transition hover:bg-black/5 dark:hover:bg-white/10"
+                                    style={{ color: theme.node.muted }}
+                                    onClick={() => onCurveChange(DEFAULT_IMAGE_MODIFIER_CURVE.map((point) => ({ ...point })))}
+                                    onMouseDown={(event) => event.stopPropagation()}
+                                >
+                                    {t("canvas.imageModifier.curveReset")}
+                                </button>
+                            </div>
+                            <canvas
+                                ref={curveRef}
+                                width={428}
+                                height={CURVE_HEIGHT}
+                                className="h-[150px] w-full shrink-0 cursor-crosshair touch-none rounded-xl"
+                                onPointerDown={(event) => {
+                                    event.stopPropagation();
+                                    handleCurvePointer(event);
+                                }}
+                                onPointerMove={(event) => {
+                                    if (dragRef.current == null) return;
+                                    event.stopPropagation();
+                                    handleCurvePointer(event);
+                                }}
+                                onPointerUp={endCurveDrag}
+                                onPointerCancel={endCurveDrag}
+                                onMouseDown={(event) => event.stopPropagation()}
+                            />
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex h-4 shrink-0 items-center text-[10px] leading-4" onMouseDown={(event) => event.stopPropagation()}>
+                    <span className="truncate" style={{ color: error ? "#f87171" : theme.node.muted }}>
+                        {error || (emit ? t("canvas.imageModifier.emitHint") : t("canvas.imageModifier.dropHint"))}
+                    </span>
                 </div>
 
                 <button
@@ -277,94 +386,6 @@ export function ImageModifierNodeContent({
                     </span>
                     <span className="size-2 shrink-0 rounded-full" style={{ background: emit ? theme.node.activeStroke : theme.node.stroke }} />
                 </button>
-
-                <div className="flex h-4 shrink-0 items-center justify-between text-[10px] leading-4" style={{ color: theme.node.muted }}>
-                    <span className="truncate">{t("canvas.imageModifier.curve")}</span>
-                    <button
-                        type="button"
-                        className="flex h-4 shrink-0 items-center rounded px-1.5 font-medium transition hover:bg-black/5 dark:hover:bg-white/10"
-                        style={{ color: theme.node.muted }}
-                        onClick={() => onCurveChange(DEFAULT_IMAGE_MODIFIER_CURVE.map((point) => ({ ...point })))}
-                        onMouseDown={(event) => event.stopPropagation()}
-                    >
-                        {t("canvas.imageModifier.curveReset")}
-                    </button>
-                </div>
-
-                <canvas
-                    ref={curveRef}
-                    width={428}
-                    height={CURVE_HEIGHT}
-                    className="h-[150px] w-full shrink-0 cursor-crosshair touch-none rounded-xl"
-                    onPointerDown={(event) => {
-                        event.stopPropagation();
-                        handleCurvePointer(event);
-                    }}
-                    onPointerMove={(event) => {
-                        if (dragRef.current == null) return;
-                        event.stopPropagation();
-                        handleCurvePointer(event);
-                    }}
-                    onPointerUp={endCurveDrag}
-                    onPointerCancel={endCurveDrag}
-                    onMouseDown={(event) => event.stopPropagation()}
-                />
-
-                <div className="grid shrink-0 grid-cols-2 gap-x-3 gap-y-2" onMouseDown={(event) => event.stopPropagation()}>
-                    {IMAGE_MODIFIER_TONE_PARAMS.map((spec) => (
-                        <label key={spec.key} className="flex h-9 flex-col justify-between">
-                            <span className="flex min-w-0 items-center justify-between gap-1 text-[10px] leading-4" style={{ color: theme.node.muted }}>
-                                <span className="truncate">{t(spec.labelKey)}</span>
-                                <span className="shrink-0 tabular-nums">{formatImageModifierValue(spec, params[spec.key])}</span>
-                            </span>
-                            <input
-                                type="range"
-                                min={spec.min}
-                                max={spec.max}
-                                step={spec.step}
-                                value={params[spec.key]}
-                                className="m-0 h-4 w-full"
-                                style={{ accentColor: theme.node.activeStroke }}
-                                aria-label={t(spec.labelKey)}
-                                onChange={(event) => {
-                                    const next = { ...params };
-                                    next[spec.key] = Number(event.target.value);
-                                    onParamsChange(next);
-                                }}
-                            />
-                        </label>
-                    ))}
-                </div>
-
-                <div className="grid shrink-0 grid-cols-2 gap-x-3 gap-y-2" onMouseDown={(event) => event.stopPropagation()}>
-                    {IMAGE_MODIFIER_PARAMS.map((spec) => (
-                        <label key={spec.key} className="flex h-9 flex-col justify-between">
-                            <span className="flex min-w-0 items-center justify-between gap-1 text-[10px] leading-4" style={{ color: theme.node.muted }}>
-                                <span className="truncate">{t(spec.labelKey)}</span>
-                                <span className="shrink-0 tabular-nums">{formatImageModifierValue(spec, params[spec.key])}</span>
-                            </span>
-                            <input
-                                type="range"
-                                min={spec.min}
-                                max={spec.max}
-                                step={spec.step}
-                                value={params[spec.key]}
-                                className="m-0 h-4 w-full"
-                                style={{ accentColor: theme.node.activeStroke }}
-                                aria-label={t(spec.labelKey)}
-                                onChange={(event) => {
-                                    const next = { ...params };
-                                    next[spec.key] = Number(event.target.value);
-                                    onParamsChange(next);
-                                }}
-                            />
-                        </label>
-                    ))}
-                </div>
-
-                <div className="min-h-4 shrink-0 truncate text-[10px] leading-4" style={{ color: "#f87171" }}>
-                    {error}
-                </div>
 
                 <button
                     type="button"
